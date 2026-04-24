@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="description" content="Open-source HTML5 Canvas roguelite inspired by Vampire Survivors. Zero dependencies, plays in any modern browser." />
+    <title>Survivor — Open Source Roguelite</title>
+    <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+    <div id="gameContainer" aria-label="Survivor game">
+        <canvas id="gameCanvas" width="1200" height="800" tabindex="0" aria-label="Game canvas"></canvas>
+
+        <div id="ui" role="presentation">
+            <div id="topLeft" class="hud">
+                <div><span data-i18n="level">LEVEL</span>: <span id="level">1</span></div>
+                <div class="bar-label" data-i18n="xp">XP</div>
+                <div class="exp-bar"><div class="exp-fill" id="expBar" style="width:0%"></div></div>
+                <div class="bar-label"><span data-i18n="time">TIME</span>: <span id="time">00:00</span></div>
+                <div id="highScore" class="hud-sub"></div>
+            </div>
+
+            <div id="topRight" class="hud">
+                <div><span data-i18n="kills">KILLS</span>: <span id="kills">0</span></div>
+                <div id="fpsCounter" class="hud-sub" style="display:none">0 fps</div>
+                <button id="btnPause" class="icon-btn" aria-label="Pause">⏸</button>
+            </div>
+
+            <div id="bottomLeft" class="hud">
+                <div><span data-i18n="hp">HP</span>: <span id="hp">100</span>/<span id="maxHp">100</span></div>
+                <div class="hp-bar"><div class="hp-fill" id="hpBar" style="width:100%"></div></div>
+                <div class="chip-row" id="passiveIcons" aria-label="Passives"></div>
+            </div>
+
+            <div class="chip-row weapon-icons" id="weaponIcons" aria-label="Weapons"></div>
+
+            <div id="bossBanner" class="boss-banner" aria-live="polite"></div>
+        </div>
+
+        <!-- Virtual joystick (touch only) -->
+        <div id="joystickBase" class="joystick" aria-hidden="true">
+            <div id="joystickKnob" class="joystick-knob"></div>
+        </div>
+
+        <!-- Menus -->
+        <div id="startScreen" class="overlay">
+            <div class="overlay-card">
+                <h1 data-i18n="title">SURVIVOR</h1>
+                <div class="subtitle" data-i18n="subtitle">Vampire Survivors style roguelite</div>
+                <div class="instructions">
+                    <div><strong data-i18n="howToPlay">How to play</strong></div>
+                    <div>• <span data-i18n="move">WASD / arrow keys to move</span></div>
+                    <div>• <span data-i18n="autoAttack">Weapons auto-attack nearby foes</span></div>
+                    <div>• Esc / P to pause</div>
+                    <div>• <span data-i18n="survive">Survive as long as you can!</span></div>
+                </div>
+                <div class="btn-row">
+                    <button id="btnStart" class="btn primary" data-i18n="start">Start Run</button>
+                    <button id="btnSettings" class="btn ghost" data-i18n="settings">Settings</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="levelUpMenu" class="overlay" style="display:none">
+            <div class="overlay-card levelup">
+                <h2 data-i18n="chooseUpgrade">Choose an upgrade</h2>
+                <div id="upgradeOptions"></div>
+            </div>
+        </div>
+
+        <div id="pauseMenu" class="overlay" style="display:none">
+            <div class="overlay-card">
+                <h2 data-i18n="paused">PAUSED</h2>
+                <div class="btn-row vertical">
+                    <button id="btnResume" class="btn primary" data-i18n="resume">Resume</button>
+                    <button id="btnQuit" class="btn ghost" data-i18n="quit">Quit to Menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="gameOver" class="overlay" style="display:none">
+            <div class="overlay-card gameover">
+                <h1 data-i18n="gameover">YOU DIED</h1>
+                <div class="stats">
+                    <div><span data-i18n="finalTime">Survived</span>: <span id="finalTime">00:00</span></div>
+                    <div><span data-i18n="finalKills">Kills</span>: <span id="finalKills">0</span></div>
+                    <div><span data-i18n="finalLevel">Level</span>: <span id="finalLevel">1</span></div>
+                </div>
+                <div class="btn-row">
+                    <button id="btnRetry" class="btn primary" data-i18n="retry">Retry</button>
+                    <button id="btnMenu" class="btn ghost" data-i18n="mainMenu">Main Menu</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="settingsMenu" class="overlay" style="display:none"></div>
+    </div>
+
+    <script type="module">
+        import { boot } from './src/main.js';
+        const game = boot();
+        // Pause button (UI click) mirrors Esc.
+        document.getElementById('btnPause')?.addEventListener('click', () => game.togglePause());
+    </script>
+</body>
+</html>

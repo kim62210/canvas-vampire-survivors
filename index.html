@@ -31,6 +31,7 @@
                     <div class="bar-label">
                         <span data-i18n="time">TIME</span>: <span id="time">00:00</span>
                     </div>
+                    <div id="waveLabel" class="hud-sub"></div>
                     <div id="highScore" class="hud-sub"></div>
                 </div>
 
@@ -55,6 +56,13 @@
                 <div class="chip-row weapon-icons" id="weaponIcons" aria-label="Weapons"></div>
 
                 <div id="bossBanner" class="boss-banner" aria-live="polite"></div>
+
+                <div
+                    id="achievementToasts"
+                    class="ach-toast-host"
+                    aria-live="polite"
+                    aria-atomic="false"
+                ></div>
             </div>
 
             <!-- Virtual joystick (touch only) -->
@@ -127,6 +135,10 @@
                             <span id="finalLevel">1</span>
                         </div>
                     </div>
+                    <details class="hs-details">
+                        <summary data-i18n="highScores">High Scores</summary>
+                        <div id="highScoreList" class="hs-list"></div>
+                    </details>
                     <div class="btn-row">
                         <button id="btnRetry" class="btn primary" data-i18n="retry">Retry</button>
                         <button id="btnMenu" class="btn ghost" data-i18n="mainMenu">

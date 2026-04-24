@@ -1,8 +1,9 @@
-// Entity classes: Player, Enemy, Projectile, ExpOrb, Particle, FloatingText.
-// All physics is frame-rate independent (delta-time in seconds).
+// Entity classes: Player, Enemy, Projectile, ExpOrb, Particle, FloatingText,
+// EnemyProjectile, OrbitShard, Mine. All physics is frame-rate independent
+// (delta-time in seconds).
 
 import { CONFIG } from './config.js';
-import { PASSIVES, WEAPONS } from './data.js';
+import { ENEMIES } from './data.js';
 
 export class Player {
     constructor(x, y) {
@@ -20,6 +21,7 @@ export class Player {
         this.invincible = false;
         this.invincibleTimer = 0;
         this.dead = false;
+        this.unhitTimer = 0; // seconds since last damage taken
     }
 
     update(dt, game) {
@@ -41,6 +43,14 @@ export class Player {
         // Regen ------------------------------------------------------------
         const regen = this._passiveSum('hpRegen');
         if (regen) this.heal(regen * dt);
+
+        // Untouchable streak timer.
+        this.unhitTimer += dt;
+        if (game.run) {
+            if (this.unhitTimer > (game.run.longestUnhit || 0)) {
+                game.run.longestUnhit = this.unhitTimer;
+            }
+        }
     }
 
     addPassive(def) {
@@ -109,6 +119,9 @@ export class Player {
     getArmor() {
         return this._passiveSum('armor');
     }
+    getCritChance() {
+        return this._passiveSum('critChance');
+    }
 
     gainExp(amount) {
         this.exp += amount * this.getExpMult();
@@ -129,6 +142,7 @@ export class Player {
         this.hp -= taken;
         this.invincible = true;
         this.invincibleTimer = CONFIG.INVINCIBILITY_TIME;
+        this.unhitTimer = 0;
         game?.onPlayerHurt?.(taken);
         if (this.hp <= 0) {
             this.hp = 0;
@@ -207,16 +221,76 @@ export class Enemy {
         this.flashTimer = 0;
         this.ability = type.ability;
         this.abilityTimer = 3;
+
+        // Archetype state
+        this.archetype = type.archetype || 'chaser';
+        this.ranged = !!type.ranged;
+        this.splitter = !!type.splitter;
+        this.dasher = !!type.dasher;
+        this.shielded = !!type.shielded;
+
+        this.fireTimer = type.fireCooldown ? type.fireCooldown * (0.5 + Math.random() * 0.5) : 0;
+        this.dashTimer = type.dashInterval ? type.dashInterval * (0.3 + Math.random() * 0.7) : 0;
+        this.dashActive = 0;
+        this.dashAngle = 0;
+        this.shieldHp = type.shieldHp ? type.shieldHp * hpMult : 0;
     }
 
     update(dt, game) {
         const dx = game.player.x - this.x;
         const dy = game.player.y - this.y;
         const d = Math.hypot(dx, dy);
-        if (d > 0.01) {
-            this.x += (dx / d) * this.speed * dt;
-            this.y += (dy / d) * this.speed * dt;
+        let vx = 0,
+            vy = 0;
+        const tx = d > 0.01 ? dx / d : 0;
+        const ty = d > 0.01 ? dy / d : 0;
+
+        if (this.ranged && this.type.keepDistance) {
+            // Stay at preferred range: advance when far, retreat when close.
+            const keep = this.type.keepDistance;
+            const dir = d > keep + 30 ? 1 : d < keep - 30 ? -1 : 0;
+            vx = tx * this.speed * dir;
+            vy = ty * this.speed * dir;
+            // Fire if in range and off cooldown.
+            this.fireTimer -= dt;
+            if (this.fireTimer <= 0 && d < this.type.firingRange) {
+                const ang = Math.atan2(dy, dx);
+                const pspeed = this.type.projectileSpeed || 220;
+                game.enemyProjectiles = game.enemyProjectiles || [];
+                game.enemyProjectiles.push(
+                    new EnemyProjectile(
+                        this.x,
+                        this.y,
+                        ang,
+                        pspeed,
+                        this.type.projectileDamage * (game.enemyDmgMult || 1)
+                    )
+                );
+                this.fireTimer = this.type.fireCooldown || 2;
+                game.audio?.shoot?.();
+            }
+        } else if (this.dasher) {
+            this.dashTimer -= dt;
+            if (this.dashActive > 0) {
+                this.dashActive -= dt;
+                vx = Math.cos(this.dashAngle) * (this.type.dashSpeed || 300);
+                vy = Math.sin(this.dashAngle) * (this.type.dashSpeed || 300);
+            } else if (this.dashTimer <= 0) {
+                this.dashAngle = Math.atan2(dy, dx);
+                this.dashActive = this.type.dashDuration || 0.5;
+                this.dashTimer = this.type.dashInterval || 3.5;
+            } else {
+                vx = tx * this.speed;
+                vy = ty * this.speed;
+            }
+        } else {
+            vx = tx * this.speed;
+            vy = ty * this.speed;
         }
+
+        this.x += vx * dt;
+        this.y += vy * dt;
+
         if (this.flashTimer > 0) this.flashTimer -= dt;
 
         if (this.boss) {
@@ -229,7 +303,17 @@ export class Enemy {
     }
 
     takeDamage(damage) {
-        this.hp -= damage;
+        let dmg = damage;
+        if (this.shielded && this.shieldHp > 0) {
+            const reduction = this.type.damageReduction ?? 0.5;
+            dmg = damage * (1 - reduction);
+            this.shieldHp -= damage * reduction;
+            if (this.shieldHp <= 0) {
+                this.shieldHp = 0;
+                this.shielded = false;
+            }
+        }
+        this.hp -= dmg;
         this.flashTimer = 0.08;
     }
 
@@ -249,6 +333,15 @@ export class Enemy {
         ctx.arc(this.x, this.y, this.size * 0.5, 0, Math.PI * 2);
         ctx.fill();
 
+        // Shield ring
+        if (this.shielded && this.shieldHp > 0) {
+            ctx.strokeStyle = 'rgba(160,200,255,0.6)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size + 4, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+
         // HP bar
         const pct = Math.max(0, this.hp / this.maxHp);
         const w = this.boss ? 80 : 30;
@@ -264,6 +357,52 @@ export class Enemy {
             ctx.arc(this.x, this.y, this.size + 4, 0, Math.PI * 2);
             ctx.stroke();
         }
+        ctx.restore();
+    }
+}
+
+// ---------------------------------------------------------------------------
+// EnemyProjectile (fired by ranged archetypes). Simple straight-line shot.
+// ---------------------------------------------------------------------------
+export class EnemyProjectile {
+    constructor(x, y, angle, speed, damage) {
+        this.x = x;
+        this.y = y;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+        this.damage = damage;
+        this.life = 3;
+        this.size = 6;
+        this.shouldRemove = false;
+    }
+    update(dt, game) {
+        this.x += this.vx * dt;
+        this.y += this.vy * dt;
+        this.life -= dt;
+        if (this.life <= 0) {
+            this.shouldRemove = true;
+            return;
+        }
+        const p = game.player;
+        const d = Math.hypot(this.x - p.x, this.y - p.y);
+        if (d < p.size + this.size) {
+            if (!p.invincible) {
+                p.takeDamage(this.damage, game);
+                game.createFloatingText(Math.round(this.damage), p.x, p.y - 30, '#ff6644');
+            }
+            this.shouldRemove = true;
+        }
+    }
+    render(ctx) {
+        ctx.save();
+        ctx.fillStyle = '#ff44aa';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * 0.45, 0, Math.PI * 2);
+        ctx.fill();
         ctx.restore();
     }
 }
@@ -413,6 +552,112 @@ export class Projectile {
 }
 
 // ---------------------------------------------------------------------------
+// OrbitShard: circles the hero and deals damage on contact. Managed by the
+// Orbit weapon, which owns a set of shards and updates them each tick.
+// ---------------------------------------------------------------------------
+export class OrbitShard {
+    constructor(weapon, index, total, radius, damage) {
+        this.weapon = weapon;
+        this.index = index;
+        this.total = total;
+        this.radius = radius;
+        this.damage = damage;
+        this.angle = (index / total) * Math.PI * 2;
+        this.hitTimers = new Map(); // enemy -> cooldown
+        this.x = 0;
+        this.y = 0;
+    }
+    update(dt, player, game) {
+        this.angle += dt * 2.4; // rad/sec
+        this.x = player.x + Math.cos(this.angle) * this.radius;
+        this.y = player.y + Math.sin(this.angle) * this.radius;
+        // Tick cooldowns down.
+        for (const [enemy, t] of this.hitTimers) {
+            const nt = t - dt;
+            if (nt <= 0) this.hitTimers.delete(enemy);
+            else this.hitTimers.set(enemy, nt);
+        }
+        // Collide with enemies via spatial hash (generous radius).
+        for (const e of game.spatial.queryRect(this.x, this.y, 40)) {
+            if (this.hitTimers.has(e)) continue;
+            const d = Math.hypot(e.x - this.x, e.y - this.y);
+            if (d < e.size + 10) {
+                e.takeDamage(this.damage);
+                this.hitTimers.set(e, 0.5);
+                game.createFloatingText(Math.round(this.damage), e.x, e.y - 18, '#ffffcc');
+            }
+        }
+    }
+    render(ctx) {
+        ctx.save();
+        const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 14);
+        g.addColorStop(0, 'rgba(255,240,180,0.85)');
+        g.addColorStop(1, 'rgba(255,240,180,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff1a8';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+// ---------------------------------------------------------------------------
+// Mine: dropped at the hero's location, arms during `fuse` then detonates.
+// ---------------------------------------------------------------------------
+export class Mine {
+    constructor(x, y, radius, damage, fuse) {
+        this.x = x;
+        this.y = y;
+        this.radius = radius;
+        this.damage = damage;
+        this.fuse = fuse;
+        this.maxFuse = fuse;
+        this.shouldRemove = false;
+    }
+    update(dt, game) {
+        this.fuse -= dt;
+        if (this.fuse <= 0) {
+            for (const enemy of game.enemies) {
+                const d = Math.hypot(enemy.x - this.x, enemy.y - this.y);
+                if (d < this.radius) {
+                    enemy.takeDamage(this.damage);
+                    game.createFloatingText(
+                        Math.round(this.damage),
+                        enemy.x,
+                        enemy.y - 20,
+                        '#ff9944'
+                    );
+                }
+            }
+            game.createParticles(this.x, this.y, '#ff8833', 20);
+            game.shake(0.25);
+            game.audio?.explosion?.();
+            this.shouldRemove = true;
+        }
+    }
+    render(ctx) {
+        const armed = this.fuse < this.maxFuse * 0.5;
+        const pulse = armed ? 0.5 + Math.sin(performance.now() / 60) * 0.5 : 0.3;
+        ctx.save();
+        ctx.fillStyle = `rgba(255,80,80,${0.25 + pulse * 0.35})`;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = armed ? '#ff4444' : '#aa4444';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.restore();
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Exp Orb
 // ---------------------------------------------------------------------------
 export class ExpOrb {
@@ -442,6 +687,7 @@ export class ExpOrb {
             p.gainExp(this.value);
             game.createFloatingText(`+${this.value}XP`, p.x, p.y - 40, '#66bbff');
             game.audio.pickup();
+            if (game.run) game.run.orbsCollected = (game.run.orbsCollected || 0) + 1;
             this.shouldRemove = true;
             return;
         }
@@ -475,23 +721,24 @@ export class ExpOrb {
 // Particle / FloatingText
 // ---------------------------------------------------------------------------
 export class Particle {
-    constructor(x, y, color) {
+    constructor(x, y, color, opts = {}) {
         this.x = x;
         this.y = y;
         this.color = color;
-        this.size = Math.random() * 4 + 2;
-        this.life = 1;
-        this.decay = Math.random() * 1.5 + 1;
-        const a = Math.random() * Math.PI * 2;
-        const s = Math.random() * 180 + 60;
+        this.size = opts.size ?? Math.random() * 4 + 2;
+        this.life = opts.life ?? 1;
+        this.decay = opts.decay ?? Math.random() * 1.5 + 1;
+        const a = opts.angle ?? Math.random() * Math.PI * 2;
+        const s = opts.speed ?? Math.random() * 180 + 60;
         this.vx = Math.cos(a) * s;
         this.vy = Math.sin(a) * s;
+        this.friction = opts.friction ?? 0.2;
     }
     update(dt) {
         this.x += this.vx * dt;
         this.y += this.vy * dt;
-        this.vx *= Math.pow(0.2, dt);
-        this.vy *= Math.pow(0.2, dt);
+        this.vx *= Math.pow(this.friction, dt);
+        this.vy *= Math.pow(this.friction, dt);
         this.life -= this.decay * dt;
         this.size *= Math.pow(0.3, dt);
     }
@@ -507,13 +754,16 @@ export class Particle {
 }
 
 export class FloatingText {
-    constructor(text, x, y, color) {
+    constructor(text, x, y, color, opts = {}) {
         this.text = text;
         this.x = x;
         this.y = y;
         this.color = color;
-        this.life = 1;
-        this.vy = -60;
+        this.life = opts.life ?? 1;
+        this.vy = opts.vy ?? -60;
+        this.size = opts.size ?? 16;
+        this.weight = opts.weight ?? 'bold';
+        this.crit = !!opts.crit;
     }
     update(dt) {
         this.y += this.vy * dt;
@@ -523,9 +773,23 @@ export class FloatingText {
         if (this.life <= 0) return;
         ctx.globalAlpha = Math.max(0, this.life);
         ctx.fillStyle = this.color;
-        ctx.font = 'bold 16px system-ui, sans-serif';
+        const sz = this.crit ? this.size * 1.6 : this.size;
+        ctx.font = `${this.weight} ${sz}px system-ui, sans-serif`;
         ctx.textAlign = 'center';
+        if (this.crit) {
+            ctx.strokeStyle = '#000';
+            ctx.lineWidth = 3;
+            ctx.strokeText(this.text, this.x, this.y);
+        }
         ctx.fillText(this.text, this.x, this.y);
         ctx.globalAlpha = 1;
     }
+}
+
+// Helper: look up an enemy definition by id string.
+export function findEnemyDef(id) {
+    for (const def of Object.values(ENEMIES)) {
+        if (def.id === id) return def;
+    }
+    return null;
 }

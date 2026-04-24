@@ -1,5 +1,8 @@
 // Web Audio synthesised SFX + procedural music loop. Zero external assets.
 // All sounds are generated at playback time from oscillators and noise buffers.
+//
+// Music: a step sequencer that walks a root note around a minor progression
+// and layers an arpeggiator on top. Toggleable via settings.musicEnabled.
 
 export class AudioEngine {
     constructor(settings) {
@@ -8,7 +11,6 @@ export class AudioEngine {
         this.masterGain = null;
         this.sfxGain = null;
         this.musicGain = null;
-        this.musicOsc = null;
         this.musicInterval = null;
         this.enabled = true;
         this.unlocked = false;
@@ -51,7 +53,7 @@ export class AudioEngine {
         const s = this.settings;
         this.masterGain.gain.value = s.masterVolume ?? 0.6;
         this.sfxGain.gain.value = s.sfxVolume ?? 0.8;
-        this.musicGain.gain.value = s.musicVolume ?? 0.4;
+        this.musicGain.gain.value = (s.musicEnabled === false ? 0 : 1) * (s.musicVolume ?? 0.4);
     }
 
     // Generic tone helper --------------------------------------------------
@@ -133,28 +135,69 @@ export class AudioEngine {
         this.tone({ noise: true, dur: 0.4, volume: 0.3, release: 0.25 });
         setTimeout(() => this.tone({ freq: 80, dur: 0.6, type: 'sawtooth', volume: 0.3 }), 100);
     }
+    bossWarn() {
+        // Three-note descending "alert" — used in the boss banner lead-in.
+        this.tone({ freq: 480, dur: 0.12, type: 'square', volume: 0.2 });
+        setTimeout(() => this.tone({ freq: 360, dur: 0.12, type: 'square', volume: 0.2 }), 140);
+        setTimeout(() => this.tone({ freq: 240, dur: 0.2, type: 'square', volume: 0.22 }), 280);
+    }
+    achievement() {
+        this.tone({ freq: 880, dur: 0.08, type: 'triangle', volume: 0.18 });
+        setTimeout(() => this.tone({ freq: 1174, dur: 0.1, type: 'triangle', volume: 0.2 }), 70);
+        setTimeout(() => this.tone({ freq: 1567, dur: 0.14, type: 'triangle', volume: 0.22 }), 150);
+    }
 
-    // Very simple procedural music: a repeating minor arpeggio.
+    // Procedural music: arpeggiated minor progression. Four bars of 8 steps.
+    // Chord roots walk i - VI - III - VII (A minor relative: A, F, C, G).
     startMusic() {
         if (!this.enabled || !this.ctx || this.musicInterval) return;
+        if (this.settings.musicEnabled === false) return;
         this.unlock();
-        const notes = [196, 233.08, 293.66, 349.23, 293.66, 233.08]; // G3 Bb3 D4 F4 D4 Bb3
-        let idx = 0;
-        const step = () => {
+        const rootHz = 220; // A3
+        const minorArp = [0, 3, 7, 12, 7, 3]; // semitones
+        const progression = [0, -4, -9, -2]; // i, VI, iii, VII in semitones from root
+        const stepMs = 180;
+        let bar = 0;
+        let step = 0;
+        const totalStepsPerBar = minorArp.length;
+        const schedule = () => {
+            if (!this.ctx) return;
             const now = this.ctx.currentTime;
+            const rootSemis = progression[bar % progression.length];
+            const arpSemi = minorArp[step % minorArp.length];
+            const freq = rootHz * Math.pow(2, (rootSemis + arpSemi) / 12);
             const osc = this.ctx.createOscillator();
             const gain = this.ctx.createGain();
             osc.type = 'triangle';
-            osc.frequency.value = notes[idx % notes.length];
+            osc.frequency.value = freq;
             gain.gain.setValueAtTime(0.0001, now);
             gain.gain.linearRampToValueAtTime(0.06, now + 0.02);
-            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+            gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.32);
             osc.connect(gain).connect(this.musicGain);
             osc.start(now);
-            osc.stop(now + 0.36);
-            idx++;
+            osc.stop(now + 0.34);
+
+            // Every 4 steps add a softer bass pedal tone one octave down.
+            if (step % 4 === 0) {
+                const bass = this.ctx.createOscillator();
+                const bgain = this.ctx.createGain();
+                bass.type = 'sine';
+                bass.frequency.value = (rootHz / 2) * Math.pow(2, rootSemis / 12);
+                bgain.gain.setValueAtTime(0.0001, now);
+                bgain.gain.linearRampToValueAtTime(0.04, now + 0.03);
+                bgain.gain.exponentialRampToValueAtTime(0.0001, now + 0.6);
+                bass.connect(bgain).connect(this.musicGain);
+                bass.start(now);
+                bass.stop(now + 0.62);
+            }
+
+            step++;
+            if (step >= totalStepsPerBar) {
+                step = 0;
+                bar++;
+            }
         };
-        this.musicInterval = setInterval(step, 380);
+        this.musicInterval = setInterval(schedule, stepMs);
     }
 
     stopMusic() {
@@ -162,5 +205,12 @@ export class AudioEngine {
             clearInterval(this.musicInterval);
             this.musicInterval = null;
         }
+    }
+
+    toggleMusic(on) {
+        this.settings.musicEnabled = !!on;
+        this.applyVolumes();
+        if (on) this.startMusic();
+        else this.stopMusic();
     }
 }

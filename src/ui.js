@@ -1,7 +1,7 @@
 // DOM glue: HUD, menus, settings. Kept intentionally separate from the render loop
 // so all UI state changes funnel through these helpers.
 
-import { PASSIVES, WEAPONS } from './data.js';
+import { ACHIEVEMENTS, PASSIVES, WEAPONS } from './data.js';
 import { CONFIG } from './config.js';
 import { t, setLocale, availableLocales } from './i18n.js';
 
@@ -34,7 +34,10 @@ export class UI {
             'fpsCounter',
             'bossBanner',
             'highScore',
-            'passiveIcons'
+            'passiveIcons',
+            'achievementToasts',
+            'highScoreList',
+            'waveLabel'
         ];
         for (const id of ids) this.els[id] = document.getElementById(id);
     }
@@ -67,13 +70,18 @@ export class UI {
             this.els.highScore.textContent = `${t('highScore')}: ${hm}:${hsec} · ${hs.kills}K`;
         }
 
+        if (this.els.waveLabel && game.currentWave) {
+            this.els.waveLabel.textContent = `${t('wave')}: ${game.currentWave.label}`;
+        }
+
         // Weapon icons
         this._renderChips(
             this.els.weaponIcons,
             p.weapons.map((w) => ({
                 icon: w.icon,
                 level: w.level,
-                max: CONFIG.WEAPON_MAX_LEVEL
+                max: CONFIG.WEAPON_MAX_LEVEL,
+                evolved: !!w.isEvolved?.()
             }))
         );
         // Passive icons
@@ -91,6 +99,7 @@ export class UI {
         for (const it of items) {
             const div = document.createElement('div');
             div.className = 'chip active' + (it.level >= it.max ? ' maxed' : '');
+            if (it.evolved) div.classList.add('evolved');
             div.textContent = it.icon;
             const lvl = document.createElement('span');
             lvl.className = 'chip-lvl';
@@ -122,9 +131,15 @@ export class UI {
             const lvl = up.type === 'weapon' ? (existing?.level ?? 0) : (existing?.count ?? 0);
             const label =
                 lvl > 0 ? ` (${up.type === 'weapon' ? 'Lv.' : 'x'}${lvl + 1})` : ' (New!)';
+            const willEvolve =
+                up.type === 'weapon' && lvl + 1 === up.data.evolveLevel && up.data.evolveName;
+            const evoHtml = willEvolve
+                ? `<div class="evolve-tag">→ ${up.data.evolveName}</div>`
+                : '';
             div.innerHTML = `
                 <div class="name">${up.data.icon} ${up.data.name}${label}</div>
                 <div class="desc">${up.data.description}</div>
+                ${evoHtml}
             `;
             div.addEventListener('click', () => onPick(up));
             div.setAttribute('tabindex', '0');
@@ -139,7 +154,7 @@ export class UI {
             onPick(null);
             return;
         }
-        this.els.levelUpMenu.style.display = 'block';
+        this.els.levelUpMenu.style.display = 'flex';
         // focus first option for a11y
         options.querySelector('.upgrade-option')?.focus();
     }
@@ -162,6 +177,27 @@ export class UI {
         this.els.pauseMenu.style.display = 'none';
     }
 
+    showAchievementToast(ach) {
+        const host = this.els.achievementToasts;
+        if (!host) return;
+        const el = document.createElement('div');
+        el.className = 'ach-toast';
+        el.innerHTML = `
+            <div class="ach-icon">${ach.icon}</div>
+            <div class="ach-body">
+                <div class="ach-title">${t('achievementUnlocked')}</div>
+                <div class="ach-name">${ach.name}</div>
+                <div class="ach-desc">${ach.description}</div>
+            </div>`;
+        host.appendChild(el);
+        // fade-in
+        requestAnimationFrame(() => el.classList.add('visible'));
+        setTimeout(() => {
+            el.classList.remove('visible');
+            setTimeout(() => el.remove(), 500);
+        }, 3500);
+    }
+
     showSettings(settings, onChange, onClose, onReset) {
         const m = this.els.settingsMenu;
         m.innerHTML = `
@@ -170,10 +206,12 @@ export class UI {
                 ${sliderRow('masterVolume', settings.masterVolume)}
                 ${sliderRow('sfxVolume', settings.sfxVolume)}
                 ${sliderRow('musicVolume', settings.musicVolume)}
+                ${checkboxRow('musicEnabled', settings.musicEnabled !== false)}
                 ${selectRow('difficulty', settings.difficulty, ['easy', 'normal', 'hard', 'nightmare'])}
                 ${checkboxRow('showFps', settings.showFps)}
                 ${checkboxRow('screenShake', settings.screenShake)}
                 ${checkboxRow('reducedMotion', settings.reducedMotion)}
+                ${checkboxRow('colorblind', !!settings.colorblind)}
                 ${selectRow('locale', settings.locale, availableLocales())}
                 <div class="settings-buttons">
                     <button class="danger" data-action="reset">${t('resetData')}</button>
@@ -188,13 +226,16 @@ export class UI {
         function handler(e) {
             const key = e.target.dataset.key;
             if (!key) return;
-            let val =
+            const val =
                 e.target.type === 'checkbox'
                     ? e.target.checked
                     : e.target.type === 'range'
                       ? parseFloat(e.target.value)
                       : e.target.value;
             if (key === 'locale') setLocale(val);
+            if (key === 'colorblind') {
+                document.body.classList.toggle('cb-mode', !!val);
+            }
             onChange(key, val);
         }
         function buttonHandler(e) {
@@ -225,7 +266,32 @@ export class UI {
         this.els.finalTime.textContent = `${m}:${s}`;
         this.els.finalKills.textContent = game.kills;
         this.els.finalLevel.textContent = game.player.level;
-        this.els.gameOver.style.display = 'block';
+
+        // Render leaderboard under the run summary.
+        if (this.els.highScoreList) {
+            const rows = game.save.highScores || [];
+            if (!rows.length) {
+                this.els.highScoreList.innerHTML = `<div class="hs-empty">${t('noHighScores')}</div>`;
+            } else {
+                this.els.highScoreList.innerHTML =
+                    `<div class="hs-head"><span>#</span><span>${t('time')}</span><span>${t('level')}</span><span>${t('kills')}</span><span>${t('date')}</span></div>` +
+                    rows
+                        .map((r, i) => {
+                            const mm = Math.floor(r.timeSurvived / 60)
+                                .toString()
+                                .padStart(2, '0');
+                            const ss = Math.floor(r.timeSurvived % 60)
+                                .toString()
+                                .padStart(2, '0');
+                            const d = new Date(r.date || 0);
+                            const dstr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                            return `<div class="hs-row"><span>${i + 1}</span><span>${mm}:${ss}</span><span>${r.level}</span><span>${r.kills}</span><span>${dstr}</span></div>`;
+                        })
+                        .join('');
+            }
+        }
+
+        this.els.gameOver.style.display = 'flex';
     }
 
     hideGameOver() {
@@ -235,7 +301,7 @@ export class UI {
         this.els.startScreen.style.display = 'none';
     }
     showStart() {
-        this.els.startScreen.style.display = 'block';
+        this.els.startScreen.style.display = 'flex';
     }
 }
 
@@ -298,4 +364,9 @@ function checkboxRow(key, value) {
             <span>${t(key)}</span>
             <input type="checkbox" data-key="${key}" ${value ? 'checked' : ''}>
         </label>`;
+}
+
+// Expose catalogue count for badges / tests.
+export function totalAchievements() {
+    return ACHIEVEMENTS.length;
 }

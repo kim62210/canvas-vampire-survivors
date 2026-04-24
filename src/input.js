@@ -1,5 +1,14 @@
 // Unified input: keyboard + pointer + virtual joystick for touch devices.
 // Exposes a normalised move vector so gameplay code never cares about source.
+//
+// Mobile polish (v2.1):
+//   - Joystick has a 15% inner deadzone to avoid drift on rest.
+//   - Response curve: squared magnitude on the outer zone for a tighter feel.
+//   - Edge-of-screen double-tap → toggles pause (does not conflict with the
+//     single-finger drag-to-move, which lives inside the joystick pad).
+
+const JOYSTICK_DEADZONE = 0.15;
+const DOUBLE_TAP_WINDOW_MS = 260;
 
 export class InputManager {
     constructor() {
@@ -10,6 +19,7 @@ export class InputManager {
         this.listeners = [];
         this.joystick = null;
         this.onTogglePause = () => {};
+        this._lastEdgeTapAt = 0;
     }
 
     attach(target = window) {
@@ -34,6 +44,26 @@ export class InputManager {
         this.listeners.push(['keydown', kd, target]);
         this.listeners.push(['keyup', ku, target]);
         this.listeners.push(['blur', blur, target]);
+
+        // Touch edge double-tap → pause. Registered on the document so the
+        // gesture works anywhere outside the joystick pad.
+        const onTouchStart = (e) => {
+            if (!e.touches || e.touches.length === 0) return;
+            const t = e.touches[0];
+            const w = window.innerWidth;
+            const edgeLeft = t.clientX < w * 0.12;
+            const edgeRight = t.clientX > w * 0.88;
+            if (!edgeLeft && !edgeRight) return;
+            const now = Date.now();
+            if (now - this._lastEdgeTapAt < DOUBLE_TAP_WINDOW_MS) {
+                this._lastEdgeTapAt = 0;
+                this.onTogglePause();
+            } else {
+                this._lastEdgeTapAt = now;
+            }
+        };
+        document.addEventListener('touchstart', onTouchStart, { passive: true });
+        this.listeners.push(['touchstart', onTouchStart, document]);
     }
 
     detach() {
@@ -127,7 +157,17 @@ class VirtualJoystick {
         const nx = d === 0 ? 0 : (dx / d) * clamp;
         const ny = d === 0 ? 0 : (dy / d) * clamp;
         this.knob.style.transform = `translate(calc(-50% + ${nx}px), calc(-50% + ${ny}px))`;
-        this.cb(nx / this.maxR, ny / this.maxR);
+        // Normalise and apply a dead-zone + squared curve on the outer band.
+        const mag = clamp / this.maxR; // 0..1
+        if (mag < JOYSTICK_DEADZONE) {
+            this.cb(0, 0);
+            return;
+        }
+        const liveRange = 1 - JOYSTICK_DEADZONE;
+        const scaled = Math.pow((mag - JOYSTICK_DEADZONE) / liveRange, 1.3);
+        const dirx = d === 0 ? 0 : dx / d;
+        const diry = d === 0 ? 0 : dy / d;
+        this.cb(dirx * scaled, diry * scaled);
     }
 
     destroy() {

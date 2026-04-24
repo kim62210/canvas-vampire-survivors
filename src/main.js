@@ -1,14 +1,24 @@
 // Main game orchestrator. Wires entities, systems, UI, audio, and storage together.
 
 import { CONFIG, Difficulty, GameState } from './config.js';
-import { BOSSES, ENEMIES, WEAPONS } from './data.js';
-import { Enemy, ExpOrb, FloatingText, Particle, Player, registerWeaponClass } from './entities.js';
+import { ACHIEVEMENTS, BOSSES, ENEMIES, WAVES, WEAPONS } from './data.js';
+import {
+    Enemy,
+    ExpOrb,
+    FloatingText,
+    Particle,
+    Player,
+    findEnemyDef,
+    registerWeaponClass
+} from './entities.js';
 import { Weapon } from './weapons.js';
 import { AudioEngine } from './audio.js';
 import { InputManager } from './input.js';
 import { UI } from './ui.js';
 import { FpsMeter, ShakeCamera, SpatialHash } from './systems.js';
-import { loadSave, resetSave, saveSave } from './storage.js';
+import { EffectLayer } from './effects.js';
+import { AchievementTracker } from './achievements.js';
+import { accumulateTotals, loadSave, recordHighScore, resetSave, saveSave } from './storage.js';
 import { setLocale } from './i18n.js';
 
 registerWeaponClass(Weapon);
@@ -26,9 +36,11 @@ export class Game {
         // Collections
         this.enemies = [];
         this.projectiles = [];
+        this.enemyProjectiles = [];
         this.expOrbs = [];
         this.particles = [];
         this.floatingTexts = [];
+        this.mines = [];
 
         this.player = null;
 
@@ -36,18 +48,30 @@ export class Game {
         this.spatial = new SpatialHash(CONFIG.GRID_SIZE * 2);
         this.camera = new ShakeCamera();
         this.fpsMeter = new FpsMeter();
+        this.effects = new EffectLayer();
 
         // Save + settings
         this.save = loadSave();
         setLocale(this.save.settings.locale || 'en');
+        if (this.save.settings.colorblind) document.body.classList.add('cb-mode');
 
         // Audio + input + UI
         this.audio = new AudioEngine(this.save.settings);
         this.input = new InputManager();
         this.ui = new UI(this);
 
+        // Achievements tracker persists the lifetime record.
+        this.achievements = new AchievementTracker(this.save);
+
         this._bossesSpawned = new Set();
         this._spawnAccumulator = 0;
+        this._bossWarnedAt = new Set();
+        this._lastAnnouncedWave = null;
+
+        this.currentWave = WAVES[0];
+
+        // Per-run bookkeeping used by achievements.
+        this.run = this.achievements.run;
 
         this._bindInput();
         this._bindDomButtons();
@@ -108,14 +132,21 @@ export class Game {
         this.kills = 0;
         this.enemies = [];
         this.projectiles = [];
+        this.enemyProjectiles = [];
         this.expOrbs = [];
         this.particles = [];
         this.floatingTexts = [];
+        this.mines = [];
         this._bossesSpawned.clear();
+        this._bossWarnedAt.clear();
         this._spawnAccumulator = 0;
+        this._lastAnnouncedWave = null;
+
+        // Reset per-run achievement state.
+        this.achievements.resetRun();
+        this.run = this.achievements.run;
 
         this.player = new Player(CONFIG.CANVAS_WIDTH / 2, CONFIG.CANVAS_HEIGHT / 2);
-        // Weapon constructor was injected into Player via registerWeaponClass.
         this.player.weapons.push(new Weapon(WEAPONS.WHIP));
 
         this.ui.hideStart();
@@ -153,27 +184,26 @@ export class Game {
         this.audio.stopMusic();
         this.audio.death();
 
-        // Update high score + save
-        const hs = this.save.highScore;
-        if (this.gameTime > hs.timeSurvived) hs.timeSurvived = this.gameTime;
-        if (this.kills > hs.kills) hs.kills = this.kills;
-        if (this.player.level > hs.level) hs.level = this.player.level;
-        this._checkAchievements();
+        // Final achievement check.
+        this.achievements.check(this);
+        this._flushAchievementToasts();
+
+        // Record run -------------------------------------------------------
+        const entry = {
+            kills: this.kills,
+            timeSurvived: this.gameTime,
+            level: this.player.level,
+            date: Date.now()
+        };
+        recordHighScore(this.save, entry);
+        accumulateTotals(this.save, {
+            kills: this.kills,
+            gameTime: this.gameTime,
+            bossKills: Object.keys(this.run.bossesDefeated).length
+        });
         saveSave(this.save);
 
         this.ui.showGameOver(this);
-    }
-
-    _checkAchievements() {
-        const a = this.save.achievements;
-        const grant = (id) => {
-            if (!a[id]) a[id] = Date.now();
-        };
-        if (this.kills >= 100) grant('slayer_100');
-        if (this.kills >= 1000) grant('slayer_1000');
-        if (this.gameTime >= 300) grant('survive_5min');
-        if (this.gameTime >= 600) grant('survive_10min');
-        if (this.player.level >= 20) grant('level_20');
     }
 
     // --- Frame loop -------------------------------------------------------
@@ -188,6 +218,7 @@ export class Game {
         if (this.state === GameState.PLAYING) {
             this.update(dt);
         }
+        this.effects.update(dt);
         this.render(dt);
         this.fpsMeter.tick(dt);
         this.ui.setFps(this.fpsMeter.fps, this.save.settings.showFps);
@@ -203,6 +234,9 @@ export class Game {
         const timeDiff = 1 + Math.floor(this.gameTime / 60) * 0.3;
         const hpMult = diff.hpMult * timeDiff;
         const dmgMult = diff.dmgMult * timeDiff;
+        this.enemyDmgMult = dmgMult; // used by enemy projectile spawn
+
+        this.currentWave = this._selectWave();
 
         this.player.update(dt, this);
         if (this.player.dead) {
@@ -234,10 +268,30 @@ export class Game {
             if (e.hp <= 0) {
                 this.kills++;
                 this.createParticles(e.x, e.y, e.color, e.boss ? 40 : 8);
+                this.effects.hit(e.x, e.y, this._rgbFromHex(e.color));
                 this.dropExp(e.x, e.y, e.expValue);
                 if (e.boss) {
                     this.shake(0.5);
                     this.audio.explosion();
+                    this.achievements.onBossDefeated(e.id);
+                }
+                if (e.splitter && e.type.splitInto) {
+                    const childDef = findEnemyDef(e.type.splitInto);
+                    if (childDef) {
+                        const n = e.type.splitCount || 2;
+                        for (let k = 0; k < n; k++) {
+                            const a = (k / n) * Math.PI * 2;
+                            this.enemies.push(
+                                new Enemy(
+                                    e.x + Math.cos(a) * 14,
+                                    e.y + Math.sin(a) * 14,
+                                    childDef,
+                                    hpMult,
+                                    dmgMult
+                                )
+                            );
+                        }
+                    }
                 }
                 this.enemies.splice(i, 1);
                 this.audio.hit();
@@ -263,15 +317,23 @@ export class Game {
                 if (p.hitEnemies.has(enemy)) continue;
                 const d = Math.hypot(p.x - enemy.x, p.y - enemy.y);
                 if (d < enemy.size + p.size) {
-                    enemy.takeDamage(p.damage);
+                    // Simple crit roll on projectile contact.
+                    let dmg = p.damage;
+                    const chance = this.player.getCritChance();
+                    const crit = chance > 0 && Math.random() < chance;
+                    if (crit) dmg *= 2;
+                    enemy.takeDamage(dmg);
                     p.hitEnemies.add(enemy);
-                    if (enemy.hp > 0)
+                    if (enemy.hp > 0) {
                         this.createFloatingText(
-                            Math.round(p.damage),
+                            Math.round(dmg),
                             enemy.x,
                             enemy.y - 20,
-                            '#fff'
+                            crit ? '#ffee44' : '#fff',
+                            { crit }
                         );
+                    }
+                    this.effects.hit(enemy.x, enemy.y);
                     if (!p.piercing) {
                         p._onEnd(this);
                         p.shouldRemove = true;
@@ -281,6 +343,20 @@ export class Game {
             }
         }
 
+        // Enemy projectiles
+        for (let i = this.enemyProjectiles.length - 1; i >= 0; i--) {
+            const ep = this.enemyProjectiles[i];
+            ep.update(dt, this);
+            if (ep.shouldRemove) this.enemyProjectiles.splice(i, 1);
+        }
+
+        // Mines
+        for (let i = this.mines.length - 1; i >= 0; i--) {
+            const m = this.mines[i];
+            m.update(dt, this);
+            if (m.shouldRemove) this.mines.splice(i, 1);
+        }
+
         // Exp orbs
         for (let i = this.expOrbs.length - 1; i >= 0; i--) {
             const o = this.expOrbs[i];
@@ -288,14 +364,12 @@ export class Game {
             if (o.shouldRemove) this.expOrbs.splice(i, 1);
         }
 
-        // Handle level-ups queued during exp pickup
-        if (this.player.exp >= this.player.expToNext || this._pendingLevelUps > 0) {
-            // Player already levelled inside gainExp; open menu if any level-ups are pending.
-        }
+        // Level-up gating
         if (this._pendingLevelUps > 0 && this.state === GameState.PLAYING) {
             this._pendingLevelUps--;
             this.state = GameState.LEVEL_UP;
             this.audio.levelUp();
+            this.effects.levelUp(this.player.x, this.player.y);
             this.ui.showLevelUp(this.player, (choice) => this._applyUpgrade(choice));
         }
 
@@ -314,6 +388,10 @@ export class Game {
         // Spawn
         this._spawnLogic(dt, hpMult, dmgMult, diff.spawnMult);
 
+        // Achievement ticks (cheap: most checks short-circuit).
+        this.achievements.check(this);
+        this._flushAchievementToasts();
+
         // HUD
         this.ui.updateHud(this);
 
@@ -325,8 +403,14 @@ export class Game {
         if (choice) {
             if (choice.type === 'weapon') {
                 const existing = this.player.weapons.find((w) => w.id === choice.data.id);
-                if (existing) existing.levelUp();
-                else this.player.weapons.push(new Weapon(choice.data));
+                if (existing) {
+                    existing.levelUp();
+                    if (existing.level >= CONFIG.WEAPON_MAX_LEVEL) {
+                        this.achievements.onWeaponMaxed();
+                    }
+                } else {
+                    this.player.weapons.push(new Weapon(choice.data));
+                }
             } else {
                 this.player.passives[choice.data.id] ??= { def: choice.data, count: 0 };
                 if (this.player.passives[choice.data.id].count < CONFIG.PASSIVE_MAX_STACK) {
@@ -340,19 +424,40 @@ export class Game {
         this.lastTime = performance.now();
     }
 
-    _spawnLogic(dt, hpMult, dmgMult, spawnMult) {
+    _selectWave() {
+        const t = this.gameTime;
+        let match = WAVES[WAVES.length - 1];
+        for (const w of WAVES) {
+            if (t >= w.from && t < w.to) {
+                match = w;
+                break;
+            }
+        }
+        if (this._lastAnnouncedWave !== match.label) {
+            this._lastAnnouncedWave = match.label;
+        }
+        return match;
+    }
+
+    _spawnLogic(dt, hpMult, dmgMult, diffSpawnMult) {
+        const wave = this.currentWave;
+        const waveMult = wave.spawnMult || 1;
         const maxEnemies = Math.min(CONFIG.MAX_ENEMIES, 20 + Math.floor(this.gameTime / 10));
-        // spawn interval ramps from 1.2s down to 0.25s
-        const interval = Math.max(0.25, 1.2 - this.gameTime / 180) / spawnMult;
+        const interval = Math.max(0.2, 1.2 - this.gameTime / 200) / (diffSpawnMult * waveMult);
         this._spawnAccumulator += dt;
 
         while (this._spawnAccumulator >= interval && this.enemies.length < maxEnemies) {
             this._spawnAccumulator -= interval;
-            this._spawnOne(hpMult, dmgMult);
+            this._spawnOne(wave.pool, hpMult, dmgMult);
         }
 
-        // Boss triggers
+        // Boss triggers (warning 5s before).
         for (const boss of Object.values(BOSSES)) {
+            const warnAt = boss.spawnAt - 5;
+            if (this.gameTime >= warnAt && !this._bossWarnedAt.has(boss.id)) {
+                this._bossWarnedAt.add(boss.id);
+                this.audio.bossWarn();
+            }
             if (this.gameTime >= boss.spawnAt && !this._bossesSpawned.has(boss.id)) {
                 this._bossesSpawned.add(boss.id);
                 this._spawnBoss(boss, hpMult, dmgMult);
@@ -360,9 +465,9 @@ export class Game {
         }
     }
 
-    _spawnOne(hpMult, dmgMult) {
-        const pool = this._enemyPool();
-        const type = pool[Math.floor(Math.random() * pool.length)];
+    _spawnOne(pool, hpMult, dmgMult) {
+        const pick = pool[Math.floor(Math.random() * pool.length)];
+        const type = findEnemyDef(pick) || ENEMIES.BAT;
         const angle = Math.random() * Math.PI * 2;
         const dist = CONFIG.SPAWN_RADIUS + Math.random() * 120;
         const x = this.player.x + Math.cos(angle) * dist;
@@ -378,17 +483,24 @@ export class Game {
         this.enemies.push(new Enemy(x, y, bossDef, hpMult, dmgMult));
         this.ui.showBossBanner();
         this.audio.bossSpawn();
+        this.effects.bossSpawn();
         this.shake(0.8);
     }
 
-    _enemyPool() {
-        const t = this.gameTime;
-        if (t < 30) return [ENEMIES.BAT, ENEMIES.ZOMBIE];
-        if (t < 60) return [ENEMIES.BAT, ENEMIES.ZOMBIE, ENEMIES.SKELETON];
-        if (t < 120) return [ENEMIES.ZOMBIE, ENEMIES.SKELETON, ENEMIES.WOLF, ENEMIES.GHOST];
-        if (t < 180) return [ENEMIES.SKELETON, ENEMIES.WOLF, ENEMIES.GHOST];
-        if (t < 300) return [ENEMIES.WOLF, ENEMIES.GOLEM, ENEMIES.GHOST];
-        return [ENEMIES.WOLF, ENEMIES.GOLEM, ENEMIES.GHOST, ENEMIES.SKELETON];
+    _flushAchievementToasts() {
+        const toasts = this.achievements.takeToasts();
+        for (const ach of toasts) {
+            this.ui.showAchievementToast(ach);
+            this.audio.achievement();
+            this.effects.achievement();
+        }
+    }
+
+    _rgbFromHex(hex) {
+        // Accept '#rrggbb' and return 'r,g,b' for effects layer.
+        if (!hex || hex[0] !== '#') return '255,255,255';
+        const n = parseInt(hex.slice(1), 16);
+        return `${(n >> 16) & 0xff},${(n >> 8) & 0xff},${n & 0xff}`;
     }
 
     // --- Helpers ----------------------------------------------------------
@@ -399,33 +511,28 @@ export class Game {
         if (this.save.settings.reducedMotion) n = Math.min(n, 2);
         for (let i = 0; i < n; i++) this.particles.push(new Particle(x, y, color));
     }
-    createFloatingText(text, x, y, color) {
+    createFloatingText(text, x, y, color, opts) {
         if (this.save.settings.reducedMotion) return;
-        this.floatingTexts.push(new FloatingText(text, x, y, color));
+        this.floatingTexts.push(new FloatingText(text, x, y, color, opts));
     }
     shake(amount) {
         if (this.save.settings.screenShake) this.camera.shake(amount);
     }
 
     // called by Player via takeDamage
-    onPlayerHurt(amount) {
+    onPlayerHurt(_amount) {
         this.audio.damage();
         this.shake(0.25);
     }
 
     onBossAbility(boss) {
         if (boss.ability === 'summon') {
+            const childDef = findEnemyDef('skeleton');
             for (let i = 0; i < 3; i++) {
                 const a = Math.random() * Math.PI * 2;
                 const r = 80;
                 this.enemies.push(
-                    new Enemy(
-                        boss.x + Math.cos(a) * r,
-                        boss.y + Math.sin(a) * r,
-                        ENEMIES.SKELETON,
-                        2,
-                        1.5
-                    )
+                    new Enemy(boss.x + Math.cos(a) * r, boss.y + Math.sin(a) * r, childDef, 2, 1.5)
                 );
             }
             this.createParticles(boss.x, boss.y, '#aa33ff', 20);
@@ -450,11 +557,20 @@ export class Game {
         this._drawGrid();
 
         for (const o of this.expOrbs) o.render(ctx);
+        for (const m of this.mines) m.render(ctx);
         for (const e of this.enemies) e.render(ctx);
-        if (this.player) this.player.render(ctx);
+        if (this.player) {
+            this.player.render(ctx);
+            // Orbit shards live on the weapon, so render per-weapon extras here.
+            for (const w of this.player.weapons) w.renderExtras?.(ctx);
+        }
         for (const p of this.projectiles) p.render(ctx);
+        for (const ep of this.enemyProjectiles) ep.render(ctx);
         for (const p of this.particles) p.render(ctx);
         for (const t of this.floatingTexts) t.render(ctx);
+
+        // Screen-space effects (flash, pulses) on top.
+        this.effects.render(ctx, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
 
         ctx.restore();
     }
@@ -490,6 +606,7 @@ export class Game {
                 saveSave(this.save);
                 if (key === 'masterVolume' || key === 'sfxVolume' || key === 'musicVolume')
                     this.audio.applyVolumes();
+                if (key === 'musicEnabled') this.audio.toggleMusic(value);
             },
             () => {
                 /* closed */
@@ -497,6 +614,8 @@ export class Game {
             () => {
                 resetSave();
                 this.save = loadSave();
+                this.achievements = new AchievementTracker(this.save);
+                this.run = this.achievements.run;
                 this.audio.applyVolumes();
                 this.ui.hideSettings();
             }
@@ -505,7 +624,6 @@ export class Game {
 }
 
 // Level-up batching. Called from gainExp via Player; we patch Player here to notify.
-// We do this by monkey-patching gainExp to bump a counter on the running game.
 const origGainExp = Player.prototype.gainExp;
 Player.prototype.gainExp = function (amount) {
     const ups = origGainExp.call(this, amount);
@@ -521,3 +639,6 @@ export function boot() {
     window.__vsGame = g;
     return g;
 }
+
+// Re-export for any external script that needs the catalogue.
+export { ACHIEVEMENTS, WAVES };

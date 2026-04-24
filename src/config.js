@@ -16,11 +16,14 @@ export const CONFIG = {
     MAGNET_BASE: 120,
     MAX_WEAPONS: 6,
     MAX_PASSIVES: 6,
-    WEAPON_MAX_LEVEL: 8,
+    WEAPON_MAX_LEVEL: 5,
+    WEAPON_EVOLVE_LEVEL: 5,
     PASSIVE_MAX_STACK: 5,
     TARGET_FPS: 60,
     GRID_SIZE: 50, // spatial-hash cell size for collision
-    VERSION: '2.0.0'
+    WAVE_DURATION: 30, // seconds per wave announcement
+    HIGHSCORE_SLOTS: 10,
+    VERSION: '2.1.0'
 };
 
 export const GameState = Object.freeze({

@@ -2,13 +2,22 @@
 // storage may be blocked (private browsing, sandboxed iframes): we degrade
 // gracefully to an in-memory store.
 
-import { STORAGE_KEY } from './config.js';
+import { CONFIG, STORAGE_KEY } from './config.js';
 
 const DEFAULT_SAVE = {
+    // Legacy single-slot best-of. Kept for backwards compatibility with v2.0 saves.
     highScore: {
         kills: 0,
         timeSurvived: 0,
         level: 1
+    },
+    // v2.1: top-N leaderboard and cumulative stats.
+    highScores: [], // { kills, timeSurvived, level, date (epoch ms) }
+    totals: {
+        kills: 0,
+        timePlayed: 0,
+        runs: 0,
+        bossKills: 0
     },
     achievements: {},
     settings: {
@@ -19,6 +28,8 @@ const DEFAULT_SAVE = {
         showFps: false,
         screenShake: true,
         reducedMotion: false,
+        colorblind: false,
+        musicEnabled: true,
         locale: 'en'
     },
     runs: 0
@@ -72,6 +83,41 @@ export function resetSave() {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Leaderboard helpers
+// ---------------------------------------------------------------------------
+/**
+ * Insert a run result into the top-N leaderboard (sorted by timeSurvived
+ * descending, then by kills). Returns the 1-based rank of the new entry, or 0
+ * if it did not qualify.
+ */
+export function recordHighScore(save, entry) {
+    const list = Array.isArray(save.highScores) ? save.highScores : [];
+    const withNew = list.concat([entry]);
+    withNew.sort((a, b) => {
+        if (b.timeSurvived !== a.timeSurvived) return b.timeSurvived - a.timeSurvived;
+        return (b.kills || 0) - (a.kills || 0);
+    });
+    const top = withNew.slice(0, CONFIG.HIGHSCORE_SLOTS);
+    save.highScores = top;
+    const rank = top.indexOf(entry) + 1;
+    // Also update legacy best-of for backwards compat.
+    if (entry.timeSurvived > (save.highScore?.timeSurvived || 0)) {
+        save.highScore.timeSurvived = entry.timeSurvived;
+    }
+    if (entry.kills > (save.highScore?.kills || 0)) save.highScore.kills = entry.kills;
+    if (entry.level > (save.highScore?.level || 0)) save.highScore.level = entry.level;
+    return rank;
+}
+
+export function accumulateTotals(save, run) {
+    save.totals ??= { kills: 0, timePlayed: 0, runs: 0, bossKills: 0 };
+    save.totals.kills += run.kills || 0;
+    save.totals.timePlayed += run.gameTime || 0;
+    save.totals.runs += 1;
+    save.totals.bossKills += run.bossKills || 0;
+}
+
 function structuredCloneCompat(obj) {
     if (typeof structuredClone === 'function') return structuredClone(obj);
     return JSON.parse(JSON.stringify(obj));
@@ -79,7 +125,9 @@ function structuredCloneCompat(obj) {
 
 function mergeDeep(target, source) {
     for (const key of Object.keys(source)) {
-        if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
+        if (Array.isArray(source[key])) {
+            target[key] = source[key];
+        } else if (source[key] && typeof source[key] === 'object') {
             target[key] = mergeDeep(target[key] ?? {}, source[key]);
         } else {
             target[key] = source[key];

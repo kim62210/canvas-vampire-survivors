@@ -25,7 +25,8 @@
 - ⚙️ **In-game settings panel** — volume, language, reduced motion.
 - ♿ **Accessibility-aware** — respects `prefers-reduced-motion`, high-contrast HUD.
 - 🧪 **Lint + format ready** — ESLint, Prettier, EditorConfig, CI on every PR.
-- 🕹️ **Classic roguelite loop** — 8 weapons, 9 passives, 6 enemy types, waves.
+- 🕹️ **Classic roguelite loop** — 7 weapons with evolutions, 10 passives,
+  9 enemy archetypes, 2 bosses, wave director, and 12 achievements.
 
 ## 🎮 Controls
 
@@ -92,6 +93,26 @@ flowchart TD
     ui --> i18n
     ui --> store
 ```
+
+## 🆕 What's new in v2.1
+
+- 🌊 **Wave director** — 10 named waves with shifting enemy pools.
+- 👾 **5 new enemy archetypes** on top of the chasers: ranged cultists,
+  splitting slimes, dasher wolves, shielded golems, ghost rushers.
+- 👑 **Two bosses** at 5:00 (The Reaper) and 10:00 (Void Lord) with signature
+  abilities (summon adds, telecharge).
+- ⚔️ **Six weapon families with level-5 evolutions** (orbit, mine, lightning,
+  knife, magic wand, whip). Plus the Garlic aura for cosiness.
+- 🏆 **Leaderboard + achievements** — top-10 run table, 12 built-in
+  achievements, toast pop-ups, and starter-weapon unlocks tied to milestones.
+- 🧃 **Effects layer** — ring pulses on level-up, boss-spawn screen flashes,
+  crit floating numbers, hit bursts. All capped for 60 fps.
+- 🎵 **Procedural music upgrade** — minor arpeggiator over a walking chord
+  progression, toggleable from settings.
+- 📱 **Tighter mobile feel** — joystick dead-zone + sensitivity curve,
+  edge double-tap to pause.
+- 🎨 **High-contrast / colorblind mode** in the settings panel.
+- 📒 See [BALANCE.md](./BALANCE.md) for every tunable in one place.
 
 ## 🗺️ Roadmap
 

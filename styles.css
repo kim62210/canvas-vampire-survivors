@@ -20,7 +20,11 @@
 
 html,
 body {
-    height: 100%;
+    /* Use small-viewport / dynamic-viewport units with a vh fallback so iOS
+       Safari doesn't overflow behind the address bar. */
+    height: 100vh;
+    height: 100svh;
+    height: 100dvh;
     background: radial-gradient(ellipse at top, #1b1330 0%, #0a0a12 70%);
     color: var(--text);
     font-family:
@@ -32,6 +36,8 @@ body {
     overflow: hidden;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
+    touch-action: none; /* disable browser pinch/zoom inside the game */
+    overscroll-behavior: none; /* no pull-to-refresh on mobile */
 }
 
 body {
@@ -47,6 +53,41 @@ body {
     overflow: hidden;
     max-width: 100vw;
     max-height: 100vh;
+    max-height: 100svh;
+    max-height: 100dvh;
+}
+
+/*
+ * Accessibility: a visually-hidden element that still exposes text to
+ * assistive tech. Paired with aria-live="polite" to announce game events.
+ */
+.sr-only {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Visible focus ring for keyboard users. Pointer users keep a clean look. */
+:focus:not(:focus-visible) {
+    outline: none;
+}
+:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 3px;
+    border-radius: 4px;
+}
+.btn:focus-visible,
+.icon-btn:focus-visible,
+.upgrade-option:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 6px rgba(255, 210, 77, 0.25);
 }
 
 canvas {
@@ -510,8 +551,60 @@ canvas {
 @media (prefers-reduced-motion: reduce) {
     .btn,
     .upgrade-option,
-    .boss-banner {
+    .boss-banner,
+    .ach-toast,
+    .hp-fill,
+    .exp-fill {
         transition: none !important;
+        animation: none !important;
+    }
+    .btn:hover {
+        transform: none;
+    }
+    .upgrade-option:hover,
+    .upgrade-option:focus {
+        transform: none;
+    }
+}
+
+/*
+ * High-contrast mode. We opt into this both via the user's OS preference
+ * (prefers-contrast: more) and the forced-colors mode that Windows uses.
+ * Colours are widened, outlines thicken, and low-opacity surfaces are
+ * replaced with solid fills so text stays legible.
+ */
+@media (prefers-contrast: more) {
+    :root {
+        --accent: #ffff44;
+        --primary: #66ddff;
+        --danger: #ff6699;
+        --muted: #c8cbd8;
+        --border: #888ea5;
+    }
+    .overlay {
+        background: rgba(0, 0, 0, 0.9);
+    }
+    .overlay-card,
+    .settings-card {
+        border-width: 2px;
+    }
+    .chip {
+        border-width: 3px;
+    }
+    .btn {
+        outline: 1px solid rgba(255, 255, 255, 0.3);
+    }
+}
+
+@media (forced-colors: active) {
+    .btn,
+    .icon-btn,
+    .upgrade-option {
+        border: 1px solid ButtonBorder;
+        forced-color-adjust: none;
+    }
+    :focus-visible {
+        outline: 3px solid Highlight;
     }
 }
 

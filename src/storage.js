@@ -51,6 +51,7 @@ let memoryFallback = null;
 
 function hasLocalStorage() {
     try {
+        if (typeof window === 'undefined' || !window.localStorage) return false;
         const probe = '__vs_probe__';
         window.localStorage.setItem(probe, probe);
         window.localStorage.removeItem(probe);
@@ -60,11 +61,16 @@ function hasLocalStorage() {
     }
 }
 
-const usable = hasLocalStorage();
+// Evaluate lazily so Node-side tests can import this module without a DOM.
+let _usable = null;
+function usableLS() {
+    if (_usable === null) _usable = hasLocalStorage();
+    return _usable;
+}
 
 export function loadSave() {
     try {
-        const raw = usable ? window.localStorage.getItem(STORAGE_KEY) : memoryFallback;
+        const raw = usableLS() ? window.localStorage.getItem(STORAGE_KEY) : memoryFallback;
         if (!raw) return structuredCloneCompat(DEFAULT_SAVE);
         const parsed = JSON.parse(raw);
         return mergeDeep(structuredCloneCompat(DEFAULT_SAVE), parsed);
@@ -77,7 +83,7 @@ export function loadSave() {
 export function saveSave(data) {
     try {
         const serialised = JSON.stringify(data);
-        if (usable) {
+        if (usableLS()) {
             window.localStorage.setItem(STORAGE_KEY, serialised);
         } else {
             memoryFallback = serialised;
@@ -88,11 +94,17 @@ export function saveSave(data) {
 }
 
 export function resetSave() {
-    if (usable) {
+    if (usableLS()) {
         window.localStorage.removeItem(STORAGE_KEY);
     } else {
         memoryFallback = null;
     }
+}
+
+// Test-only helper: flush the in-memory fallback + cached usability probe.
+export function _resetStorageForTests() {
+    memoryFallback = null;
+    _usable = null;
 }
 
 // ---------------------------------------------------------------------------
@@ -130,12 +142,12 @@ export function accumulateTotals(save, run) {
     save.totals.bossKills += run.bossKills || 0;
 }
 
-function structuredCloneCompat(obj) {
+export function structuredCloneCompat(obj) {
     if (typeof structuredClone === 'function') return structuredClone(obj);
     return JSON.parse(JSON.stringify(obj));
 }
 
-function mergeDeep(target, source) {
+export function mergeDeep(target, source) {
     for (const key of Object.keys(source)) {
         if (Array.isArray(source[key])) {
             target[key] = source[key];

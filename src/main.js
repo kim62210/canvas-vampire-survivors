@@ -29,13 +29,51 @@ import { Weapon } from './weapons.js';
 import { AudioEngine } from './audio.js';
 import { InputManager } from './input.js';
 import { UI } from './ui.js';
-import { FpsMeter, ShakeCamera, SpatialHash } from './systems.js';
+import { FpsMeter, ShakeCamera } from './systems.js';
+import { SpatialHash } from './spatial-hash.js';
+import { Pool, resetFloatingText, resetParticle } from './pool.js';
 import { EffectLayer } from './effects.js';
 import { AchievementTracker } from './achievements.js';
 import { accumulateTotals, loadSave, recordHighScore, resetSave, saveSave } from './storage.js';
 import { setLocale } from './i18n.js';
 
 registerWeaponClass(Weapon);
+
+// ---------------------------------------------------------------------------
+// Offscreen sprite cache. Pre-rasterising the tiny enemy sprites once and
+// blitting the bitmap each frame is measurably faster than redoing the
+// gradient/fill path every draw call. Cache key = `${id}-${size}`.
+// ---------------------------------------------------------------------------
+const SPRITE_CACHE = new Map();
+
+function spriteKey(id, size) {
+    return `${id}@${size}`;
+}
+
+function getEnemySprite(def, size) {
+    const key = spriteKey(def.id, size);
+    const cached = SPRITE_CACHE.get(key);
+    if (cached) return cached;
+    if (typeof document === 'undefined') return null; // SSR / test guard
+    const pad = 4;
+    const d = size * 2 + pad * 2;
+    const off = document.createElement('canvas');
+    off.width = d;
+    off.height = d;
+    const ox = d / 2;
+    const oy = d / 2;
+    const c = off.getContext('2d');
+    c.fillStyle = def.color || '#ff4444';
+    c.beginPath();
+    c.arc(ox, oy, size, 0, Math.PI * 2);
+    c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.25)';
+    c.beginPath();
+    c.arc(ox, oy, size * 0.5, 0, Math.PI * 2);
+    c.fill();
+    SPRITE_CACHE.set(key, off);
+    return off;
+}
 
 export class Game {
     constructor() {
@@ -59,10 +97,29 @@ export class Game {
         this.player = null;
 
         // Systems
-        this.spatial = new SpatialHash(CONFIG.GRID_SIZE * 2);
+        this.spatial = new SpatialHash(CONFIG.SPATIAL_CELL_SIZE);
         this.camera = new ShakeCamera();
         this.fpsMeter = new FpsMeter();
         this.effects = new EffectLayer();
+
+        // Object pools for the churny entities. `prealloc` avoids the
+        // first-level burst triggering an allocation cascade.
+        this.pools = {
+            floatingText: new Pool(() => new FloatingText('', 0, 0, '#fff'), resetFloatingText, {
+                maxSize: 256,
+                prealloc: 32
+            }),
+            particle: new Pool(() => new Particle(0, 0, '#fff'), resetParticle, {
+                maxSize: 512,
+                prealloc: 64
+            })
+        };
+
+        // Tab-visibility aware pause so resuming doesn't produce a huge dt.
+        this._hiddenPaused = false;
+        if (typeof document !== 'undefined') {
+            document.addEventListener('visibilitychange', () => this._onVisibilityChange());
+        }
 
         // Save + settings
         this.save = loadSave();
@@ -226,9 +283,29 @@ export class Game {
         this.raf = requestAnimationFrame((t) => this._frame(t));
     }
 
+    _onVisibilityChange() {
+        if (typeof document === 'undefined') return;
+        if (document.hidden) {
+            if (this.state === GameState.PLAYING) {
+                this._hiddenPaused = true;
+                this.state = GameState.PAUSED;
+                this.ui.showPause();
+                this.audio.stopMusic();
+            }
+        } else if (this._hiddenPaused && this.state === GameState.PAUSED) {
+            // Don't auto-resume: leave the pause menu up so the player
+            // explicitly opts back in. Just reset the clock to avoid a
+            // massive dt when they do click Resume.
+            this._hiddenPaused = false;
+            this.lastTime = performance.now();
+        }
+    }
+
     _frame(now) {
         if (this.state !== GameState.PLAYING && this.state !== GameState.LEVEL_UP) return;
-        const dt = Math.min((now - this.lastTime) / 1000, 0.066);
+        // Clamp dt so that (a) a paused+resumed tab does not nuke the sim in
+        // one step, and (b) frame-rate spikes don't create tunneling bugs.
+        const dt = Math.min((now - this.lastTime) / 1000, CONFIG.DT_CLAMP);
         this.lastTime = now;
         if (this.state === GameState.PLAYING) {
             this.update(dt);
@@ -243,12 +320,7 @@ export class Game {
     update(dt) {
         this.gameTime += dt;
 
-        const diff =
-            Difficulty[(this.save.settings.difficulty || 'normal').toUpperCase()] ||
-            Difficulty.NORMAL;
-        const timeDiff = 1 + Math.floor(this.gameTime / 60) * 0.3;
-        const hpMult = diff.hpMult * timeDiff;
-        const dmgMult = diff.dmgMult * timeDiff;
+        const { hpMult, dmgMult, diff } = this._computeDifficultyMults();
         this.enemyDmgMult = dmgMult; // used by enemy projectile spawn
 
         this.currentWave = this._selectWave();
@@ -260,9 +332,39 @@ export class Game {
         }
 
         // Spatial hash rebuild BEFORE anyone queries it.
-        this.spatial.insertEnemies(this.enemies);
+        this.spatial.insertAll(this.enemies);
 
-        // Enemies
+        this._updateEnemies(dt, hpMult, dmgMult);
+        this._updateProjectiles(dt);
+        this._updateEnemyProjectiles(dt);
+        this._updateMines(dt);
+        this._updateExpOrbs(dt);
+        this._maybeTriggerLevelUp();
+        this._updateParticlesAndText(dt);
+
+        this._spawnLogic(dt, hpMult, dmgMult, diff.spawnMult);
+
+        // Achievement ticks (cheap: most checks short-circuit).
+        this.achievements.check(this);
+        this._flushAchievementToasts();
+
+        // HUD
+        this.ui.updateHud(this);
+
+        // Camera
+        this.camera.update(dt, this.save.settings.screenShake);
+    }
+
+    // --- update() helpers (kept close to the orchestrator for locality) ---
+    _computeDifficultyMults() {
+        const diff =
+            Difficulty[(this.save.settings.difficulty || 'normal').toUpperCase()] ||
+            Difficulty.NORMAL;
+        const timeDiff = 1 + Math.floor(this.gameTime / 60) * 0.3;
+        return { diff, hpMult: diff.hpMult * timeDiff, dmgMult: diff.dmgMult * timeDiff };
+    }
+
+    _updateEnemies(dt, hpMult, dmgMult) {
         for (let i = this.enemies.length - 1; i >= 0; i--) {
             const e = this.enemies[i];
             e.update(dt, this);
@@ -281,35 +383,8 @@ export class Game {
             }
 
             if (e.hp <= 0) {
-                this.kills++;
-                this.createParticles(e.x, e.y, e.color, e.boss ? 40 : 8);
-                this.effects.hit(e.x, e.y, this._rgbFromHex(e.color));
-                this.dropExp(e.x, e.y, e.expValue);
-                if (e.boss) {
-                    this.shake(0.5);
-                    this.audio.explosion();
-                    this.achievements.onBossDefeated(e.id);
-                }
-                if (e.splitter && e.type.splitInto) {
-                    const childDef = findEnemyDef(e.type.splitInto);
-                    if (childDef) {
-                        const n = e.type.splitCount || 2;
-                        for (let k = 0; k < n; k++) {
-                            const a = (k / n) * Math.PI * 2;
-                            this.enemies.push(
-                                new Enemy(
-                                    e.x + Math.cos(a) * 14,
-                                    e.y + Math.sin(a) * 14,
-                                    childDef,
-                                    hpMult,
-                                    dmgMult
-                                )
-                            );
-                        }
-                    }
-                }
+                this._onEnemyKilled(e, hpMult, dmgMult);
                 this.enemies.splice(i, 1);
-                this.audio.hit();
                 continue;
             }
 
@@ -317,8 +392,41 @@ export class Game {
                 this.enemies.splice(i, 1);
             }
         }
+    }
 
-        // Projectiles (broad-phase via spatial hash)
+    _onEnemyKilled(e, hpMult, dmgMult) {
+        this.kills++;
+        this.createParticles(e.x, e.y, e.color, e.boss ? 40 : 8);
+        this.effects.hit(e.x, e.y, this._rgbFromHex(e.color));
+        this.dropExp(e.x, e.y, e.expValue);
+        if (e.boss) {
+            this.shake(0.5);
+            this.audio.explosion();
+            this.achievements.onBossDefeated(e.id);
+            this._announce(`${e.id.replace('_', ' ')} defeated`);
+        }
+        if (e.splitter && e.type.splitInto) {
+            const childDef = findEnemyDef(e.type.splitInto);
+            if (childDef) {
+                const n = e.type.splitCount || 2;
+                for (let k = 0; k < n; k++) {
+                    const a = (k / n) * Math.PI * 2;
+                    this.enemies.push(
+                        new Enemy(
+                            e.x + Math.cos(a) * 14,
+                            e.y + Math.sin(a) * 14,
+                            childDef,
+                            hpMult,
+                            dmgMult
+                        )
+                    );
+                }
+            }
+        }
+        this.audio.hit();
+    }
+
+    _updateProjectiles(dt) {
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const p = this.projectiles[i];
             p.update(dt, this);
@@ -332,7 +440,6 @@ export class Game {
                 if (p.hitEnemies.has(enemy)) continue;
                 const d = Math.hypot(p.x - enemy.x, p.y - enemy.y);
                 if (d < enemy.size + p.size) {
-                    // Simple crit roll on projectile contact.
                     let dmg = p.damage;
                     const chance = this.player.getCritChance();
                     const crit = chance > 0 && Math.random() < chance;
@@ -357,61 +464,73 @@ export class Game {
                 }
             }
         }
+    }
 
-        // Enemy projectiles
+    _updateEnemyProjectiles(dt) {
         for (let i = this.enemyProjectiles.length - 1; i >= 0; i--) {
             const ep = this.enemyProjectiles[i];
             ep.update(dt, this);
             if (ep.shouldRemove) this.enemyProjectiles.splice(i, 1);
         }
+    }
 
-        // Mines
+    _updateMines(dt) {
         for (let i = this.mines.length - 1; i >= 0; i--) {
             const m = this.mines[i];
             m.update(dt, this);
             if (m.shouldRemove) this.mines.splice(i, 1);
         }
+    }
 
-        // Exp orbs
+    _updateExpOrbs(dt) {
         for (let i = this.expOrbs.length - 1; i >= 0; i--) {
             const o = this.expOrbs[i];
             o.update(dt, this);
             if (o.shouldRemove) this.expOrbs.splice(i, 1);
         }
+    }
 
-        // Level-up gating
+    _maybeTriggerLevelUp() {
         if (this._pendingLevelUps > 0 && this.state === GameState.PLAYING) {
             this._pendingLevelUps--;
             this.state = GameState.LEVEL_UP;
             this.audio.levelUp();
             this.effects.levelUp(this.player.x, this.player.y);
+            this._announce(`Level ${this.player.level}! Choose an upgrade.`);
             this.ui.showLevelUp(this.player, (choice) => this._applyUpgrade(choice));
         }
+    }
 
-        // Particles + text
+    _updateParticlesAndText(dt) {
         for (let i = this.particles.length - 1; i >= 0; i--) {
             const part = this.particles[i];
             part.update(dt);
-            if (part.life <= 0) this.particles.splice(i, 1);
+            if (part.life <= 0) {
+                this.pools.particle.release(part);
+                this.particles.splice(i, 1);
+            }
         }
         for (let i = this.floatingTexts.length - 1; i >= 0; i--) {
             const ft = this.floatingTexts[i];
             ft.update(dt);
-            if (ft.life <= 0) this.floatingTexts.splice(i, 1);
+            if (ft.life <= 0) {
+                this.pools.floatingText.release(ft);
+                this.floatingTexts.splice(i, 1);
+            }
         }
+    }
 
-        // Spawn
-        this._spawnLogic(dt, hpMult, dmgMult, diff.spawnMult);
-
-        // Achievement ticks (cheap: most checks short-circuit).
-        this.achievements.check(this);
-        this._flushAchievementToasts();
-
-        // HUD
-        this.ui.updateHud(this);
-
-        // Camera
-        this.camera.update(dt, this.save.settings.screenShake);
+    /** Broadcast a short message to screen readers via the a11y live region. */
+    _announce(msg) {
+        if (typeof document === 'undefined') return;
+        const el = document.getElementById('a11yLiveRegion');
+        if (!el) return;
+        // Toggle textContent to force SR re-announce if the message repeats.
+        el.textContent = '';
+        // Microtask flush before writing so ATs pick up the change.
+        Promise.resolve().then(() => {
+            el.textContent = msg;
+        });
     }
 
     _applyUpgrade(choice) {
@@ -500,6 +619,7 @@ export class Game {
         this.audio.bossSpawn();
         this.effects.bossSpawn();
         this.shake(0.8);
+        this._announce(`Boss incoming: ${bossDef.name || bossDef.id}`);
     }
 
     _flushAchievementToasts() {
@@ -508,6 +628,7 @@ export class Game {
             this.ui.showAchievementToast(ach);
             this.audio.achievement();
             this.effects.achievement();
+            this._announce(`Achievement unlocked: ${ach.name}. ${ach.description}`);
         }
     }
 
@@ -524,14 +645,22 @@ export class Game {
     }
     createParticles(x, y, color, n) {
         if (this.save.settings.reducedMotion) n = Math.min(n, 2);
-        for (let i = 0; i < n; i++) this.particles.push(new Particle(x, y, color));
+        for (let i = 0; i < n; i++) {
+            this.particles.push(this.pools.particle.acquire(x, y, color));
+        }
     }
     createFloatingText(text, x, y, color, opts) {
         if (this.save.settings.reducedMotion) return;
-        this.floatingTexts.push(new FloatingText(text, x, y, color, opts));
+        this.floatingTexts.push(this.pools.floatingText.acquire(text, x, y, color, opts || {}));
     }
     shake(amount) {
-        if (this.save.settings.screenShake) this.camera.shake(amount);
+        // Reduced-motion users get no camera shake even if the setting is on.
+        const prm =
+            typeof window !== 'undefined' &&
+            window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+        if (this.save.settings.screenShake && !prm && !this.save.settings.reducedMotion) {
+            this.camera.shake(amount);
+        }
     }
 
     // called by Player via takeDamage
@@ -573,7 +702,7 @@ export class Game {
 
         for (const o of this.expOrbs) o.render(ctx);
         for (const m of this.mines) m.render(ctx);
-        for (const e of this.enemies) e.render(ctx);
+        this._renderEnemies(ctx);
         if (this.player) {
             this.player.render(ctx);
             // Orbit shards live on the weapon, so render per-weapon extras here.
@@ -588,6 +717,37 @@ export class Game {
         this.effects.render(ctx, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
 
         ctx.restore();
+    }
+
+    /**
+     * Draw enemies using the cached offscreen sprite when available. Bosses
+     * and flashing enemies still go through the full per-frame path because
+     * their visuals include HP bars and hit-flash highlights that the cached
+     * bitmap cannot reproduce. This cuts per-enemy drawing calls from ~4
+     * (gradient + two arcs + fill) to a single drawImage for the common case.
+     */
+    _renderEnemies(ctx) {
+        for (const e of this.enemies) {
+            if (e.boss || e.flashTimer > 0 || e.shielded) {
+                e.render(ctx);
+                continue;
+            }
+            const sprite = getEnemySprite(e.type, e.size);
+            if (sprite) {
+                ctx.drawImage(sprite, e.x - sprite.width / 2, e.y - sprite.height / 2);
+                // Cheap HP bar (cached sprite can't reflect current HP).
+                const pct = Math.max(0, e.hp / e.maxHp);
+                if (pct < 1) {
+                    const w = 30;
+                    ctx.fillStyle = '#222';
+                    ctx.fillRect(e.x - w / 2, e.y - e.size - 10, w, 3);
+                    ctx.fillStyle = pct > 0.5 ? '#44ff44' : pct > 0.25 ? '#ffaa33' : '#ff4444';
+                    ctx.fillRect(e.x - w / 2, e.y - e.size - 10, w * pct, 3);
+                }
+            } else {
+                e.render(ctx);
+            }
+        }
     }
 
     _drawGrid() {

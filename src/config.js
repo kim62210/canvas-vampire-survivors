@@ -32,10 +32,12 @@ export const CONFIG = {
     WEAPON_EVOLVE_LEVEL: 5,
     PASSIVE_MAX_STACK: 5,
     TARGET_FPS: 60,
-    GRID_SIZE: 50, // spatial-hash cell size for collision
+    GRID_SIZE: 50, // background grid overlay step
+    SPATIAL_CELL_SIZE: 64, // spatial-hash cell size for broad-phase collision
+    DT_CLAMP: 0.05, // max dt per frame (s); guards against tab-resume explosions
     WAVE_DURATION: 30, // seconds per wave announcement
     HIGHSCORE_SLOTS: 10,
-    VERSION: '2.2.0'
+    VERSION: '2.3.0'
 };
 
 export const GameState = Object.freeze({

@@ -185,6 +185,7 @@ export class UI {
         for (const up of picks) {
             const div = document.createElement('div');
             div.className = 'upgrade-option';
+            div.setAttribute('role', 'menuitem');
             const existing =
                 up.type === 'weapon'
                     ? player.weapons.find((w) => w.id === up.data.id)
@@ -208,6 +209,10 @@ export class UI {
                 ? `<div class="evolve-tag">→ ${up.data.evolveName}</div>`
                 : '';
             if (isMaxed) div.classList.add('maxed');
+            div.setAttribute(
+                'aria-label',
+                `${up.data.name}${label}. ${up.data.description}${willEvolve ? '. Evolves into ' + up.data.evolveName : ''}`
+            );
             div.innerHTML = `
                 <div class="name">${up.data.icon} ${up.data.name}${label}</div>
                 <div class="desc">${up.data.description}</div>
@@ -217,7 +222,16 @@ export class UI {
             div.addEventListener('click', () => onPick(isMaxed ? null : up));
             div.setAttribute('tabindex', '0');
             div.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') onPick(isMaxed ? null : up);
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    onPick(isMaxed ? null : up);
+                } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    (div.nextElementSibling || options.firstElementChild)?.focus();
+                } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    (div.previousElementSibling || options.lastElementChild)?.focus();
+                }
             });
             options.appendChild(div);
         }

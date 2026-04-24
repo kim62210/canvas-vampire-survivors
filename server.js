@@ -32,7 +32,7 @@ function safeJoin(root, reqPath) {
 }
 
 const server = http.createServer((req, res) => {
-    let filePath = safeJoin(ROOT, req.url === '/' ? '/index.html' : req.url);
+    const filePath = safeJoin(ROOT, req.url === '/' ? '/index.html' : req.url);
     if (!filePath) {
         res.writeHead(403);
         res.end('Forbidden');
@@ -62,6 +62,5 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-    /* eslint-disable no-console */
     console.log(`Survivor dev server running at http://localhost:${PORT}/`);
 });

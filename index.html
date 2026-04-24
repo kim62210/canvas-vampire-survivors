@@ -2,9 +2,14 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+        <meta
+            name="viewport"
+            content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"
+        />
         <meta name="color-scheme" content="dark" />
         <meta name="theme-color" content="#1b1330" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta
             name="description"
             content="Open-source HTML5 Canvas roguelite inspired by Vampire Survivors. Zero dependencies, plays in any modern browser."
@@ -91,6 +96,21 @@
                     aria-live="polite"
                     aria-atomic="false"
                 ></div>
+
+                <!--
+                    Visually-hidden live region. All gameplay events with
+                    meaningful accessibility signal (boss incoming, level-up,
+                    achievement unlock, boss defeated) are mirrored into this
+                    paragraph so screen readers announce them. See
+                    docs/ACCESSIBILITY.md for the full list.
+                -->
+                <p
+                    id="a11yLiveRegion"
+                    class="sr-only"
+                    role="status"
+                    aria-live="polite"
+                    aria-atomic="true"
+                ></p>
             </div>
 
             <!-- Virtual joystick (touch only) -->
@@ -99,9 +119,15 @@
             </div>
 
             <!-- Menus -->
-            <div id="startScreen" class="overlay">
+            <div
+                id="startScreen"
+                class="overlay"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="startTitle"
+            >
                 <div class="overlay-card">
-                    <h1 data-i18n="title">SURVIVOR</h1>
+                    <h1 id="startTitle" data-i18n="title">SURVIVOR</h1>
                     <div class="subtitle" data-i18n="subtitle">
                         Vampire Survivors style roguelite
                     </div>
@@ -130,16 +156,30 @@
 
             <div id="achievementsScreen" class="overlay" style="display: none"></div>
 
-            <div id="levelUpMenu" class="overlay" style="display: none">
+            <div
+                id="levelUpMenu"
+                class="overlay"
+                style="display: none"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="levelUpTitle"
+            >
                 <div class="overlay-card levelup">
-                    <h2 data-i18n="chooseUpgrade">Choose an upgrade</h2>
-                    <div id="upgradeOptions"></div>
+                    <h2 id="levelUpTitle" data-i18n="chooseUpgrade">Choose an upgrade</h2>
+                    <div id="upgradeOptions" role="menu"></div>
                 </div>
             </div>
 
-            <div id="pauseMenu" class="overlay" style="display: none">
+            <div
+                id="pauseMenu"
+                class="overlay"
+                style="display: none"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="pauseTitle"
+            >
                 <div class="overlay-card">
-                    <h2 data-i18n="paused">PAUSED</h2>
+                    <h2 id="pauseTitle" data-i18n="paused">PAUSED</h2>
                     <div class="btn-row vertical">
                         <button id="btnResume" class="btn primary" data-i18n="resume">
                             Resume
@@ -151,9 +191,16 @@
                 </div>
             </div>
 
-            <div id="gameOver" class="overlay" style="display: none">
+            <div
+                id="gameOver"
+                class="overlay"
+                style="display: none"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="gameOverTitle"
+            >
                 <div class="overlay-card gameover">
-                    <h1 data-i18n="gameover">YOU DIED</h1>
+                    <h1 id="gameOverTitle" data-i18n="gameover">YOU DIED</h1>
                     <div class="stats">
                         <div>
                             <span data-i18n="finalTime">Survived</span>:

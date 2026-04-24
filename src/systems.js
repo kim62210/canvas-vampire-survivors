@@ -1,71 +1,19 @@
 /**
  * @module systems
  * @description Cross-cutting infrastructure used by the main loop —
- * spatial-hash broad phase, screen-shake camera and a rolling FPS meter.
- * No gameplay state lives here; callers own their own enemy/entity arrays.
+ * screen-shake camera and a rolling FPS meter. The spatial-hash broad phase
+ * lives in `./spatial-hash.js` and is re-exported here for backwards
+ * compatibility with v2.x callers.
  *
- * Dependencies: none.
+ * Dependencies: `./spatial-hash.js`.
  *
  * Exports:
- *   - class SpatialHash    grid-based broad-phase lookup
+ *   - class SpatialHash    re-export from ./spatial-hash.js
  *   - class ShakeCamera    cumulative shake offset
  *   - class FpsMeter       60-sample rolling average
  */
 
-export class SpatialHash {
-    constructor(cell = 80) {
-        this.cell = cell;
-        this.map = new Map();
-    }
-    clear() {
-        this.map.clear();
-    }
-    _key(x, y) {
-        return `${Math.floor(x / this.cell)},${Math.floor(y / this.cell)}`;
-    }
-
-    insertEnemies(enemies) {
-        this.clear();
-        for (const e of enemies) {
-            const k = this._key(e.x, e.y);
-            let bucket = this.map.get(k);
-            if (!bucket) {
-                bucket = [];
-                this.map.set(k, bucket);
-            }
-            bucket.push(e);
-        }
-    }
-
-    *queryRect(x, y, r) {
-        const c = this.cell;
-        const x0 = Math.floor((x - r) / c);
-        const x1 = Math.floor((x + r) / c);
-        const y0 = Math.floor((y - r) / c);
-        const y1 = Math.floor((y + r) / c);
-        for (let gx = x0; gx <= x1; gx++) {
-            for (let gy = y0; gy <= y1; gy++) {
-                const b = this.map.get(`${gx},${gy}`);
-                if (b) for (const e of b) yield e;
-            }
-        }
-    }
-
-    findNearestEnemy(x, y, maxRange) {
-        let best = null,
-            bestD = maxRange;
-        for (const e of this.queryRect(x, y, maxRange)) {
-            const d = Math.hypot(e.x - x, e.y - y);
-            if (d < bestD) {
-                bestD = d;
-                best = e;
-            }
-        }
-        // Fallback: if spatial query returned nothing within maxRange, try all
-        // (shouldn't matter in practice but guarantees correctness).
-        return best;
-    }
-}
+export { SpatialHash } from './spatial-hash.js';
 
 export class ShakeCamera {
     constructor() {

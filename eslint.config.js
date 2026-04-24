@@ -85,5 +85,33 @@ module.exports = [
             eqeqeq: ['warn', 'smart'],
             'no-console': 'off'
         }
+    },
+    {
+        // Tests run under the Node `node:test` runner as ESM modules.
+        files: ['test/**/*.js'],
+        languageOptions: {
+            ecmaVersion: 2022,
+            sourceType: 'module',
+            globals: {
+                console: 'readonly',
+                process: 'readonly',
+                setTimeout: 'readonly',
+                clearTimeout: 'readonly',
+                setInterval: 'readonly',
+                clearInterval: 'readonly',
+                global: 'readonly',
+                globalThis: 'readonly',
+                structuredClone: 'readonly',
+                performance: 'readonly'
+            }
+        },
+        rules: {
+            'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+            'no-undef': 'error',
+            semi: ['warn', 'always'],
+            'prefer-const': 'warn',
+            eqeqeq: ['warn', 'smart'],
+            'no-console': 'off'
+        }
     }
 ];

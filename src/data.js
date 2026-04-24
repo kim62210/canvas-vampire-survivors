@@ -1,8 +1,21 @@
-// Static game data: weapons, passives, enemies, bosses.
-// Keep this data-only; behaviour lives in systems/*.
-//
-// Tuning note: all base numbers are documented in ../BALANCE.md. When you
-// change a value here, update that file so contributors see the rationale.
+/**
+ * @module data
+ * @description Pure-data catalogue: weapons, passives, enemies, bosses, wave
+ * director timeline, achievement definitions and unlock map. Behaviour lives
+ * elsewhere (`weapons.js`, `entities.js`, `achievements.js`); this module is
+ * intentionally side-effect free so it can be diffed during balancing.
+ *
+ * Dependencies: none.
+ *
+ * Exports:
+ *   - {Record<string, WeaponDef>} WEAPONS
+ *   - {Record<string, PassiveDef>} PASSIVES
+ *   - {Record<string, EnemyDef>} ENEMIES
+ *   - {Record<string, BossDef>} BOSSES
+ *   - {WaveDef[]} WAVES
+ *   - {AchievementDef[]} ACHIEVEMENTS
+ *   - {Record<string, UnlockDef>} UNLOCKS
+ */
 
 // ---------------------------------------------------------------------------
 // Weapons

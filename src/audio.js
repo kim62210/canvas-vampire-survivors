@@ -1,8 +1,15 @@
-// Web Audio synthesised SFX + procedural music loop. Zero external assets.
-// All sounds are generated at playback time from oscillators and noise buffers.
-//
-// Music: a step sequencer that walks a root note around a minor progression
-// and layers an arpeggiator on top. Toggleable via settings.musicEnabled.
+/**
+ * @module audio
+ * @description Web Audio synthesised SFX plus a procedural music loop.
+ * Zero external assets — every sound is generated at playback time from
+ * oscillators and noise buffers. Music is a step sequencer that walks a root
+ * note around a minor progression with an arpeggiator on top.
+ *
+ * Dependencies: browser Web Audio API. Degrades silently when unavailable.
+ *
+ * Exports:
+ *   - class AudioEngine
+ */
 
 export class AudioEngine {
     constructor(settings) {

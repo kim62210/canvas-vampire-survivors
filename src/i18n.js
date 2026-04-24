@@ -1,5 +1,16 @@
-// Minimal i18n layer. Only English + 简体中文 for now, but the structure
-// allows dropping in more locales via PR.
+/**
+ * @module i18n
+ * @description Minimal localisation layer. Currently ships English and
+ * 简体中文; new locales drop in by adding a key to `STRINGS` and a PR. All
+ * lookups fall back to English then to the raw key, so a typo never crashes.
+ *
+ * Dependencies: none.
+ *
+ * Exports:
+ *   - setLocale(loc), getLocale()
+ *   - availableLocales() → string[]
+ *   - t(key) → translated string
+ */
 
 const STRINGS = {
     en: {
@@ -48,6 +59,7 @@ const STRINGS = {
         date: 'Date',
         noHighScores: 'No runs recorded yet.',
         achievements: 'Achievements',
+        viewAchievements: 'View Achievements',
         totals: 'Totals'
     },
     zh: {
@@ -96,6 +108,7 @@ const STRINGS = {
         date: '日期',
         noHighScores: '暂无记录',
         achievements: '成就',
+        viewAchievements: '查看成就',
         totals: '累计'
     }
 };

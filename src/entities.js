@@ -1,6 +1,19 @@
-// Entity classes: Player, Enemy, Projectile, ExpOrb, Particle, FloatingText,
-// EnemyProjectile, OrbitShard, Mine. All physics is frame-rate independent
-// (delta-time in seconds).
+/**
+ * @module entities
+ * @description Runtime entity classes — everything with `update(dt)` /
+ * `render(ctx)` lifecycle methods lives here. All physics is frame-rate
+ * independent (delta-time in seconds), and per-class state is owned, never
+ * shared.
+ *
+ * Dependencies: `./config.js`, `./data.js`. The Weapon class is injected at
+ * boot via `registerWeaponClass()` to break a circular import.
+ *
+ * Exports:
+ *   - class Player, Enemy, Projectile, EnemyProjectile, ExpOrb,
+ *           Particle, FloatingText, OrbitShard, Mine
+ *   - findEnemyDef(id) — lookup helper
+ *   - registerWeaponClass(cls) — DI for Weapon to avoid circular imports
+ */
 
 import { CONFIG } from './config.js';
 import { ENEMIES } from './data.js';
@@ -577,11 +590,15 @@ export class OrbitShard {
             if (nt <= 0) this.hitTimers.delete(enemy);
             else this.hitTimers.set(enemy, nt);
         }
-        // Collide with enemies via spatial hash (generous radius).
-        for (const e of game.spatial.queryRect(this.x, this.y, 40)) {
+        // Broad-phase via spatial hash. The query radius adapts to whatever
+        // the largest enemy in the bucket might be (boss is 64) plus the
+        // shard's own visual radius — no more fixed 40 px that misses bosses.
+        const SHARD_HIT = 10; // matches shard core in render()
+        const queryR = SHARD_HIT + 64; // 64 = largest enemy.size in data.js
+        for (const e of game.spatial.queryRect(this.x, this.y, queryR)) {
             if (this.hitTimers.has(e)) continue;
             const d = Math.hypot(e.x - this.x, e.y - this.y);
-            if (d < e.size + 10) {
+            if (d < (e.size || 12) + SHARD_HIT) {
                 e.takeDamage(this.damage);
                 this.hitTimers.set(e, 0.5);
                 game.createFloatingText(Math.round(this.damage), e.x, e.y - 18, '#ffffcc');

@@ -11,6 +11,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Placeholder for upcoming changes. Contributors, add your entries here.
 
+## [2.2.0] - 2026-04-25
+
+Visual + distribution polish release. The game looks the same on the canvas
+but is much more inviting from a cold link. No new runtime dependencies.
+
+### Added
+
+- README hero overhaul: SVG hero banner (`docs/hero.svg`), ASCII title,
+  9 status/feature badges, "▶ Play in browser" call-to-action, 3-column
+  feature grid, screenshot gallery, "Why another clone?" pitch, "Stack"
+  table, "Inspiration & credits" section and a star-history chart footer.
+- Open Graph + Twitter card metadata in `index.html`, plus a `<link rel="canonical">`
+  for the GitHub Pages URL.
+- `docs/og-card.svg` — 1200×630 social-share card referenced by OG tags.
+- `manifest.json` — PWA manifest so mobile users can "Add to Home Screen".
+- `service-worker.js` — tiny cache-first SW that lets the game launch offline
+  after the first visit. Auto-registered on http(s) origins; no-op on `file://`.
+- `docs/screenshots/README.md` — contributor guide for capturing canvas frames
+  (with a one-shot bookmarklet) plus a `.gitkeep` so the folder commits empty.
+- `docs/gif-script.md` — recipes for recording demo GIFs/WebMs (`ffmpeg`,
+  `gifski`, in-browser `MediaRecorder`).
+- Achievements gallery: a new "View Achievements" button on the start screen
+  opens a 12-card grid showing locked/unlocked status, name and description.
+- JSDoc-style module headers on every file under `src/` documenting purpose,
+  dependencies and exports.
+
+### Changed
+
+- Orbit shard collision: query radius now adapts to the largest enemy size
+  (was a hard-coded 40 px that occasionally missed the Void Lord).
+- Level-up menu: maxed weapons/passives now render as a dimmed `MAXED` card
+  instead of vanishing from the pool, so players can see their mastery.
+- Boss banner re-translates immediately when the player switches language
+  while the banner is still on screen.
+
+### Fixed
+
+- Settings panel: language change now triggers `UI.onLocaleChanged()` so any
+  sticky DOM strings (boss banner) refresh without waiting for the next event.
+
 ## [2.0.0] - 2026-04-25
 
 Major refactor release. The game is now modular, lint-clean, and ships with a
@@ -70,6 +110,7 @@ full open-source contribution workflow. No runtime dependencies were added.
 - Particle effects and basic wave announcements.
 - Single-file `game.js` implementation (~1400 lines).
 
-[Unreleased]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.0.0...v2.2.0
 [2.0.0]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/releases/tag/v1.0.0

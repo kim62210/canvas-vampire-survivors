@@ -1,5 +1,16 @@
-// DOM glue: HUD, menus, settings. Kept intentionally separate from the render loop
-// so all UI state changes funnel through these helpers.
+/**
+ * @module ui
+ * @description All DOM-side glue — HUD, menus, settings panel, achievement
+ * gallery, level-up overlay. Intentionally decoupled from the render loop so
+ * UI state mutations always funnel through these helpers (easier to audit,
+ * easier to swap renderers later).
+ *
+ * Dependencies: `./data.js`, `./config.js`, `./i18n.js`.
+ *
+ * Exports:
+ *   - class UI               cached element references + render helpers
+ *   - totalAchievements()    convenience for tests / badges
+ */
 
 import { ACHIEVEMENTS, PASSIVES, WEAPONS } from './data.js';
 import { CONFIG } from './config.js';
@@ -37,9 +48,50 @@ export class UI {
             'passiveIcons',
             'achievementToasts',
             'highScoreList',
-            'waveLabel'
+            'waveLabel',
+            'achievementsScreen'
         ];
         for (const id of ids) this.els[id] = document.getElementById(id);
+    }
+
+    /**
+     * Render the achievements gallery as a grid of locked/unlocked cards.
+     * @param {Record<string, number>} unlocked - id → unlock timestamp
+     * @param {() => void} onClose
+     */
+    showAchievements(unlocked, onClose) {
+        const m = this.els.achievementsScreen;
+        if (!m) return;
+        const total = ACHIEVEMENTS.length;
+        const earned = ACHIEVEMENTS.filter((a) => unlocked[a.id]).length;
+        m.innerHTML = `
+            <div class="overlay-card achievements-card">
+                <h2>${t('achievements')} <span class="ach-count">${earned} / ${total}</span></h2>
+                <div class="ach-grid">
+                    ${ACHIEVEMENTS.map((a) => {
+                        const got = !!unlocked[a.id];
+                        return `
+                            <div class="ach-card ${got ? 'earned' : 'locked'}">
+                                <div class="ach-card-icon">${got ? a.icon : '🔒'}</div>
+                                <div class="ach-card-name">${got ? a.name : '???'}</div>
+                                <div class="ach-card-desc">${a.description}</div>
+                            </div>`;
+                    }).join('')}
+                </div>
+                <div class="btn-row">
+                    <button id="achClose" class="btn primary">${t('close')}</button>
+                </div>
+            </div>`;
+        m.style.display = 'flex';
+        const close = () => {
+            m.style.display = 'none';
+            onClose && onClose();
+        };
+        m.querySelector('#achClose')?.addEventListener('click', close);
+    }
+
+    hideAchievements() {
+        if (this.els.achievementsScreen) this.els.achievementsScreen.style.display = 'none';
     }
 
     updateHud(game) {
@@ -119,7 +171,16 @@ export class UI {
         const options = this.els.upgradeOptions;
         options.innerHTML = '';
         const pool = buildUpgradePool(player);
-        const picks = pickN(pool, 3);
+        // pool is [...live, ...maxed]. We pick from `live` first, fall back to
+        // maxed only when there is nothing else to surface.
+        const liveCount = pool.filter((p) => isUpgradeLive(player, p)).length;
+        const livePool = pool.slice(0, liveCount);
+        const maxedPool = pool.slice(liveCount);
+        const picks = pickN(livePool, 3);
+        while (picks.length < 3 && maxedPool.length) {
+            const i = Math.floor(Math.random() * maxedPool.length);
+            picks.push(maxedPool.splice(i, 1)[0]);
+        }
 
         for (const up of picks) {
             const div = document.createElement('div');
@@ -129,22 +190,34 @@ export class UI {
                     ? player.weapons.find((w) => w.id === up.data.id)
                     : player.passives[up.data.id];
             const lvl = up.type === 'weapon' ? (existing?.level ?? 0) : (existing?.count ?? 0);
-            const label =
-                lvl > 0 ? ` (${up.type === 'weapon' ? 'Lv.' : 'x'}${lvl + 1})` : ' (New!)';
+            const isMaxed =
+                up.type === 'weapon'
+                    ? lvl >= CONFIG.WEAPON_MAX_LEVEL
+                    : lvl >= CONFIG.PASSIVE_MAX_STACK;
+            const label = isMaxed
+                ? ' (MAXED)'
+                : lvl > 0
+                  ? ` (${up.type === 'weapon' ? 'Lv.' : 'x'}${lvl + 1})`
+                  : ' (New!)';
             const willEvolve =
-                up.type === 'weapon' && lvl + 1 === up.data.evolveLevel && up.data.evolveName;
+                up.type === 'weapon' &&
+                !isMaxed &&
+                lvl + 1 === up.data.evolveLevel &&
+                up.data.evolveName;
             const evoHtml = willEvolve
                 ? `<div class="evolve-tag">→ ${up.data.evolveName}</div>`
                 : '';
+            if (isMaxed) div.classList.add('maxed');
             div.innerHTML = `
                 <div class="name">${up.data.icon} ${up.data.name}${label}</div>
                 <div class="desc">${up.data.description}</div>
                 ${evoHtml}
             `;
-            div.addEventListener('click', () => onPick(up));
+            // MAXED options heal a sliver instead of vanishing — they pay out something.
+            div.addEventListener('click', () => onPick(isMaxed ? null : up));
             div.setAttribute('tabindex', '0');
             div.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' || e.key === ' ') onPick(up);
+                if (e.key === 'Enter' || e.key === ' ') onPick(isMaxed ? null : up);
             });
             options.appendChild(div);
         }
@@ -165,9 +238,21 @@ export class UI {
 
     showBossBanner() {
         if (!this.els.bossBanner) return;
+        this._activeBannerKey = 'bossIncoming';
         this.els.bossBanner.textContent = t('bossIncoming');
         this.els.bossBanner.classList.add('visible');
-        setTimeout(() => this.els.bossBanner.classList.remove('visible'), 2500);
+        clearTimeout(this._bannerTimer);
+        this._bannerTimer = setTimeout(() => {
+            this.els.bossBanner.classList.remove('visible');
+            this._activeBannerKey = null;
+        }, 2500);
+    }
+
+    /** Re-translate any sticky DOM text that does not flow through updateHud. */
+    onLocaleChanged() {
+        if (this._activeBannerKey && this.els.bossBanner) {
+            this.els.bossBanner.textContent = t(this._activeBannerKey);
+        }
     }
 
     showPause() {
@@ -223,6 +308,7 @@ export class UI {
         m.addEventListener('change', handler);
         m.addEventListener('click', buttonHandler);
 
+        const self = this;
         function handler(e) {
             const key = e.target.dataset.key;
             if (!key) return;
@@ -232,7 +318,10 @@ export class UI {
                     : e.target.type === 'range'
                       ? parseFloat(e.target.value)
                       : e.target.value;
-            if (key === 'locale') setLocale(val);
+            if (key === 'locale') {
+                setLocale(val);
+                self.onLocaleChanged();
+            }
             if (key === 'colorblind') {
                 document.body.classList.toggle('cb-mode', !!val);
             }
@@ -306,27 +395,45 @@ export class UI {
 }
 
 function buildUpgradePool(player) {
-    const pool = [];
+    // Two tiers: live (selectable) upgrades first, then "maxed" cards as a
+    // visible reminder of mastery. The level-up screen still prefers `live`,
+    // so the player rarely sees a maxed card unless their build is full.
+    const live = [];
+    const maxed = [];
     for (const weapon of Object.values(WEAPONS)) {
         const existing = player.weapons.find((w) => w.id === weapon.id);
         if (existing) {
-            if (existing.level < CONFIG.WEAPON_MAX_LEVEL)
-                pool.push({ type: 'weapon', data: weapon });
+            if (existing.level < CONFIG.WEAPON_MAX_LEVEL) {
+                live.push({ type: 'weapon', data: weapon });
+            } else {
+                maxed.push({ type: 'weapon', data: weapon });
+            }
         } else if (player.weapons.length < CONFIG.MAX_WEAPONS) {
-            pool.push({ type: 'weapon', data: weapon });
+            live.push({ type: 'weapon', data: weapon });
         }
     }
     for (const passive of Object.values(PASSIVES)) {
         const existing = player.passives[passive.id];
         if (!existing) {
             if (Object.keys(player.passives).length < CONFIG.MAX_PASSIVES) {
-                pool.push({ type: 'passive', data: passive });
+                live.push({ type: 'passive', data: passive });
             }
         } else if (existing.count < CONFIG.PASSIVE_MAX_STACK) {
-            pool.push({ type: 'passive', data: passive });
+            live.push({ type: 'passive', data: passive });
+        } else {
+            maxed.push({ type: 'passive', data: passive });
         }
     }
-    return pool;
+    return live.concat(maxed);
+}
+
+function isUpgradeLive(player, up) {
+    if (up.type === 'weapon') {
+        const existing = player.weapons.find((w) => w.id === up.data.id);
+        return !existing || existing.level < CONFIG.WEAPON_MAX_LEVEL;
+    }
+    const existing = player.passives[up.data.id];
+    return !existing || existing.count < CONFIG.PASSIVE_MAX_STACK;
 }
 
 function pickN(arr, n) {

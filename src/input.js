@@ -1,11 +1,15 @@
-// Unified input: keyboard + pointer + virtual joystick for touch devices.
-// Exposes a normalised move vector so gameplay code never cares about source.
-//
-// Mobile polish (v2.1):
-//   - Joystick has a 15% inner deadzone to avoid drift on rest.
-//   - Response curve: squared magnitude on the outer zone for a tighter feel.
-//   - Edge-of-screen double-tap → toggles pause (does not conflict with the
-//     single-finger drag-to-move, which lives inside the joystick pad).
+/**
+ * @module input
+ * @description Unified input layer — keyboard, mouse, gamepad, and a virtual
+ * touch joystick — exposing a single normalised move vector to gameplay code.
+ * Mobile polish: 15% inner deadzone, squared response curve on the outer
+ * band, edge double-tap to toggle pause.
+ *
+ * Dependencies: DOM (window/document event APIs).
+ *
+ * Exports:
+ *   - class InputManager
+ */
 
 const JOYSTICK_DEADZONE = 0.15;
 const DOUBLE_TAP_WINDOW_MS = 260;

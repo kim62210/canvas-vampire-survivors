@@ -318,6 +318,75 @@ canvas {
     font-size: 12px;
     margin-top: 4px;
 }
+.upgrade-option.maxed {
+    opacity: 0.55;
+    cursor: default;
+    border-style: dashed;
+}
+.upgrade-option.maxed:hover,
+.upgrade-option.maxed:focus {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--border);
+    transform: none;
+}
+.upgrade-option.maxed .name::after {
+    content: '';
+}
+
+/* Achievements gallery ---------------------------------------------- */
+.achievements-card {
+    min-width: 540px;
+    max-width: 92vw;
+    max-height: 88vh;
+    overflow-y: auto;
+}
+.achievements-card .ach-count {
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 400;
+    margin-left: 8px;
+}
+.ach-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+    margin: 14px 0 18px;
+}
+.ach-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 10px;
+    text-align: center;
+    transition: transform 0.15s;
+}
+.ach-card.earned {
+    border-color: var(--accent);
+    background: rgba(255, 210, 77, 0.07);
+}
+.ach-card.locked {
+    opacity: 0.55;
+    filter: grayscale(0.6);
+}
+.ach-card-icon {
+    font-size: 28px;
+    line-height: 1;
+}
+.ach-card-name {
+    margin-top: 6px;
+    font-weight: 700;
+    color: var(--accent);
+    font-size: 13px;
+}
+.ach-card.locked .ach-card-name {
+    color: var(--muted);
+}
+.ach-card-desc {
+    margin-top: 4px;
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.4;
+}
 
 /* Game over ---------------------------------------------------------- */
 .overlay-card.gameover {

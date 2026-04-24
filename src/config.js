@@ -1,6 +1,18 @@
-// Game configuration and static data.
-// All numbers here are intentionally exposed as plain constants so contributors
-// can tweak balance without hunting through logic.
+/**
+ * @module config
+ * @description Engine-wide constants and enumerations. Single source of truth
+ * for canvas size, max entity counts, weapon/passive caps, version string and
+ * the localStorage key. Tweaking gameplay balance starts here (see also
+ * `BALANCE.md`).
+ *
+ * Dependencies: none.
+ *
+ * Exports:
+ *   - {object} CONFIG          numeric constants + version
+ *   - {object} GameState       finite-state-machine labels (frozen)
+ *   - {object} Difficulty      per-tier multipliers (frozen)
+ *   - {string} STORAGE_KEY     localStorage slot name
+ */
 
 export const CONFIG = {
     CANVAS_WIDTH: 1200,
@@ -23,7 +35,7 @@ export const CONFIG = {
     GRID_SIZE: 50, // spatial-hash cell size for collision
     WAVE_DURATION: 30, // seconds per wave announcement
     HIGHSCORE_SLOTS: 10,
-    VERSION: '2.1.0'
+    VERSION: '2.2.0'
 };
 
 export const GameState = Object.freeze({

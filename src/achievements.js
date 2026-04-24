@@ -1,8 +1,15 @@
-// Achievement evaluation + HUD toast queue.
-// - `AchievementTracker` holds per-run state (maxedWeapon, bossesDefeated...)
-//   plus the persistent `save.achievements` record.
-// - Call `tracker.check(game)` after important events. Newly unlocked IDs are
-//   pushed onto a toast queue that the UI renders.
+/**
+ * @module achievements
+ * @description Evaluates the achievement catalogue against per-run + lifetime
+ * state, persists unlocks into the save object and queues toast notifications
+ * for the UI. Cheap to call: most checks short-circuit on the persistent
+ * "already unlocked" flag.
+ *
+ * Dependencies: `./data.js` (ACHIEVEMENTS, UNLOCKS).
+ *
+ * Exports:
+ *   - class AchievementTracker
+ */
 
 import { ACHIEVEMENTS, UNLOCKS } from './data.js';
 

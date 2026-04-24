@@ -1,12 +1,19 @@
-// Weapon behaviour, decoupled from the weapon catalogue in data.js.
-// Each weapon is a single class; specific behaviours live in `fire*()`.
-//
-// Level scaling:
-//   damage   = base * (1 + (lvl-1) * 0.2) * player.damageMult * critMult
-//   cooldown = base * 0.92^(lvl-1) * player.cooldownMult
-//   range    = base * (1 + (lvl-1) * 0.1) * player.areaMult
-// At lvl === def.evolveLevel (5), the weapon gains its shape-changing
-// "evolution" (see `isEvolved()` and per-type handling below).
+/**
+ * @module weapons
+ * @description Single `Weapon` class that consumes a definition from
+ * `data.js` and dispatches to the appropriate `_fire*` strategy each tick.
+ * Level scaling formulas:
+ *   damage   = base * (1 + (lvl-1) * 0.2) * player.damageMult * critMult
+ *   cooldown = base * 0.92^(lvl-1) * player.cooldownMult
+ *   range    = base * (1 + (lvl-1) * 0.1) * player.areaMult
+ * At `lvl === def.evolveLevel` (5) the weapon enters its shape-changing
+ * evolution — see `isEvolved()` and per-type handling below.
+ *
+ * Dependencies: `./entities.js` (Mine, OrbitShard, Projectile).
+ *
+ * Exports:
+ *   - class Weapon
+ */
 
 import { Mine, OrbitShard, Projectile } from './entities.js';
 

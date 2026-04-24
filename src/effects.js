@@ -1,8 +1,15 @@
-// Lightweight visual effects: level-up flashes, screen tint pulses, achievement
-// bursts. Kept in its own module so particle tuning is easy to audit.
-//
-// Performance: every effect caps its own update cost. No effect allocates
-// arrays in update(); everything is reused in-place.
+/**
+ * @module effects
+ * @description Lightweight pure-canvas visual effects layered on top of the
+ * gameplay render — screen flash, ring pulse, hit bursts. Each effect caps
+ * its own update cost and reuses arrays in place to keep GC pressure low.
+ *
+ * Dependencies: none (canvas 2D context only).
+ *
+ * Exports:
+ *   - class ScreenFlash, RingPulse, HitBursts
+ *   - class EffectLayer  facade aggregating all three
+ */
 
 export class ScreenFlash {
     constructor() {

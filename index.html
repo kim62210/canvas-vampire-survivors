@@ -4,11 +4,39 @@
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
         <meta name="color-scheme" content="dark" />
+        <meta name="theme-color" content="#1b1330" />
         <meta
             name="description"
             content="Open-source HTML5 Canvas roguelite inspired by Vampire Survivors. Zero dependencies, plays in any modern browser."
         />
         <title>Survivor — Open Source Roguelite</title>
+
+        <!-- Canonical + favicon (SVG keeps the bundle dependency-free) -->
+        <link rel="canonical" href="https://ricardo-m-l.github.io/canvas-vampire-survivors/" />
+        <link rel="icon" type="image/svg+xml" href="./docs/hero.svg" />
+        <link rel="manifest" href="./manifest.json" />
+
+        <!-- Open Graph / social share -->
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="Survivor — Open Source Roguelite" />
+        <meta
+            property="og:description"
+            content="A zero-dependency HTML5 Canvas roguelite. Clone, play, hack."
+        />
+        <meta property="og:image" content="./docs/og-card.svg" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:url" content="https://ricardo-m-l.github.io/canvas-vampire-survivors/" />
+
+        <!-- Twitter card -->
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Survivor — Open Source Roguelite" />
+        <meta
+            name="twitter:description"
+            content="A zero-dependency HTML5 Canvas roguelite. Clone, play, hack."
+        />
+        <meta name="twitter:image" content="./docs/og-card.svg" />
+
         <link rel="stylesheet" href="./styles.css" />
     </head>
     <body>
@@ -93,9 +121,14 @@
                         <button id="btnSettings" class="btn ghost" data-i18n="settings">
                             Settings
                         </button>
+                        <button id="btnAchievements" class="btn ghost" data-i18n="viewAchievements">
+                            View Achievements
+                        </button>
                     </div>
                 </div>
             </div>
+
+            <div id="achievementsScreen" class="overlay" style="display: none"></div>
 
             <div id="levelUpMenu" class="overlay" style="display: none">
                 <div class="overlay-card levelup">
@@ -158,6 +191,17 @@
             document
                 .getElementById('btnPause')
                 ?.addEventListener('click', () => game.togglePause());
+        </script>
+
+        <!-- Optional offline support. SW registration is a no-op on file:// -->
+        <script>
+            if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker
+                        .register('./service-worker.js')
+                        .catch((err) => console.warn('[sw] registration failed', err));
+                });
+            }
         </script>
     </body>
 </html>

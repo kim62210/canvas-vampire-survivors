@@ -1,4 +1,18 @@
-// Main game orchestrator. Wires entities, systems, UI, audio, and storage together.
+/**
+ * @module main
+ * @description Top-level orchestrator. Owns the `Game` instance, the
+ * fixed-step update loop, the spawn/wave director, the achievement check
+ * heartbeat and the menu/state machine. This is the only module that
+ * reaches into nearly every other one — keep new logic out of here when a
+ * focused module fits.
+ *
+ * Dependencies: every other module under `src/`.
+ *
+ * Exports:
+ *   - class Game
+ *   - boot()              constructor + window-handle install
+ *   - re-exports ACHIEVEMENTS, WAVES from data.js
+ */
 
 import { CONFIG, Difficulty, GameState } from './config.js';
 import { ACHIEVEMENTS, BOSSES, ENEMIES, WAVES, WEAPONS } from './data.js';
@@ -97,6 +111,7 @@ export class Game {
             this.start();
         });
         q('btnSettings')?.addEventListener('click', () => this.openSettings());
+        q('btnAchievements')?.addEventListener('click', () => this.openAchievements());
         q('btnRetry')?.addEventListener('click', () => {
             this.ui.hideGameOver();
             this.start();
@@ -595,6 +610,12 @@ export class Game {
             ctx.lineTo(CONFIG.CANVAS_WIDTH, y);
             ctx.stroke();
         }
+    }
+
+    openAchievements() {
+        this.ui.showAchievements(this.save.achievements || {}, () => {
+            /* closed */
+        });
     }
 
     // --- Settings ---------------------------------------------------------

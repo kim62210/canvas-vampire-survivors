@@ -1,63 +1,125 @@
-# Canvas Vampire Survivors
+<!--
+  Hero banner. The image is committed at docs/hero.svg so it loads on
+  GitHub.com without external CDNs and works offline once cached.
+-->
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![CI](https://github.com/Ricardo-M-L/canvas-vampire-survivors/actions/workflows/ci.yml/badge.svg)](https://github.com/Ricardo-M-L/canvas-vampire-survivors/actions/workflows/ci.yml)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
-[![Made with Vanilla JS](https://img.shields.io/badge/made%20with-vanilla%20JS-f7df1e.svg)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
-[![Zero runtime deps](https://img.shields.io/badge/runtime%20deps-0-informational.svg)](./package.json)
+<p align="center">
+  <a href="https://ricardo-m-l.github.io/canvas-vampire-survivors/">
+    <img src="./docs/hero.svg" alt="Survivor — open-source HTML5 Canvas roguelite" width="720" />
+  </a>
+</p>
 
-> A zero-dependency HTML5 Canvas roguelite you can clone and play in 30 seconds.
+```
+   ____ _   _ ____  _   _ ___ __     __ ___  ____
+  / ___| | | |  _ \| | | |_ _|\ \   / // _ \|  _ \
+  \___ \| | | | |_) | | | || |  \ \ / /| | | | |_) |
+   ___) | |_| |  _ <| |_| || |   \ V / | |_| |  _ <
+  |____/ \___/|_| \_\\___/|___|   \_/   \___/|_| \_\
+                  zero deps · vanilla js · MIT
+```
 
-## 📸 Demo
+<p align="center">
+  <em>A zero-dependency HTML5 Canvas roguelite you can clone, play and ship in 30 seconds.</em>
+</p>
 
-![Gameplay screenshot](./docs/screenshot.png)
+<p align="center">
+  <a href="./LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
+  <a href="https://ricardo-m-l.github.io/canvas-vampire-survivors/"><img alt="Live demo" src="https://img.shields.io/badge/▶-Live%20Demo-3388ff.svg"></a>
+  <a href="https://github.com/Ricardo-M-L/canvas-vampire-survivors/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Ricardo-M-L/canvas-vampire-survivors/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/Ricardo-M-L/canvas-vampire-survivors"><img alt="Top language" src="https://img.shields.io/github/languages/top/Ricardo-M-L/canvas-vampire-survivors.svg"></a>
+  <a href="https://github.com/Ricardo-M-L/canvas-vampire-survivors/commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/Ricardo-M-L/canvas-vampire-survivors.svg"></a>
+  <a href="./CONTRIBUTING.md"><img alt="Issues welcome" src="https://img.shields.io/badge/issues-welcome-brightgreen.svg"></a>
+  <a href="./package.json"><img alt="Zero runtime deps" src="https://img.shields.io/badge/runtime%20deps-0-informational.svg"></a>
+  <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript"><img alt="Made with Vanilla JS" src="https://img.shields.io/badge/made%20with-vanilla%20JS-f7df1e.svg"></a>
+</p>
 
-<sub>The image above is a placeholder. Drop a real capture into `docs/screenshot.png` and it will show up here.</sub>
+<p align="center">
+  <a href="https://ricardo-m-l.github.io/canvas-vampire-survivors/"><strong>▶ &nbsp;Play in your browser</strong></a>
+  &nbsp;·&nbsp;
+  <a href="#-quickstart">Quickstart</a>
+  &nbsp;·&nbsp;
+  <a href="#-screenshots">Screenshots</a>
+  &nbsp;·&nbsp;
+  <a href="#why-another-vampire-survivors-clone">Why?</a>
+  &nbsp;·&nbsp;
+  <a href="#-contributing">Contribute</a>
+</p>
 
-## ✨ Features
+---
 
-- 🧩 **Modular ES-module architecture** — tiny, readable files under `src/`.
-- 🎨 **HTML5 Canvas renderer** — fixed-step simulation, smooth 60+ fps.
-- 🌐 **Built-in i18n** — English and 简体中文 out of the box, add more easily.
-- 🎮 **Keyboard, touch joystick, and gamepad** input all supported.
-- 📦 **Zero runtime dependencies** — no bundler, no build step, just open it.
-- 💾 **Local save & settings** — persists via `localStorage`, no backend.
-- ⚙️ **In-game settings panel** — volume, language, reduced motion.
-- ♿ **Accessibility-aware** — respects `prefers-reduced-motion`, high-contrast HUD.
-- 🧪 **Lint + format ready** — ESLint, Prettier, EditorConfig, CI on every PR.
-- 🕹️ **Classic roguelite loop** — 7 weapons with evolutions, 10 passives,
-  9 enemy archetypes, 2 bosses, wave director, and 12 achievements.
+## ✨ Feature grid
+
+|                                                                 |                                                               |                                                                |
+| --------------------------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------- |
+| 🧩 **Modular ES modules**<br/>Tiny readable files under `src/`. | 🎨 **HTML5 Canvas**<br/>Fixed-step sim, smooth 60+ fps.       | 📦 **Zero runtime deps**<br/>No bundler, no build step.        |
+| 🌐 **i18n built-in**<br/>EN + 简体中文 ship by default.         | 🎮 **Keyboard / touch / pad**<br/>All inputs first-class.     | 💾 **Local saves**<br/>`localStorage`, no backend.             |
+| ⚙️ **Settings panel**<br/>Volume, language, motion.             | ♿ **Accessibility-aware**<br/>Reduced motion, high contrast. | 🧪 **Lint + format ready**<br/>ESLint, Prettier, CI on PR.     |
+| 🕹️ **Roguelite loop**<br/>7 weapons w/ evolutions, 10 passives. | 👑 **Bosses & waves**<br/>Director with 10 named windows.     | 🏆 **Achievements & runs**<br/>12 unlocks, top-10 leaderboard. |
 
 ## 🎮 Controls
 
-| Action          | Keyboard                 | Touch            | Gamepad            |
-| --------------- | ------------------------ | ---------------- | ------------------ |
-| Move            | `W` `A` `S` `D` / arrows | Virtual joystick | Left stick / D-pad |
-| Pause           | `Esc` / `P`              | Pause button     | `Start`            |
-| Confirm choice  | `Enter` / `Space`        | Tap option       | `A` / cross        |
-| Cancel / back   | `Esc`                    | Back button      | `B` / circle       |
-| Toggle settings | `,`                      | Gear icon        | `Select`           |
-| Toggle language | `L`                      | Settings → Lang  | Settings → Lang    |
+| Action          | Keyboard                                                     | Touch                 | Gamepad               |
+| --------------- | ------------------------------------------------------------ | --------------------- | --------------------- |
+| Move            | <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> / arrows | Virtual joystick      | Left stick / D-pad    |
+| Pause           | <kbd>Esc</kbd> / <kbd>P</kbd>                                | ⏸ button / edge tap×2 | <kbd>Start</kbd>      |
+| Confirm choice  | <kbd>Enter</kbd> / <kbd>Space</kbd>                          | Tap option            | <kbd>A</kbd> / cross  |
+| Cancel / back   | <kbd>Esc</kbd>                                               | Back button           | <kbd>B</kbd> / circle |
+| Toggle settings | <kbd>,</kbd>                                                 | ⚙ icon                | <kbd>Select</kbd>     |
+| Toggle language | <kbd>L</kbd>                                                 | Settings → Lang       | Settings → Lang       |
 
 ## 🚀 Quickstart
 
 ```bash
 git clone https://github.com/Ricardo-M-L/canvas-vampire-survivors.git
 cd canvas-vampire-survivors
-npm install     # installs ESLint + Prettier only (dev deps)
+npm install     # ESLint + Prettier only — zero runtime deps
 npm start       # http://localhost:3000
 ```
 
 Prefer no Node? Just open `index.html` directly in any modern browser, or
 serve the folder with `python -m http.server`.
 
-## 🌐 Play Online
+## 🌐 Play online
 
 An always-up-to-date build ships from `main` to GitHub Pages:
 
-- **Live demo**: <https://ricardo-m-l.github.io/canvas-vampire-survivors/>
+> **▶ <https://ricardo-m-l.github.io/canvas-vampire-survivors/>**
 
-<sub>If the link 404s, the Pages deployment workflow needs to be enabled once in the repository settings.</sub>
+The Pages build is also a [PWA](./manifest.json): on mobile, "Add to Home
+Screen" gives you an offline-capable icon thanks to a tiny
+[`service-worker.js`](./service-worker.js).
+
+## 📸 Screenshots
+
+Drop a real PNG into `docs/screenshots/` (the
+[contributor guide](./docs/screenshots/README.md) shows you the bookmarklet)
+and the gallery below comes alive.
+
+|                                                           |                                                      |                                                       |
+| --------------------------------------------------------- | ---------------------------------------------------- | ----------------------------------------------------- |
+| ![Early-game gameplay](./docs/screenshots/gameplay-1.png) | ![Mid-game swarm](./docs/screenshots/gameplay-2.png) | ![Late-game build](./docs/screenshots/gameplay-3.png) |
+| ![Boss fight](./docs/screenshots/boss-fight.png)          | ![Level-up choices](./docs/screenshots/level-up.png) | ![Achievements](./docs/screenshots/achievements.png)  |
+
+> Until those PNGs land, the cells render as broken-image icons — that's the
+> intended placeholder so the README structure stays stable.
+
+## Why another Vampire Survivors clone?
+
+Most JS clones ship with a 5 MB bundle and a build pipeline that takes longer
+to spin up than the run itself. This repository takes the opposite stance:
+
+1. **Zero dependencies at runtime.** No React, no bundler, no transpiler. Open
+   `index.html` and the game is on screen in milliseconds. The `package.json`
+   only lists ESLint + Prettier as dev tools.
+2. **Open in a browser, period.** The loader handles `file://` AND
+   `http(s)://` AND offline (via the optional service worker). Great for
+   classrooms, kiosks, code-along livestreams.
+3. **Fully auditable source.** Each module under `src/` is self-contained and
+   under 1k lines, with a JSDoc header that names every export. No hidden
+   build artefacts, no minified vendor blobs.
+4. **i18n + accessibility from day one.** English / 简体中文 ship by default,
+   `prefers-reduced-motion` is honoured, a high-contrast mode lives in
+   settings, and every menu is keyboard-reachable.
 
 ## 🏗️ Architecture
 
@@ -94,31 +156,28 @@ flowchart TD
     ui --> store
 ```
 
-## 🆕 What's new in v2.1
+## 🧱 Stack
 
-- 🌊 **Wave director** — 10 named waves with shifting enemy pools.
-- 👾 **5 new enemy archetypes** on top of the chasers: ranged cultists,
-  splitting slimes, dasher wolves, shielded golems, ghost rushers.
-- 👑 **Two bosses** at 5:00 (The Reaper) and 10:00 (Void Lord) with signature
-  abilities (summon adds, telecharge).
-- ⚔️ **Six weapon families with level-5 evolutions** (orbit, mine, lightning,
-  knife, magic wand, whip). Plus the Garlic aura for cosiness.
-- 🏆 **Leaderboard + achievements** — top-10 run table, 12 built-in
-  achievements, toast pop-ups, and starter-weapon unlocks tied to milestones.
-- 🧃 **Effects layer** — ring pulses on level-up, boss-spawn screen flashes,
-  crit floating numbers, hit bursts. All capped for 60 fps.
-- 🎵 **Procedural music upgrade** — minor arpeggiator over a walking chord
-  progression, toggleable from settings.
-- 📱 **Tighter mobile feel** — joystick dead-zone + sensitivity curve,
-  edge double-tap to pause.
-- 🎨 **High-contrast / colorblind mode** in the settings panel.
-- 📒 See [BALANCE.md](./BALANCE.md) for every tunable in one place.
+| Layer       | Tooling                                                         |
+| ----------- | --------------------------------------------------------------- |
+| Runtime     | **Vanilla JS** (ES2022 modules) · **HTML5 Canvas** · Web Audio  |
+| Persistence | `localStorage` (graceful in-memory fallback)                    |
+| Mobile      | Virtual joystick · Touch edge double-tap · PWA manifest         |
+| Tooling     | **ESLint 9** (flat config) · **Prettier 3** · GitHub Actions CI |
+| Hosting     | **GitHub Pages** (auto-deploy from `main`) · Service Worker     |
+
+## 🆕 What's new
+
+- **v2.2** — Visual polish, GitHub Pages-friendly entry, achievements gallery,
+  PWA manifest + offline service worker. See [CHANGELOG.md](./CHANGELOG.md).
+- **v2.1** — Wave director, 5 enemy archetypes, 2 bosses, weapon evolutions,
+  achievements + leaderboard, effects layer, procedural music upgrade.
+- **v2.0** — Modular `src/` rewrite, i18n, fixed-step loop, full OSS scaffolding.
 
 ## 🗺️ Roadmap
 
-- [ ] Boss waves with unique behaviours and loot drops
 - [ ] Map variants (ruins, crypt, forest) with distinct enemy pools
-- [ ] Weapon evolution combinations
+- [ ] Weapon evolution combinations (item × passive)
 - [ ] Meta-progression: persistent unlocks between runs
 - [ ] Additional languages (ES, JA, FR — PRs welcome)
 - [ ] Optional WebGL renderer behind a feature flag
@@ -133,20 +192,35 @@ Contributions are very welcome — see [CONTRIBUTING.md](./CONTRIBUTING.md) for
 setup, ground rules, and the PR checklist. By participating you agree to the
 [Code of Conduct](./CODE_OF_CONDUCT.md).
 
+Looking for low-hanging fruit? Try one of:
+
+- Drop a screenshot into `docs/screenshots/` (see [the guide](./docs/screenshots/README.md)).
+- Translate `src/i18n.js` into your language.
+- Add a balance card to [BALANCE.md](./BALANCE.md).
+
 Security issues? Please read [SECURITY.md](./SECURITY.md) first — do **not**
 open a public issue.
+
+## 🙏 Inspiration & credits
+
+- Inspired by [Vampire Survivors](https://poncle.itch.io/vampire-survivors) by
+  Poncle — an absolute masterclass in tight, compulsive gameplay loops. This
+  project is an independent homage, not affiliated with or endorsed by Poncle.
+- Mermaid for the architecture diagram, shields.io for the badges, MDN for
+  the canvas reference, Mozilla's Web Audio team for the synthesis APIs.
+- Every contributor who has filed an issue, sent a PR, or translated a
+  string. You are why this repo exists.
 
 ## 📜 License
 
 Released under the [MIT License](./LICENSE). Use it, fork it, ship it.
 
-## 🙏 Acknowledgements
+## ⭐ Stars over time
 
-- Inspired by [Vampire Survivors](https://poncle.itch.io/vampire-survivors) by
-  Poncle — an absolute masterclass in tight, compulsive gameplay loops. This
-  project is an independent homage, not affiliated with or endorsed by Poncle.
-- Thanks to every contributor who has filed an issue, sent a PR, or translated
-  a string.
+[![Star History Chart](https://api.star-history.com/svg?repos=Ricardo-M-L/canvas-vampire-survivors&type=Date)](https://star-history.com/#Ricardo-M-L/canvas-vampire-survivors&Date)
+
+If you have read this far, please drop a ⭐ — it costs nothing and makes the
+next person who finds the repo trust it more.
 
 ---
 
@@ -155,6 +229,8 @@ Released under the [MIT License](./LICENSE). Use it, fork it, ship it.
 一个受《吸血鬼幸存者》启发的开源网页版幸存者游戏，纯原生 JavaScript + HTML5
 Canvas 实现，**零运行时依赖**。项目采用模块化结构（`src/`），内置中英双语，
 支持键盘、触屏虚拟摇杆与手柄操作，自动保存进度与设置，适配移动端与桌面端。
+v2.2 版本添加了 PWA 离线支持、成就画廊、社交分享卡，以及更友好的 GitHub
+Pages 静态入口。
 
 - 🚀 一键启动：`npm install && npm start`，或直接用浏览器打开 `index.html`
 - 🌐 在线试玩：<https://ricardo-m-l.github.io/canvas-vampire-survivors/>

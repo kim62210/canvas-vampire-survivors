@@ -1,6 +1,18 @@
-// Persistent storage via localStorage. Safe to call on platforms where
-// storage may be blocked (private browsing, sandboxed iframes): we degrade
-// gracefully to an in-memory store.
+/**
+ * @module storage
+ * @description Persistent save layer backed by `localStorage` with an
+ * in-memory fallback for sandboxed contexts (private browsing, embedded
+ * iframes). Also owns the leaderboard helper and the cumulative `totals`
+ * accumulator. Forwards-compatible: `mergeDeep` lets us add new save fields
+ * without invalidating older slots.
+ *
+ * Dependencies: `./config.js` (CONFIG, STORAGE_KEY).
+ *
+ * Exports:
+ *   - loadSave(), saveSave(), resetSave()
+ *   - recordHighScore(save, entry) → rank
+ *   - accumulateTotals(save, run)
+ */
 
 import { CONFIG, STORAGE_KEY } from './config.js';
 

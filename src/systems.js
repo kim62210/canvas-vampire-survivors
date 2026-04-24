@@ -1,5 +1,16 @@
-// Cross-cutting systems: spatial hash for broad-phase collision, spawn director,
-// camera shake, FPS meter.
+/**
+ * @module systems
+ * @description Cross-cutting infrastructure used by the main loop —
+ * spatial-hash broad phase, screen-shake camera and a rolling FPS meter.
+ * No gameplay state lives here; callers own their own enemy/entity arrays.
+ *
+ * Dependencies: none.
+ *
+ * Exports:
+ *   - class SpatialHash    grid-based broad-phase lookup
+ *   - class ShakeCamera    cumulative shake offset
+ *   - class FpsMeter       60-sample rolling average
+ */
 
 export class SpatialHash {
     constructor(cell = 80) {

@@ -164,9 +164,58 @@ export class Game {
 
         this._bindInput();
         this._bindDomButtons();
+        this._bindLeaderboardImport();
 
         window.addEventListener('resize', () => this._resize());
         this._resize();
+    }
+
+    /**
+     * Listen for the `vs-leaderboard-import` CustomEvent that `UI.showLeaderboard`
+     * dispatches when the user pastes JSON and clicks Import. We merge the
+     * incoming runs into both the normal and speedrun stores, dedupe by
+     * `date+timeSurvived` (or `date+timeMs` for speedrun), then re-rank and
+     * persist. The UI is then refreshed if it's still on screen.
+     */
+    _bindLeaderboardImport() {
+        if (typeof window === 'undefined') return;
+        window.addEventListener('vs-leaderboard-import', (ev) => {
+            const payload = ev.detail || {};
+            try {
+                if (Array.isArray(payload.normal)) {
+                    const seen = new Set(
+                        (this.save.highScores || []).map((r) => `${r.date}|${r.timeSurvived}`)
+                    );
+                    for (const r of payload.normal) {
+                        const k = `${r.date}|${r.timeSurvived}`;
+                        if (!seen.has(k)) {
+                            recordHighScore(this.save, r);
+                            seen.add(k);
+                        }
+                    }
+                    saveSave(this.save);
+                }
+                if (Array.isArray(payload.speedrun)) {
+                    const existing = loadSpeedrunScores();
+                    const seen = new Set(existing.map((r) => `${r.date}|${r.timeMs}`));
+                    for (const r of payload.speedrun) {
+                        const k = `${r.date}|${r.timeMs}`;
+                        if (!seen.has(k)) {
+                            recordSpeedrunScore(r);
+                            seen.add(k);
+                        }
+                    }
+                }
+                // Refresh the open leaderboard view if the dialog is still up.
+                this.ui.showLeaderboard?.(
+                    this.save.highScores || [],
+                    loadSpeedrunScores(),
+                    () => {}
+                );
+            } catch (err) {
+                console.warn('[main] leaderboard import failed', err);
+            }
+        });
     }
 
     // --- Lifecycle --------------------------------------------------------
@@ -251,6 +300,7 @@ export class Game {
         this.run.evolvedBefore = {};
         this.run.realSecondsToVoidLord = Infinity;
         this.run.noHitBoss = false;
+        this.run.tookAnyDamage = false; // flipped by Player.takeDamage; drives no-hit badge
         this.run.bossFightNoHit = new Set(); // ids of bosses whose fight we've tracked
         this._runStartWallClock = performance.now();
         this.speedrunSplits = [];
@@ -309,7 +359,8 @@ export class Game {
 
         // Update lifetime "unique builds" counter: a build = the sorted set
         // of weapon ids at death. If we haven't seen this combination before,
-        // bump the counter (capped at a reasonable number to avoid bloat).
+        // append it. Hard-cap the array at SEEN_BUILDS_CAP (1000) to keep the
+        // save under a reasonable byte budget — older keys roll out FIFO.
         this.save.totals ??= { kills: 0, timePlayed: 0, runs: 0, bossKills: 0 };
         this.save.totals.seenBuilds ??= [];
         const buildKey = this.player.weapons
@@ -318,6 +369,10 @@ export class Game {
             .join('+');
         if (buildKey && !this.save.totals.seenBuilds.includes(buildKey)) {
             this.save.totals.seenBuilds.push(buildKey);
+            const cap = CONFIG.SEEN_BUILDS_CAP || 1000;
+            if (this.save.totals.seenBuilds.length > cap) {
+                this.save.totals.seenBuilds.splice(0, this.save.totals.seenBuilds.length - cap);
+            }
             this.save.totals.uniqueBuilds = this.save.totals.seenBuilds.length;
         }
 
@@ -333,7 +388,10 @@ export class Game {
             level: this.player.level,
             date: Date.now(),
             weapons: weaponIds,
-            noHit: (this.run.longestUnhit || 0) >= this.gameTime - 0.5
+            // Authoritative: was the player hit even once across the whole
+            // run? Falls back to the unhit-timer proxy for backwards compat
+            // if a custom path bypassed Player.takeDamage.
+            noHit: !this.run.tookAnyDamage
         };
         recordHighScore(this.save, entry);
         accumulateTotals(this.save, {

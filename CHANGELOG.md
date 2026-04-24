@@ -11,6 +11,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Placeholder for upcoming changes. Contributors, add your entries here.
 
+## [2.5.0] - 2026-04-25
+
+Reflection + polish release. No new content; instead, a sweep through every
+"tiny TODO" left at the end of v2.4 so the main branch can be tagged and
+shipped with a clear conscience. Still no runtime dependencies.
+
+### Added
+
+- `EffectLayer.schedule(seconds, fn)` (`src/effects.js`) — generic dt-based
+  delay queue used by the gameplay loop. Replaces the wall-clock
+  `setTimeout` used for the Glacial Cascade follow-up pulse, so the second
+  ring now correctly pauses with the game / hidden tab.
+- `Game._bindLeaderboardImport()` (`src/main.js`) — listens for the
+  `vs-leaderboard-import` `CustomEvent` that the UI dispatches, dedupes
+  incoming runs by `date+timeSurvived` (or `date+timeMs` for speedrun),
+  merges them through the existing recordHighScore / recordSpeedrunScore
+  helpers, persists, and refreshes the open dialog.
+- `docs/generate-screenshots.js` — Node script that emits 6 SVG mockups
+  under `docs/screenshots/` (`mainmenu`, `gameplay-early`, `boss-fight`,
+  `levelup`, `gameover`, `achievements`). SVG was chosen over a real
+  headless renderer to keep the toolchain dependency-free; real PNG
+  captures still take precedence when contributors provide them.
+- `docs/RELEASE_v2.5.md` — long-form release notes summarising every
+  v1.0 → v2.5 change. Suitable for a GitHub release announcement / blog.
+- `docs/REPO_SETTINGS.md` — checklist of GitHub UI settings (homepage URL,
+  topics, About description, branch protections) the maintainer should
+  apply by hand. We don't touch the live remote from CI.
+- `docs/GOOD_FIRST_ISSUES.md` — 10 hand-picked "good first issue"
+  candidates with scope, files-touched and acceptance criteria, ready to
+  be filed verbatim into the GitHub Issues tab.
+
+### Changed
+
+- `Player.takeDamage` (`src/entities.js`) now sets `game.run.tookAnyDamage`,
+  and `Game.gameOver` derives the high-score `noHit` flag from that boolean
+  rather than the `unhitTimer >= gameTime - 0.5` proxy. The proxy could
+  misfire on fractional-second deaths or i-frame races; the new flag is
+  authoritative.
+- `Game.gameOver` (`src/main.js`) caps `save.totals.seenBuilds` at
+  `CONFIG.SEEN_BUILDS_CAP` (1000). Older keys roll out FIFO so the save
+  payload stays small even on hyper-active accounts.
+- `setLocale` (`src/i18n.js`) now mirrors the active language onto
+  `document.documentElement.lang` (en → `en`, zh → `zh-Hans`). Helps
+  screen readers, browser translation prompts and `:lang(...)` selectors.
+- README "Performance" table is now explicitly tagged "(estimated)" and
+  the methodology callout warns readers to reproduce locally before
+  quoting the numbers anywhere.
+- README "Screenshots" gallery now references the generated SVG mockups
+  in `docs/screenshots/*.svg` instead of broken-image PNG placeholders.
+- `package.json` version bumped to 2.5.0; `CONFIG.VERSION` matches.
+
 ## [2.4.0] - 2026-04-25
 
 Content + launch prep release. The catalogue roughly doubles in depth
@@ -241,7 +292,8 @@ full open-source contribution workflow. No runtime dependencies were added.
 - Particle effects and basic wave announcements.
 - Single-file `game.js` implementation (~1400 lines).
 
-[Unreleased]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.0.0...v2.2.0

@@ -298,15 +298,20 @@ export class Weapon {
         }
         game.createParticles(player.x, player.y, '#aaeeff', 24);
         if (this.isEvolved()) {
-            // Queue a follow-up pulse ~0.4s later, at 60% damage.
-            setTimeout(() => {
+            // Queue a follow-up pulse ~0.4s later, at 60% damage. Goes through
+            // the effects layer so it pauses with the game / tab visibility,
+            // unlike a wall-clock setTimeout. Captures `range`/`baseDmg` at
+            // fire-time so a stat change between pulses doesn't retro-buff.
+            const r = range;
+            const d2 = baseDmg * 0.6;
+            game.effects?.schedule?.(0.4, () => {
                 if (!game.player || game.player.dead) return;
                 for (const e of game.enemies) {
                     const d = Math.hypot(e.x - player.x, e.y - player.y);
-                    if (d < range) e.takeDamage(baseDmg * 0.6);
+                    if (d < r) e.takeDamage(d2);
                 }
                 game.createParticles(player.x, player.y, '#88ccff', 16);
-            }, 400);
+            });
         }
         game.audio?.shoot?.();
     }

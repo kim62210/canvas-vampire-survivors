@@ -20,7 +20,8 @@ export class AchievementTracker {
             bossesDefeated: {},
             maxedWeapon: false,
             orbsCollected: 0,
-            longestUnhit: 0
+            longestUnhit: 0,
+            tookAnyDamage: false
         };
         this.queue = [];
     }
@@ -30,7 +31,8 @@ export class AchievementTracker {
             bossesDefeated: {},
             maxedWeapon: false,
             orbsCollected: 0,
-            longestUnhit: 0
+            longestUnhit: 0,
+            tookAnyDamage: false
         };
     }
 

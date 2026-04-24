@@ -101,11 +101,18 @@ export class HitBursts {
 }
 
 // Aggregator: one object to thread through the game for all lightweight FX.
+//
+// Also owns a generic `delays` queue: callers can schedule a `fn` to run after
+// `t` seconds of *simulation* time. Unlike `setTimeout`, this queue is paused
+// when the game is paused or the tab is hidden, because `update(dt)` only
+// gets called from the gameplay loop. This is what the Glacial Cascade
+// follow-up pulse uses instead of a wall-clock setTimeout.
 export class EffectLayer {
     constructor() {
         this.flash = new ScreenFlash();
         this.pulses = new RingPulse();
         this.hits = new HitBursts();
+        this.delays = []; // Array<{ t, fn }>
     }
     levelUp(x, y) {
         this.pulses.emit(x, y, '255,220,80');
@@ -120,10 +127,36 @@ export class EffectLayer {
     achievement() {
         this.flash.flash('200,255,200', 0.18, 2);
     }
+    /**
+     * Schedule a callback to fire after `seconds` of simulation time. The queue
+     * is drained inside `update(dt)`, so it implicitly pauses with the game.
+     * Returns a token whose `.cancelled = true` stops the callback.
+     */
+    schedule(seconds, fn) {
+        const entry = { t: seconds, fn, cancelled: false };
+        this.delays.push(entry);
+        return entry;
+    }
     update(dt) {
         this.flash.update(dt);
         this.pulses.update(dt);
         this.hits.update(dt);
+        if (this.delays.length) {
+            for (let i = this.delays.length - 1; i >= 0; i--) {
+                const d = this.delays[i];
+                d.t -= dt;
+                if (d.t <= 0) {
+                    this.delays.splice(i, 1);
+                    if (!d.cancelled) {
+                        try {
+                            d.fn();
+                        } catch (err) {
+                            console.warn('[effects] scheduled fn threw', err);
+                        }
+                    }
+                }
+            }
+        }
     }
     render(ctx, w, h) {
         this.pulses.render(ctx);

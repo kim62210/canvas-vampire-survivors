@@ -45,7 +45,9 @@ export const CONFIG = {
     EARLY_EVOLVE_THRESHOLD: 420, // seconds — used by Early Evolve achievement
     NOVA_SLOW_DEFAULT: 0.5, // fallback slow % when def omits slowPct
     BOMBER_DEFAULT_RADIUS: 120, // used if data.js omits blastRadius
-    VERSION: '2.4.0'
+    // --- v2.5: polish + reflection -------------------------------------
+    SEEN_BUILDS_CAP: 1000, // hard upper bound on unique builds tracked in totals
+    VERSION: '2.5.0'
 };
 
 export const GameState = Object.freeze({

@@ -135,8 +135,16 @@ const STRINGS = {
 
 let current = 'en';
 
+// Map BCP-47-ish identifiers to <html lang> values. Only what we actually ship.
+const HTML_LANG = { en: 'en', zh: 'zh-Hans' };
+
 export function setLocale(loc) {
     if (STRINGS[loc]) current = loc;
+    // Keep <html lang> in sync so screen readers, browser translation prompts
+    // and CSS `:lang(...)` selectors all match the active UI language.
+    if (typeof document !== 'undefined' && document.documentElement) {
+        document.documentElement.lang = HTML_LANG[current] || current;
+    }
 }
 export function getLocale() {
     return current;

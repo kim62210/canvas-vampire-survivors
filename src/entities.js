@@ -156,6 +156,10 @@ export class Player {
         this.invincible = true;
         this.invincibleTimer = CONFIG.INVINCIBILITY_TIME;
         this.unhitTimer = 0;
+        // Authoritative no-hit flag: once set, it stays set for the rest of
+        // the run. Replaces the older `unhitTimer >= gameTime` proxy which
+        // could misfire on fractional-second deaths.
+        if (game?.run) game.run.tookAnyDamage = true;
         game?.onPlayerHurt?.(taken);
         if (this.hp <= 0) {
             this.hp = 0;

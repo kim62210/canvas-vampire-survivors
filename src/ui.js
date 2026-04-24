@@ -14,10 +14,26 @@ export class UI {
 
     _cache() {
         const ids = [
-            'hp', 'maxHp', 'hpBar', 'level', 'expBar', 'time', 'kills',
-            'weaponIcons', 'startScreen', 'gameOver', 'finalTime', 'finalKills',
-            'finalLevel', 'levelUpMenu', 'upgradeOptions', 'pauseMenu',
-            'settingsMenu', 'fpsCounter', 'bossBanner', 'highScore',
+            'hp',
+            'maxHp',
+            'hpBar',
+            'level',
+            'expBar',
+            'time',
+            'kills',
+            'weaponIcons',
+            'startScreen',
+            'gameOver',
+            'finalTime',
+            'finalKills',
+            'finalLevel',
+            'levelUpMenu',
+            'upgradeOptions',
+            'pauseMenu',
+            'settingsMenu',
+            'fpsCounter',
+            'bossBanner',
+            'highScore',
             'passiveIcons'
         ];
         for (const id of ids) this.els[id] = document.getElementById(id);
@@ -31,22 +47,35 @@ export class UI {
         this.els.level.textContent = p.level;
         this.els.expBar.style.width = Math.min(100, (p.exp / p.expToNext) * 100) + '%';
 
-        const m = Math.floor(game.gameTime / 60).toString().padStart(2, '0');
-        const s = Math.floor(game.gameTime % 60).toString().padStart(2, '0');
+        const m = Math.floor(game.gameTime / 60)
+            .toString()
+            .padStart(2, '0');
+        const s = Math.floor(game.gameTime % 60)
+            .toString()
+            .padStart(2, '0');
         this.els.time.textContent = `${m}:${s}`;
         this.els.kills.textContent = game.kills;
 
         if (this.els.highScore) {
             const hs = game.save.highScore;
-            const hm = Math.floor(hs.timeSurvived / 60).toString().padStart(2, '0');
-            const hsec = Math.floor(hs.timeSurvived % 60).toString().padStart(2, '0');
+            const hm = Math.floor(hs.timeSurvived / 60)
+                .toString()
+                .padStart(2, '0');
+            const hsec = Math.floor(hs.timeSurvived % 60)
+                .toString()
+                .padStart(2, '0');
             this.els.highScore.textContent = `${t('highScore')}: ${hm}:${hsec} · ${hs.kills}K`;
         }
 
         // Weapon icons
-        this._renderChips(this.els.weaponIcons, p.weapons.map(w => ({
-            icon: w.icon, level: w.level, max: CONFIG.WEAPON_MAX_LEVEL
-        })));
+        this._renderChips(
+            this.els.weaponIcons,
+            p.weapons.map((w) => ({
+                icon: w.icon,
+                level: w.level,
+                max: CONFIG.WEAPON_MAX_LEVEL
+            }))
+        );
         // Passive icons
         const passives = [];
         for (const id in p.passives) {
@@ -86,11 +115,13 @@ export class UI {
         for (const up of picks) {
             const div = document.createElement('div');
             div.className = 'upgrade-option';
-            const existing = up.type === 'weapon'
-                ? player.weapons.find(w => w.id === up.data.id)
-                : player.passives[up.data.id];
+            const existing =
+                up.type === 'weapon'
+                    ? player.weapons.find((w) => w.id === up.data.id)
+                    : player.passives[up.data.id];
             const lvl = up.type === 'weapon' ? (existing?.level ?? 0) : (existing?.count ?? 0);
-            const label = lvl > 0 ? ` (${up.type === 'weapon' ? 'Lv.' : 'x'}${lvl + 1})` : ' (New!)';
+            const label =
+                lvl > 0 ? ` (${up.type === 'weapon' ? 'Lv.' : 'x'}${lvl + 1})` : ' (New!)';
             div.innerHTML = `
                 <div class="name">${up.data.icon} ${up.data.name}${label}</div>
                 <div class="desc">${up.data.description}</div>
@@ -113,7 +144,9 @@ export class UI {
         options.querySelector('.upgrade-option')?.focus();
     }
 
-    hideLevelUp() { this.els.levelUpMenu.style.display = 'none'; }
+    hideLevelUp() {
+        this.els.levelUpMenu.style.display = 'none';
+    }
 
     showBossBanner() {
         if (!this.els.bossBanner) return;
@@ -122,8 +155,12 @@ export class UI {
         setTimeout(() => this.els.bossBanner.classList.remove('visible'), 2500);
     }
 
-    showPause() { this.els.pauseMenu.style.display = 'flex'; }
-    hidePause() { this.els.pauseMenu.style.display = 'none'; }
+    showPause() {
+        this.els.pauseMenu.style.display = 'flex';
+    }
+    hidePause() {
+        this.els.pauseMenu.style.display = 'none';
+    }
 
     showSettings(settings, onChange, onClose, onReset) {
         const m = this.els.settingsMenu;
@@ -133,7 +170,7 @@ export class UI {
                 ${sliderRow('masterVolume', settings.masterVolume)}
                 ${sliderRow('sfxVolume', settings.sfxVolume)}
                 ${sliderRow('musicVolume', settings.musicVolume)}
-                ${selectRow('difficulty', settings.difficulty, ['easy','normal','hard','nightmare'])}
+                ${selectRow('difficulty', settings.difficulty, ['easy', 'normal', 'hard', 'nightmare'])}
                 ${checkboxRow('showFps', settings.showFps)}
                 ${checkboxRow('screenShake', settings.screenShake)}
                 ${checkboxRow('reducedMotion', settings.reducedMotion)}
@@ -151,9 +188,12 @@ export class UI {
         function handler(e) {
             const key = e.target.dataset.key;
             if (!key) return;
-            let val = e.target.type === 'checkbox' ? e.target.checked
-                : e.target.type === 'range' ? parseFloat(e.target.value)
-                : e.target.value;
+            let val =
+                e.target.type === 'checkbox'
+                    ? e.target.checked
+                    : e.target.type === 'range'
+                      ? parseFloat(e.target.value)
+                      : e.target.value;
             if (key === 'locale') setLocale(val);
             onChange(key, val);
         }
@@ -171,28 +211,41 @@ export class UI {
         }
     }
 
-    hideSettings() { this.els.settingsMenu.style.display = 'none'; }
+    hideSettings() {
+        this.els.settingsMenu.style.display = 'none';
+    }
 
     showGameOver(game) {
-        const m = Math.floor(game.gameTime / 60).toString().padStart(2, '0');
-        const s = Math.floor(game.gameTime % 60).toString().padStart(2, '0');
+        const m = Math.floor(game.gameTime / 60)
+            .toString()
+            .padStart(2, '0');
+        const s = Math.floor(game.gameTime % 60)
+            .toString()
+            .padStart(2, '0');
         this.els.finalTime.textContent = `${m}:${s}`;
         this.els.finalKills.textContent = game.kills;
         this.els.finalLevel.textContent = game.player.level;
         this.els.gameOver.style.display = 'block';
     }
 
-    hideGameOver() { this.els.gameOver.style.display = 'none'; }
-    hideStart() { this.els.startScreen.style.display = 'none'; }
-    showStart() { this.els.startScreen.style.display = 'block'; }
+    hideGameOver() {
+        this.els.gameOver.style.display = 'none';
+    }
+    hideStart() {
+        this.els.startScreen.style.display = 'none';
+    }
+    showStart() {
+        this.els.startScreen.style.display = 'block';
+    }
 }
 
 function buildUpgradePool(player) {
     const pool = [];
     for (const weapon of Object.values(WEAPONS)) {
-        const existing = player.weapons.find(w => w.id === weapon.id);
+        const existing = player.weapons.find((w) => w.id === weapon.id);
         if (existing) {
-            if (existing.level < CONFIG.WEAPON_MAX_LEVEL) pool.push({ type: 'weapon', data: weapon });
+            if (existing.level < CONFIG.WEAPON_MAX_LEVEL)
+                pool.push({ type: 'weapon', data: weapon });
         } else if (player.weapons.length < CONFIG.MAX_WEAPONS) {
             pool.push({ type: 'weapon', data: weapon });
         }
@@ -234,7 +287,7 @@ function selectRow(key, value, values) {
         <label class="settings-row">
             <span>${t(key)}</span>
             <select data-key="${key}">
-                ${values.map(v => `<option value="${v}" ${v === value ? 'selected' : ''}>${v}</option>`).join('')}
+                ${values.map((v) => `<option value="${v}" ${v === value ? 'selected' : ''}>${v}</option>`).join('')}
             </select>
         </label>`;
 }

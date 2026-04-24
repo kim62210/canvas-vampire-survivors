@@ -13,7 +13,9 @@ export class Weapon {
         this.cooldown = 0;
     }
 
-    levelUp() { this.level++; }
+    levelUp() {
+        this.level++;
+    }
 
     update(dt, player, game) {
         this.cooldown -= dt;
@@ -37,10 +39,14 @@ export class Weapon {
 
     fire(player, game) {
         switch (this.def.type) {
-            case 'melee':      return this._fireMelee(player, game);
-            case 'projectile': return this._fireProjectile(player, game);
-            case 'instant':    return this._fireInstant(player, game);
-            case 'aura':       return this._fireAura(player, game);
+            case 'melee':
+                return this._fireMelee(player, game);
+            case 'projectile':
+                return this._fireProjectile(player, game);
+            case 'instant':
+                return this._fireInstant(player, game);
+            case 'aura':
+                return this._fireAura(player, game);
         }
     }
 
@@ -69,11 +75,18 @@ export class Weapon {
         if (!target) return;
         const base = Math.atan2(target.y - player.y, target.x - player.x);
         for (let i = 0; i < count; i++) {
-            const offset = ((i - (count - 1) / 2) * spreadDeg) * Math.PI / 180;
-            game.projectiles.push(new Projectile(
-                player.x, player.y, base + offset,
-                this.def, this.getDamage(player), this.level, player
-            ));
+            const offset = ((i - (count - 1) / 2) * spreadDeg * Math.PI) / 180;
+            game.projectiles.push(
+                new Projectile(
+                    player.x,
+                    player.y,
+                    base + offset,
+                    this.def,
+                    this.getDamage(player),
+                    this.level,
+                    player
+                )
+            );
         }
         game.audio.shoot();
     }
@@ -81,7 +94,9 @@ export class Weapon {
     _fireInstant(player, game) {
         const range = this.getRange(player);
         const dmg = this.getDamage(player);
-        const targets = game.enemies.filter(e => Math.hypot(e.x - player.x, e.y - player.y) < range);
+        const targets = game.enemies.filter(
+            (e) => Math.hypot(e.x - player.x, e.y - player.y) < range
+        );
         if (!targets.length) return;
         const target = targets[Math.floor(Math.random() * targets.length)];
         target.takeDamage(dmg);
@@ -93,11 +108,15 @@ export class Weapon {
             let current = target;
             const chained = new Set([current]);
             for (let i = 0; i < this.def.chainCount; i++) {
-                let nearest = null, minD = Infinity;
+                let nearest = null,
+                    minD = Infinity;
                 for (const e of game.enemies) {
                     if (chained.has(e)) continue;
                     const d = Math.hypot(e.x - current.x, e.y - current.y);
-                    if (d < 180 && d < minD) { minD = d; nearest = e; }
+                    if (d < 180 && d < minD) {
+                        minD = d;
+                        nearest = e;
+                    }
                 }
                 if (!nearest) break;
                 nearest.takeDamage(dmg * 0.7);
@@ -119,7 +138,12 @@ export class Weapon {
         if (Math.random() < 0.4) {
             const a = Math.random() * Math.PI * 2;
             const r = Math.random() * range;
-            game.createParticles(player.x + Math.cos(a) * r, player.y + Math.sin(a) * r, '#88ff88', 1);
+            game.createParticles(
+                player.x + Math.cos(a) * r,
+                player.y + Math.sin(a) * r,
+                '#88ff88',
+                1
+            );
         }
     }
 }

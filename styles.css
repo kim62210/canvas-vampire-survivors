@@ -12,13 +12,23 @@
     --border: #2a2f44;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-html, body {
+html,
+body {
     height: 100%;
     background: radial-gradient(ellipse at top, #1b1330 0%, #0a0a12 70%);
     color: var(--text);
-    font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    font-family:
+        system-ui,
+        -apple-system,
+        'Segoe UI',
+        'Microsoft YaHei',
+        sans-serif;
     overflow: hidden;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
@@ -49,7 +59,8 @@ canvas {
 }
 
 #ui {
-    position: absolute; inset: 0;
+    position: absolute;
+    inset: 0;
     pointer-events: none;
 }
 
@@ -58,27 +69,58 @@ canvas {
     padding: 10px 14px;
     color: var(--text);
     font-size: 14px;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
     line-height: 1.6;
 }
 
-.hud-sub { color: var(--muted); font-size: 12px; }
+.hud-sub {
+    color: var(--muted);
+    font-size: 12px;
+}
 
-#topLeft { top: 10px; left: 10px; }
-#topRight { top: 10px; right: 10px; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
-#bottomLeft { bottom: 10px; left: 10px; }
+#topLeft {
+    top: 10px;
+    left: 10px;
+}
+#topRight {
+    top: 10px;
+    right: 10px;
+    text-align: right;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+}
+#bottomLeft {
+    bottom: 10px;
+    left: 10px;
+}
 
-.bar-label { margin-top: 6px; font-size: 12px; color: var(--muted); }
+.bar-label {
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--muted);
+}
 
-.hp-bar, .exp-bar {
-    width: 220px; height: 12px;
+.hp-bar,
+.exp-bar {
+    width: 220px;
+    height: 12px;
     background: rgba(20, 22, 36, 0.9);
     border: 1px solid var(--border);
     border-radius: 999px;
     overflow: hidden;
 }
-.hp-fill  { height: 100%; background: linear-gradient(90deg, #ff3355, #ff6a7a); transition: width .2s; }
-.exp-fill { height: 100%; background: linear-gradient(90deg, #3388ff, #66bbff); transition: width .2s; }
+.hp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff3355, #ff6a7a);
+    transition: width 0.2s;
+}
+.exp-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3388ff, #66bbff);
+    transition: width 0.2s;
+}
 
 .chip-row {
     display: flex;
@@ -87,23 +129,44 @@ canvas {
     flex-wrap: wrap;
 }
 
-.weapon-icons { position: absolute; bottom: 10px; right: 10px; max-width: 260px; justify-content: flex-end; }
+.weapon-icons {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    max-width: 260px;
+    justify-content: flex-end;
+}
 
 .chip {
     position: relative;
-    width: 38px; height: 38px;
-    background: rgba(0,0,0,0.72);
+    width: 38px;
+    height: 38px;
+    background: rgba(0, 0, 0, 0.72);
     border: 2px solid var(--border);
     border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     font-size: 18px;
 }
-.chip.active { border-color: var(--accent); box-shadow: 0 0 10px rgba(255, 210, 77, 0.35); }
-.chip.maxed { border-color: #00d9a0; box-shadow: 0 0 10px rgba(0, 217, 160, 0.4); }
+.chip.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 10px rgba(255, 210, 77, 0.35);
+}
+.chip.maxed {
+    border-color: #00d9a0;
+    box-shadow: 0 0 10px rgba(0, 217, 160, 0.4);
+}
 .chip-lvl {
-    position: absolute; bottom: -4px; right: -4px;
-    background: var(--accent); color: #111;
-    font-size: 10px; font-weight: 700; padding: 1px 4px; border-radius: 6px;
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    background: var(--accent);
+    color: #111;
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 4px;
+    border-radius: 6px;
 }
 
 .icon-btn {
@@ -111,19 +174,25 @@ canvas {
     background: rgba(10, 12, 22, 0.85);
     border: 1px solid var(--border);
     color: var(--text);
-    width: 36px; height: 36px;
+    width: 36px;
+    height: 36px;
     border-radius: 8px;
     cursor: pointer;
     font-size: 16px;
 }
-.icon-btn:hover { background: #1a1c30; }
+.icon-btn:hover {
+    background: #1a1c30;
+}
 
 /* Overlays ------------------------------------------------------------- */
 .overlay {
-    position: absolute; inset: 0;
+    position: absolute;
+    inset: 0;
     background: rgba(5, 6, 14, 0.6);
     backdrop-filter: blur(6px);
-    display: flex; align-items: center; justify-content: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     pointer-events: auto;
     z-index: 10;
 }
@@ -138,7 +207,7 @@ canvas {
     max-width: 92vw;
     max-height: 92vh;
     overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
 }
 
 .overlay-card h1 {
@@ -154,21 +223,32 @@ canvas {
     font-size: 22px;
     letter-spacing: 1px;
 }
-.overlay-card .subtitle { color: var(--muted); margin-bottom: 22px; }
+.overlay-card .subtitle {
+    color: var(--muted);
+    margin-bottom: 22px;
+}
 
 .instructions {
     text-align: left;
     margin: 18px 0;
     padding: 16px 18px;
-    background: rgba(255,255,255,0.04);
+    background: rgba(255, 255, 255, 0.04);
     border: 1px solid var(--border);
     border-radius: 10px;
     font-size: 13px;
     line-height: 1.9;
 }
 
-.btn-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-.btn-row.vertical { flex-direction: column; align-items: stretch; }
+.btn-row {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+.btn-row.vertical {
+    flex-direction: column;
+    align-items: stretch;
+}
 
 .btn {
     border: 0;
@@ -177,26 +257,44 @@ canvas {
     border-radius: 10px;
     cursor: pointer;
     font-weight: 600;
-    transition: transform .15s ease, background .2s;
+    transition:
+        transform 0.15s ease,
+        background 0.2s;
     color: #fff;
 }
-.btn:hover { transform: translateY(-1px); }
-.btn.primary { background: var(--primary); }
-.btn.primary:hover { background: var(--primary-strong); }
-.btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
-.btn.ghost:hover { background: rgba(255,255,255,0.05); }
-.btn.danger { background: var(--danger); }
+.btn:hover {
+    transform: translateY(-1px);
+}
+.btn.primary {
+    background: var(--primary);
+}
+.btn.primary:hover {
+    background: var(--primary-strong);
+}
+.btn.ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text);
+}
+.btn.ghost:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+.btn.danger {
+    background: var(--danger);
+}
 
 /* Level-up ----------------------------------------------------------- */
-.overlay-card.levelup { min-width: 440px; }
+.overlay-card.levelup {
+    min-width: 440px;
+}
 .upgrade-option {
-    background: rgba(255,255,255,0.05);
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid var(--border);
     border-radius: 10px;
     padding: 14px 16px;
     margin: 10px 0;
     cursor: pointer;
-    transition: all .2s;
+    transition: all 0.2s;
     text-align: left;
     outline: none;
 }
@@ -206,13 +304,30 @@ canvas {
     border-color: var(--accent);
     transform: translateX(2px);
 }
-.upgrade-option .name { color: var(--accent); font-weight: 700; font-size: 16px; }
-.upgrade-option .desc { color: var(--muted); font-size: 12px; margin-top: 4px; }
+.upgrade-option .name {
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 16px;
+}
+.upgrade-option .desc {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 4px;
+}
 
 /* Game over ---------------------------------------------------------- */
-.overlay-card.gameover { border-color: var(--danger); }
-.overlay-card.gameover h1 { color: var(--danger); text-shadow: 0 0 20px rgba(255, 51, 85, 0.5); }
-.stats { margin: 18px 0; font-size: 16px; line-height: 2; }
+.overlay-card.gameover {
+    border-color: var(--danger);
+}
+.overlay-card.gameover h1 {
+    color: var(--danger);
+    text-shadow: 0 0 20px rgba(255, 51, 85, 0.5);
+}
+.stats {
+    margin: 18px 0;
+    font-size: 16px;
+    line-height: 2;
+}
 
 /* Settings ----------------------------------------------------------- */
 .settings-card {
@@ -225,7 +340,10 @@ canvas {
     max-height: 88vh;
     overflow-y: auto;
 }
-.settings-card h2 { color: var(--accent); margin-bottom: 16px; }
+.settings-card h2 {
+    color: var(--accent);
+    margin-bottom: 16px;
+}
 .settings-row {
     display: grid;
     grid-template-columns: 1fr 2fr auto;
@@ -235,9 +353,18 @@ canvas {
     border-top: 1px dashed var(--border);
     font-size: 14px;
 }
-.settings-row:first-of-type { border-top: 0; }
-.settings-row input[type=range] { width: 100%; }
-.settings-row output { color: var(--muted); font-size: 12px; min-width: 36px; text-align: right; }
+.settings-row:first-of-type {
+    border-top: 0;
+}
+.settings-row input[type='range'] {
+    width: 100%;
+}
+.settings-row output {
+    color: var(--muted);
+    font-size: 12px;
+    min-width: 36px;
+    text-align: right;
+}
 .settings-row select {
     background: #101224;
     color: var(--text);
@@ -245,11 +372,18 @@ canvas {
     border-radius: 6px;
     padding: 6px 8px;
 }
-.settings-buttons { display: flex; justify-content: space-between; gap: 8px; margin-top: 18px; }
+.settings-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 18px;
+}
 
 /* Boss banner -------------------------------------------------------- */
 .boss-banner {
-    position: absolute; top: 35%; left: 50%;
+    position: absolute;
+    top: 35%;
+    left: 50%;
     transform: translate(-50%, -50%) scale(0.9);
     color: var(--danger);
     font-size: 42px;
@@ -257,47 +391,82 @@ canvas {
     letter-spacing: 4px;
     text-shadow: 0 0 30px rgba(255, 50, 80, 0.7);
     opacity: 0;
-    transition: opacity .4s, transform .4s;
+    transition:
+        opacity 0.4s,
+        transform 0.4s;
     pointer-events: none;
 }
-.boss-banner.visible { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.boss-banner.visible {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+}
 
 /* Virtual joystick (touch only) -------------------------------------- */
 .joystick {
     position: absolute;
-    bottom: 80px; left: 30px;
-    width: 140px; height: 140px;
+    bottom: 80px;
+    left: 30px;
+    width: 140px;
+    height: 140px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.05);
-    border: 2px solid rgba(255,255,255,0.08);
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.08);
     display: none;
     pointer-events: auto;
     touch-action: none;
 }
 .joystick-knob {
-    position: absolute; top: 50%; left: 50%;
-    width: 58px; height: 58px;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 58px;
+    height: 58px;
     border-radius: 50%;
-    background: rgba(255,255,255,0.2);
-    border: 2px solid rgba(255,255,255,0.25);
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.25);
     transform: translate(-50%, -50%);
 }
 
 @media (hover: none) and (pointer: coarse) {
-    .joystick { display: block; }
+    .joystick {
+        display: block;
+    }
 }
 
 /* Accessibility ------------------------------------------------------ */
 @media (prefers-reduced-motion: reduce) {
-    .btn, .upgrade-option, .boss-banner { transition: none !important; }
+    .btn,
+    .upgrade-option,
+    .boss-banner {
+        transition: none !important;
+    }
 }
 
 /* Phones ------------------------------------------------------------- */
 @media (max-width: 768px) {
-    .overlay-card, .overlay-card.levelup, .settings-card { min-width: 260px; padding: 18px; }
-    .hud { font-size: 12px; padding: 6px 8px; }
-    .hp-bar, .exp-bar { width: 140px; }
-    .chip { width: 32px; height: 32px; font-size: 15px; }
-    .overlay-card h1 { font-size: 26px; }
-    .boss-banner { font-size: 28px; }
+    .overlay-card,
+    .overlay-card.levelup,
+    .settings-card {
+        min-width: 260px;
+        padding: 18px;
+    }
+    .hud {
+        font-size: 12px;
+        padding: 6px 8px;
+    }
+    .hp-bar,
+    .exp-bar {
+        width: 140px;
+    }
+    .chip {
+        width: 32px;
+        height: 32px;
+        font-size: 15px;
+    }
+    .overlay-card h1 {
+        font-size: 26px;
+    }
+    .boss-banner {
+        font-size: 28px;
+    }
 }

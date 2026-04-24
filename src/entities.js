@@ -6,7 +6,8 @@ import { PASSIVES, WEAPONS } from './data.js';
 
 export class Player {
     constructor(x, y) {
-        this.x = x; this.y = y;
+        this.x = x;
+        this.y = y;
         this.size = CONFIG.PLAYER_SIZE;
         this.baseMaxHp = 100;
         this.maxHp = this.baseMaxHp;
@@ -70,13 +71,17 @@ export class Player {
     recalculateStats() {
         const prevMaxHp = this.maxHp;
         this.maxHp = this.baseMaxHp * this._passiveMult('maxHpMult');
-        this.hp += (this.maxHp - prevMaxHp);
+        this.hp += this.maxHp - prevMaxHp;
         this.hp = Math.min(this.hp, this.maxHp);
     }
 
-    getDamageMult()  { return this._passiveMult('damageMult'); }
-    getAreaMult()    { return this._passiveMult('areaMult'); }
-    getCooldownMult(){
+    getDamageMult() {
+        return this._passiveMult('damageMult');
+    }
+    getAreaMult() {
+        return this._passiveMult('areaMult');
+    }
+    getCooldownMult() {
         // cooldownMult.effect is negative (-0.08 => 8% faster). Multiply safely.
         let mult = 1;
         for (const id in this.passives) {
@@ -86,8 +91,12 @@ export class Player {
         }
         return Math.max(0.2, mult);
     }
-    getSpeedMult()   { return this._passiveMult('speedMult'); }
-    getExpMult()     { return this._passiveMult('expMult'); }
+    getSpeedMult() {
+        return this._passiveMult('speedMult');
+    }
+    getExpMult() {
+        return this._passiveMult('expMult');
+    }
     getMagnetRange() {
         let mult = 1;
         for (const id in this.passives) {
@@ -97,7 +106,9 @@ export class Player {
         }
         return CONFIG.MAGNET_BASE * mult;
     }
-    getArmor() { return this._passiveSum('armor'); }
+    getArmor() {
+        return this._passiveSum('armor');
+    }
 
     gainExp(amount) {
         this.exp += amount * this.getExpMult();
@@ -119,14 +130,23 @@ export class Player {
         this.invincible = true;
         this.invincibleTimer = CONFIG.INVINCIBILITY_TIME;
         game?.onPlayerHurt?.(taken);
-        if (this.hp <= 0) { this.hp = 0; this.dead = true; }
+        if (this.hp <= 0) {
+            this.hp = 0;
+            this.dead = true;
+        }
     }
 
-    heal(amount) { this.hp = Math.min(this.hp + amount, this.maxHp); }
+    heal(amount) {
+        this.hp = Math.min(this.hp + amount, this.maxHp);
+    }
 
     render(ctx) {
         // Don't make the player fully disappear during i-frames: strobe alpha.
-        const strobe = this.invincible ? (Math.floor(performance.now() / 60) % 2 === 0 ? 0.4 : 1) : 1;
+        const strobe = this.invincible
+            ? Math.floor(performance.now() / 60) % 2 === 0
+                ? 0.4
+                : 1
+            : 1;
         ctx.save();
         ctx.globalAlpha = strobe;
 
@@ -134,35 +154,46 @@ export class Player {
         grad.addColorStop(0, 'rgba(100,200,255,0.35)');
         grad.addColorStop(1, 'rgba(100,200,255,0)');
         ctx.fillStyle = grad;
-        ctx.beginPath(); ctx.arc(this.x, this.y, this.size * 2.2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * 2.2, 0, Math.PI * 2);
+        ctx.fill();
 
         ctx.fillStyle = '#44aaff';
-        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
         ctx.fillStyle = '#cfeaff';
-        ctx.beginPath(); ctx.arc(this.x, this.y, this.size * 0.55, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * 0.55, 0, Math.PI * 2);
+        ctx.fill();
 
         // Garlic aura ring
-        const garlic = this.weapons.find(w => w.id === 'garlic');
+        const garlic = this.weapons.find((w) => w.id === 'garlic');
         if (garlic) {
             const range = garlic.getRange(this);
             const t = performance.now() / 400;
             ctx.strokeStyle = `rgba(160,255,160,${0.25 + Math.sin(t) * 0.08})`;
             ctx.lineWidth = 2;
-            ctx.beginPath(); ctx.arc(this.x, this.y, range, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, range, 0, Math.PI * 2);
+            ctx.stroke();
         }
         ctx.restore();
     }
 }
 
 // Kept for API compatibility (previously injected the Weapon class).
-export function registerWeaponClass(_cls) { /* noop */ }
+export function registerWeaponClass(_cls) {
+    /* noop */
+}
 
 // ---------------------------------------------------------------------------
 // Enemy
 // ---------------------------------------------------------------------------
 export class Enemy {
     constructor(x, y, type, hpMult, dmgMult) {
-        this.x = x; this.y = y;
+        this.x = x;
+        this.y = y;
         this.type = type;
         this.size = type.size;
         this.maxHp = type.hp * hpMult;
@@ -197,7 +228,10 @@ export class Enemy {
         }
     }
 
-    takeDamage(damage) { this.hp -= damage; this.flashTimer = 0.08; }
+    takeDamage(damage) {
+        this.hp -= damage;
+        this.flashTimer = 0.08;
+    }
 
     render(ctx) {
         ctx.save();
@@ -206,10 +240,14 @@ export class Enemy {
         } else {
             ctx.fillStyle = this.color;
         }
-        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
 
         ctx.fillStyle = 'rgba(255,255,255,0.25)';
-        ctx.beginPath(); ctx.arc(this.x, this.y, this.size * 0.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * 0.5, 0, Math.PI * 2);
+        ctx.fill();
 
         // HP bar
         const pct = Math.max(0, this.hp / this.maxHp);
@@ -222,7 +260,9 @@ export class Enemy {
         if (this.boss) {
             ctx.strokeStyle = '#ff33aa';
             ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.arc(this.x, this.y, this.size + 4, 0, Math.PI * 2); ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size + 4, 0, Math.PI * 2);
+            ctx.stroke();
         }
         ctx.restore();
     }
@@ -233,8 +273,10 @@ export class Enemy {
 // ---------------------------------------------------------------------------
 export class Projectile {
     constructor(x, y, angle, def, damage, level, player) {
-        this.x = x; this.y = y;
-        this.startX = x; this.startY = y;
+        this.x = x;
+        this.y = y;
+        this.startX = x;
+        this.startY = y;
         this.angle = angle;
         this.def = def;
         this.damage = damage;
@@ -326,15 +368,24 @@ export class Projectile {
                 break;
             case 'magic_wand':
                 ctx.fillStyle = '#aa66ff';
-                ctx.beginPath(); ctx.arc(0, 0, 7, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath();
+                ctx.arc(0, 0, 7, 0, Math.PI * 2);
+                ctx.fill();
                 ctx.fillStyle = 'rgba(255,255,255,0.6)';
-                ctx.beginPath(); ctx.arc(-2, -2, 2.2, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath();
+                ctx.arc(-2, -2, 2.2, 0, Math.PI * 2);
+                ctx.fill();
                 break;
             case 'axe':
                 ctx.fillStyle = '#b0b5b8';
-                ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.fill();
-                ctx.strokeStyle = '#555'; ctx.lineWidth = 2;
-                ctx.beginPath(); ctx.arc(0, 0, 10, 0, Math.PI * 2); ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#555';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, 10, 0, Math.PI * 2);
+                ctx.stroke();
                 break;
             case 'cross':
                 ctx.fillStyle = '#fff3a0';
@@ -343,13 +394,19 @@ export class Projectile {
                 break;
             case 'fire_wand':
                 ctx.fillStyle = '#ff6600';
-                ctx.beginPath(); ctx.arc(0, 0, 9, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath();
+                ctx.arc(0, 0, 9, 0, Math.PI * 2);
+                ctx.fill();
                 ctx.fillStyle = '#ffcc00';
-                ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath();
+                ctx.arc(0, 0, 5, 0, Math.PI * 2);
+                ctx.fill();
                 break;
             default:
                 ctx.fillStyle = '#ffffff';
-                ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2); ctx.fill();
+                ctx.beginPath();
+                ctx.arc(0, 0, 5, 0, Math.PI * 2);
+                ctx.fill();
         }
         ctx.restore();
     }
@@ -360,7 +417,8 @@ export class Projectile {
 // ---------------------------------------------------------------------------
 export class ExpOrb {
     constructor(x, y, value) {
-        this.x = x; this.y = y;
+        this.x = x;
+        this.y = y;
         this.value = value;
         this.size = 4 + Math.log(value + 1) * 1.5;
         this.shouldRemove = false;
@@ -370,7 +428,10 @@ export class ExpOrb {
 
     update(dt, game) {
         this.life -= dt;
-        if (this.life <= 0) { this.shouldRemove = true; return; }
+        if (this.life <= 0) {
+            this.shouldRemove = true;
+            return;
+        }
         const p = game.player;
         const dx = p.x - this.x;
         const dy = p.y - this.y;
@@ -393,14 +454,19 @@ export class ExpOrb {
 
     render(ctx) {
         const a = this.life < 2 ? Math.max(0, this.life / 2) : 1;
-        ctx.save(); ctx.globalAlpha = a;
+        ctx.save();
+        ctx.globalAlpha = a;
         const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2.2);
         g.addColorStop(0, 'rgba(100,180,255,0.55)');
         g.addColorStop(1, 'rgba(100,180,255,0)');
         ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(this.x, this.y, this.size * 2.2, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * 2.2, 0, Math.PI * 2);
+        ctx.fill();
         ctx.fillStyle = '#7ab8ff';
-        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
         ctx.restore();
     }
 }
@@ -410,7 +476,9 @@ export class ExpOrb {
 // ---------------------------------------------------------------------------
 export class Particle {
     constructor(x, y, color) {
-        this.x = x; this.y = y; this.color = color;
+        this.x = x;
+        this.y = y;
+        this.color = color;
         this.size = Math.random() * 4 + 2;
         this.life = 1;
         this.decay = Math.random() * 1.5 + 1;
@@ -431,17 +499,26 @@ export class Particle {
         if (this.life <= 0) return;
         ctx.globalAlpha = Math.max(0, this.life);
         ctx.fillStyle = this.color;
-        ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
         ctx.globalAlpha = 1;
     }
 }
 
 export class FloatingText {
     constructor(text, x, y, color) {
-        this.text = text; this.x = x; this.y = y; this.color = color;
-        this.life = 1; this.vy = -60;
+        this.text = text;
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.life = 1;
+        this.vy = -60;
     }
-    update(dt) { this.y += this.vy * dt; this.life -= 1.2 * dt; }
+    update(dt) {
+        this.y += this.vy * dt;
+        this.life -= 1.2 * dt;
+    }
     render(ctx) {
         if (this.life <= 0) return;
         ctx.globalAlpha = Math.max(0, this.life);

@@ -1,0 +1,14 @@
+# Fill in the handles you want to expose on the repository sponsor button.
+# Leaving a field blank or commented out hides it.
+
+github: # your-github-sponsors-handle
+# patreon:
+# open_collective:
+# ko_fi:
+# tidelift:
+# community_bridge:
+# liberapay:
+# issuehunt:
+# otechie:
+# lfx_crowdfunding:
+# custom:

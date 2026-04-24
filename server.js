@@ -11,17 +11,17 @@ const ROOT = __dirname;
 
 const MIME = {
     '.html': 'text/html; charset=utf-8',
-    '.js':   'text/javascript; charset=utf-8',
-    '.mjs':  'text/javascript; charset=utf-8',
-    '.css':  'text/css; charset=utf-8',
+    '.js': 'text/javascript; charset=utf-8',
+    '.mjs': 'text/javascript; charset=utf-8',
+    '.css': 'text/css; charset=utf-8',
     '.json': 'application/json; charset=utf-8',
-    '.svg':  'image/svg+xml',
-    '.png':  'image/png',
-    '.jpg':  'image/jpeg',
-    '.gif':  'image/gif',
-    '.ico':  'image/x-icon',
-    '.txt':  'text/plain; charset=utf-8',
-    '.md':   'text/plain; charset=utf-8'
+    '.svg': 'image/svg+xml',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.ico': 'image/x-icon',
+    '.txt': 'text/plain; charset=utf-8',
+    '.md': 'text/plain; charset=utf-8'
 };
 
 function safeJoin(root, reqPath) {
@@ -34,7 +34,9 @@ function safeJoin(root, reqPath) {
 const server = http.createServer((req, res) => {
     let filePath = safeJoin(ROOT, req.url === '/' ? '/index.html' : req.url);
     if (!filePath) {
-        res.writeHead(403); res.end('Forbidden'); return;
+        res.writeHead(403);
+        res.end('Forbidden');
+        return;
     }
 
     fs.stat(filePath, (err, stats) => {

@@ -68,10 +68,20 @@ export class Game {
 
     _bindDomButtons() {
         const q = (id) => document.getElementById(id);
-        q('btnStart')?.addEventListener('click', () => { this.audio.unlock(); this.start(); });
+        q('btnStart')?.addEventListener('click', () => {
+            this.audio.unlock();
+            this.start();
+        });
         q('btnSettings')?.addEventListener('click', () => this.openSettings());
-        q('btnRetry')?.addEventListener('click', () => { this.ui.hideGameOver(); this.start(); });
-        q('btnMenu')?.addEventListener('click', () => { this.ui.hideGameOver(); this.ui.showStart(); this.state = GameState.MENU; });
+        q('btnRetry')?.addEventListener('click', () => {
+            this.ui.hideGameOver();
+            this.start();
+        });
+        q('btnMenu')?.addEventListener('click', () => {
+            this.ui.hideGameOver();
+            this.ui.showStart();
+            this.state = GameState.MENU;
+        });
         q('btnResume')?.addEventListener('click', () => this.togglePause());
         q('btnQuit')?.addEventListener('click', () => {
             this.state = GameState.MENU;
@@ -156,11 +166,13 @@ export class Game {
 
     _checkAchievements() {
         const a = this.save.achievements;
-        const grant = (id) => { if (!a[id]) a[id] = Date.now(); };
-        if (this.kills >= 100)      grant('slayer_100');
-        if (this.kills >= 1000)     grant('slayer_1000');
-        if (this.gameTime >= 300)   grant('survive_5min');
-        if (this.gameTime >= 600)   grant('survive_10min');
+        const grant = (id) => {
+            if (!a[id]) a[id] = Date.now();
+        };
+        if (this.kills >= 100) grant('slayer_100');
+        if (this.kills >= 1000) grant('slayer_1000');
+        if (this.gameTime >= 300) grant('survive_5min');
+        if (this.gameTime >= 600) grant('survive_10min');
         if (this.player.level >= 20) grant('level_20');
     }
 
@@ -185,13 +197,18 @@ export class Game {
     update(dt) {
         this.gameTime += dt;
 
-        const diff = Difficulty[(this.save.settings.difficulty || 'normal').toUpperCase()] || Difficulty.NORMAL;
+        const diff =
+            Difficulty[(this.save.settings.difficulty || 'normal').toUpperCase()] ||
+            Difficulty.NORMAL;
         const timeDiff = 1 + Math.floor(this.gameTime / 60) * 0.3;
         const hpMult = diff.hpMult * timeDiff;
         const dmgMult = diff.dmgMult * timeDiff;
 
         this.player.update(dt, this);
-        if (this.player.dead) { this.gameOver(); return; }
+        if (this.player.dead) {
+            this.gameOver();
+            return;
+        }
 
         // Spatial hash rebuild BEFORE anyone queries it.
         this.spatial.insertEnemies(this.enemies);
@@ -206,7 +223,12 @@ export class Game {
             const d = Math.hypot(dx, dy);
             if (d < e.size + this.player.size && !this.player.invincible) {
                 this.player.takeDamage(e.damage, this);
-                this.createFloatingText(Math.round(e.damage), this.player.x, this.player.y - 30, '#ff3333');
+                this.createFloatingText(
+                    Math.round(e.damage),
+                    this.player.x,
+                    this.player.y - 30,
+                    '#ff3333'
+                );
             }
 
             if (e.hp <= 0) {
@@ -231,7 +253,10 @@ export class Game {
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const p = this.projectiles[i];
             p.update(dt, this);
-            if (p.shouldRemove) { this.projectiles.splice(i, 1); continue; }
+            if (p.shouldRemove) {
+                this.projectiles.splice(i, 1);
+                continue;
+            }
 
             const range = p.size + 32;
             for (const enemy of this.spatial.queryRect(p.x, p.y, range)) {
@@ -240,7 +265,13 @@ export class Game {
                 if (d < enemy.size + p.size) {
                     enemy.takeDamage(p.damage);
                     p.hitEnemies.add(enemy);
-                    if (enemy.hp > 0) this.createFloatingText(Math.round(p.damage), enemy.x, enemy.y - 20, '#fff');
+                    if (enemy.hp > 0)
+                        this.createFloatingText(
+                            Math.round(p.damage),
+                            enemy.x,
+                            enemy.y - 20,
+                            '#fff'
+                        );
                     if (!p.piercing) {
                         p._onEnd(this);
                         p.shouldRemove = true;
@@ -293,7 +324,7 @@ export class Game {
     _applyUpgrade(choice) {
         if (choice) {
             if (choice.type === 'weapon') {
-                const existing = this.player.weapons.find(w => w.id === choice.data.id);
+                const existing = this.player.weapons.find((w) => w.id === choice.data.id);
                 if (existing) existing.levelUp();
                 else this.player.weapons.push(new Weapon(choice.data));
             } else {
@@ -352,8 +383,8 @@ export class Game {
 
     _enemyPool() {
         const t = this.gameTime;
-        if (t < 30)  return [ENEMIES.BAT, ENEMIES.ZOMBIE];
-        if (t < 60)  return [ENEMIES.BAT, ENEMIES.ZOMBIE, ENEMIES.SKELETON];
+        if (t < 30) return [ENEMIES.BAT, ENEMIES.ZOMBIE];
+        if (t < 60) return [ENEMIES.BAT, ENEMIES.ZOMBIE, ENEMIES.SKELETON];
         if (t < 120) return [ENEMIES.ZOMBIE, ENEMIES.SKELETON, ENEMIES.WOLF, ENEMIES.GHOST];
         if (t < 180) return [ENEMIES.SKELETON, ENEMIES.WOLF, ENEMIES.GHOST];
         if (t < 300) return [ENEMIES.WOLF, ENEMIES.GOLEM, ENEMIES.GHOST];
@@ -361,7 +392,9 @@ export class Game {
     }
 
     // --- Helpers ----------------------------------------------------------
-    dropExp(x, y, amount) { this.expOrbs.push(new ExpOrb(x, y, amount)); }
+    dropExp(x, y, amount) {
+        this.expOrbs.push(new ExpOrb(x, y, amount));
+    }
     createParticles(x, y, color, n) {
         if (this.save.settings.reducedMotion) n = Math.min(n, 2);
         for (let i = 0; i < n; i++) this.particles.push(new Particle(x, y, color));
@@ -370,7 +403,9 @@ export class Game {
         if (this.save.settings.reducedMotion) return;
         this.floatingTexts.push(new FloatingText(text, x, y, color));
     }
-    shake(amount) { if (this.save.settings.screenShake) this.camera.shake(amount); }
+    shake(amount) {
+        if (this.save.settings.screenShake) this.camera.shake(amount);
+    }
 
     // called by Player via takeDamage
     onPlayerHurt(amount) {
@@ -383,11 +418,15 @@ export class Game {
             for (let i = 0; i < 3; i++) {
                 const a = Math.random() * Math.PI * 2;
                 const r = 80;
-                this.enemies.push(new Enemy(
-                    boss.x + Math.cos(a) * r,
-                    boss.y + Math.sin(a) * r,
-                    ENEMIES.SKELETON, 2, 1.5
-                ));
+                this.enemies.push(
+                    new Enemy(
+                        boss.x + Math.cos(a) * r,
+                        boss.y + Math.sin(a) * r,
+                        ENEMIES.SKELETON,
+                        2,
+                        1.5
+                    )
+                );
             }
             this.createParticles(boss.x, boss.y, '#aa33ff', 20);
         } else if (boss.ability === 'charge') {
@@ -429,10 +468,16 @@ export class Game {
         const ox = -this.player.x % size;
         const oy = -this.player.y % size;
         for (let x = ox; x < CONFIG.CANVAS_WIDTH; x += size) {
-            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CONFIG.CANVAS_HEIGHT); ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, CONFIG.CANVAS_HEIGHT);
+            ctx.stroke();
         }
         for (let y = oy; y < CONFIG.CANVAS_HEIGHT; y += size) {
-            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CONFIG.CANVAS_WIDTH, y); ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(CONFIG.CANVAS_WIDTH, y);
+            ctx.stroke();
         }
     }
 
@@ -443,9 +488,12 @@ export class Game {
             (key, value) => {
                 this.save.settings[key] = value;
                 saveSave(this.save);
-                if (key === 'masterVolume' || key === 'sfxVolume' || key === 'musicVolume') this.audio.applyVolumes();
+                if (key === 'masterVolume' || key === 'sfxVolume' || key === 'musicVolume')
+                    this.audio.applyVolumes();
             },
-            () => { /* closed */ },
+            () => {
+                /* closed */
+            },
             () => {
                 resetSave();
                 this.save = loadSave();

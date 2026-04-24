@@ -86,9 +86,15 @@ const STRINGS = {
 
 let current = 'en';
 
-export function setLocale(loc) { if (STRINGS[loc]) current = loc; }
-export function getLocale() { return current; }
-export function availableLocales() { return Object.keys(STRINGS); }
+export function setLocale(loc) {
+    if (STRINGS[loc]) current = loc;
+}
+export function getLocale() {
+    return current;
+}
+export function availableLocales() {
+    return Object.keys(STRINGS);
+}
 export function t(key) {
     return (STRINGS[current] && STRINGS[current][key]) || STRINGS.en[key] || key;
 }

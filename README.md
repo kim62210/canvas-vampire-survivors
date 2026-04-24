@@ -1,195 +1,143 @@
-# 🔥 幸存者 (Survivor)
+# Canvas Vampire Survivors
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![HTML5](https://img.shields.io/badge/HTML5-Game-orange.svg)](https://developer.mozilla.org/en-US/docs/Web/HTML)
-[![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-blue.svg)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![CI](https://github.com/Ricardo-M-L/canvas-vampire-survivors/actions/workflows/ci.yml/badge.svg)](https://github.com/Ricardo-M-L/canvas-vampire-survivors/actions/workflows/ci.yml)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
+[![Made with Vanilla JS](https://img.shields.io/badge/made%20with-vanilla%20JS-f7df1e.svg)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![Zero runtime deps](https://img.shields.io/badge/runtime%20deps-0-informational.svg)](./package.json)
 
-一个受《吸血鬼幸存者》(Vampire Survivors) 启发的开源网页游戏。无需安装，打开即玩！
+> A zero-dependency HTML5 Canvas roguelite you can clone and play in 30 seconds.
 
-## 🎮 在线试玩
+## 📸 Demo
 
-直接在浏览器中打开 `index.html` 即可开始游戏。
+![Gameplay screenshot](./docs/screenshot.png)
 
-## ✨ 游戏特点
+<sub>The image above is a placeholder. Drop a real capture into `docs/screenshot.png` and it will show up here.</sub>
 
-### ⚔️ 8种独特武器
+## ✨ Features
 
-| 武器 | 图标 | 特点 | 类型 |
-|------|------|------|------|
-| 鞭子 | ⚔️ | 向两侧挥击 | 近战 |
-| 魔法杖 | 🔮 | 追踪最近的敌人 | 投射物 |
-| 飞刀 | 🗡️ | 快速直线射击 | 投射物 |
-| 斧头 | 🪓 | 高抛弧线攻击 | 投射物 |
-| 十字架 | ✝️ | 回旋飞镖式攻击 | 投射物 |
-| 火球杖 | 🔥 | 爆炸范围伤害 | 投射物 |
-| 雷电 | ⚡ | 随机劈向敌人 | 即时 |
-| 大蒜 | 🧄 | 持续范围伤害 | 光环 |
+- 🧩 **Modular ES-module architecture** — tiny, readable files under `src/`.
+- 🎨 **HTML5 Canvas renderer** — fixed-step simulation, smooth 60+ fps.
+- 🌐 **Built-in i18n** — English and 简体中文 out of the box, add more easily.
+- 🎮 **Keyboard, touch joystick, and gamepad** input all supported.
+- 📦 **Zero runtime dependencies** — no bundler, no build step, just open it.
+- 💾 **Local save & settings** — persists via `localStorage`, no backend.
+- ⚙️ **In-game settings panel** — volume, language, reduced motion.
+- ♿ **Accessibility-aware** — respects `prefers-reduced-motion`, high-contrast HUD.
+- 🧪 **Lint + format ready** — ESLint, Prettier, EditorConfig, CI on every PR.
+- 🕹️ **Classic roguelite loop** — 8 weapons, 9 passives, 6 enemy types, waves.
 
-### 💪 9种被动技能
+## 🎮 Controls
 
-- ❤️ **活力** - 最大生命值 +20%
-- 💚 **恢复** - 每秒恢复 0.5 HP
-- 🛡️ **护甲** - 受到的伤害 -1
-- 👟 **速度** - 移动速度 +10%
-- 💪 **力量** - 伤害 +10%
-- 📏 **范围** - 武器范围 +10%
-- ⏱️ **冷却** - 攻击速度 +10%
-- 🧲 **磁石** - 拾取范围 +25%
-- 📈 **成长** - 经验获取 +10%
+| Action          | Keyboard                 | Touch            | Gamepad            |
+| --------------- | ------------------------ | ---------------- | ------------------ |
+| Move            | `W` `A` `S` `D` / arrows | Virtual joystick | Left stick / D-pad |
+| Pause           | `Esc` / `P`              | Pause button     | `Start`            |
+| Confirm choice  | `Enter` / `Space`        | Tap option       | `A` / cross        |
+| Cancel / back   | `Esc`                    | Back button      | `B` / circle       |
+| Toggle settings | `,`                      | Gear icon        | `Select`           |
+| Toggle language | `L`                      | Settings → Lang  | Settings → Lang    |
 
-### 👹 6种敌人类型
-
-- 🦇 **蝙蝠** - 速度快，血量低
-- 🧟 **僵尸** - 血量中等，速度较慢
-- 💀 **骷髅** - 平衡型敌人
-- 🐺 **狼** - 速度快，伤害高
-- 🗿 **石魔** - 血量极高，速度慢
-- 👻 **幽灵** - 高伤害，会穿墙
-
-### 🎯 核心玩法
-
-- 📈 **无限升级系统** - 武器可升至8级，被动技能可叠加5次
-- ⚡ **自动攻击** - 武器会自动攻击附近的敌人
-- 🧲 **磁吸经验** - 靠近经验球自动拾取
-- ✨ **粒子特效** - 精美的视觉效果
-- 📊 **波次系统** - 随时间增加难度
-
-## 🚀 快速开始
-
-### 方式1：直接打开（最简单）
-
-用浏览器直接打开 `index.html` 文件即可开始游戏。
+## 🚀 Quickstart
 
 ```bash
-# macOS
-open index.html
-
-# Windows
-start index.html
-
-# Linux
-xdg-open index.html
+git clone https://github.com/Ricardo-M-L/canvas-vampire-survivors.git
+cd canvas-vampire-survivors
+npm install     # installs ESLint + Prettier only (dev deps)
+npm start       # http://localhost:3000
 ```
 
-### 方式2：使用 Node.js
+Prefer no Node? Just open `index.html` directly in any modern browser, or
+serve the folder with `python -m http.server`.
 
-```bash
-# 安装依赖（可选）
-npm install
+## 🌐 Play Online
 
-# 启动服务器
-npm start
+An always-up-to-date build ships from `main` to GitHub Pages:
 
-# 或
-node server.js
+- **Live demo**: <https://ricardo-m-l.github.io/canvas-vampire-survivors/>
 
-# 然后在浏览器中访问 http://localhost:8080
+<sub>If the link 404s, the Pages deployment workflow needs to be enabled once in the repository settings.</sub>
+
+## 🏗️ Architecture
+
+The runtime is a single `main.js` orchestrator that wires together focused
+modules. Every module has a clear job, and there are no runtime dependencies.
+
+```mermaid
+flowchart TD
+    main[main.js<br/>game loop + orchestration]
+    cfg[config.js<br/>constants + enums]
+    data[data.js<br/>weapons / passives / enemies]
+    ent[entities.js<br/>Player, Enemy, Projectile, Particle]
+    wpn[weapons.js<br/>weapon behaviour]
+    sys[systems.js<br/>spatial hash, camera, FPS]
+    ui[ui.js<br/>HUD, menus, overlays]
+    audio[audio.js<br/>Web Audio synthesis]
+    input[input.js<br/>keyboard, joystick, gamepad]
+    store[storage.js<br/>localStorage save/load]
+    i18n[i18n.js<br/>translations]
+
+    main --> cfg
+    main --> data
+    main --> ent
+    main --> wpn
+    main --> sys
+    main --> ui
+    main --> audio
+    main --> input
+    main --> store
+    main --> i18n
+    ent --> sys
+    wpn --> ent
+    ui --> i18n
+    ui --> store
 ```
 
-### 方式3：使用 Python
+## 🗺️ Roadmap
 
-```bash
-# Python 3
-python -m http.server 8080
+- [ ] Boss waves with unique behaviours and loot drops
+- [ ] Map variants (ruins, crypt, forest) with distinct enemy pools
+- [ ] Weapon evolution combinations
+- [ ] Meta-progression: persistent unlocks between runs
+- [ ] Additional languages (ES, JA, FR — PRs welcome)
+- [ ] Optional WebGL renderer behind a feature flag
+- [ ] Replay recording and share-to-clip
 
-# Python 2
-python -m SimpleHTTPServer 8080
+Vote on roadmap items by reacting to pinned issues. Want to own an item? Open
+a discussion or drop a comment.
 
-# 然后在浏览器中访问 http://localhost:8080
-```
+## 🤝 Contributing
 
-### 方式4：使用 VS Code Live Server
+Contributions are very welcome — see [CONTRIBUTING.md](./CONTRIBUTING.md) for
+setup, ground rules, and the PR checklist. By participating you agree to the
+[Code of Conduct](./CODE_OF_CONDUCT.md).
 
-安装 Live Server 插件，右键点击 `index.html` 选择 "Open with Live Server"。
+Security issues? Please read [SECURITY.md](./SECURITY.md) first — do **not**
+open a public issue.
 
-## 🎯 操作说明
+## 📜 License
 
-| 按键 | 功能 |
-|------|------|
-| `W` `A` `S` `D` | 移动角色 |
-| `↑` `↓` `←` `→` | 移动角色（备用） |
+Released under the [MIT License](./LICENSE). Use it, fork it, ship it.
 
-**游戏提示：**
-- 💀 武器会自动攻击附近的敌人
-- 💎 击杀敌人掉落经验宝石
-- ⬆️ 升级时从3个选项中选择强化
-- ⏱️ 存活尽可能长的时间！
+## 🙏 Acknowledgements
 
-## 📂 项目结构
-
-```
-vampire-survivors/
-├── index.html          # 游戏主页面
-├── game.js             # 游戏核心逻辑 (~1400行)
-├── server.js           # 本地服务器（可选）
-├── package.json        # 项目配置
-├── README.md           # 项目说明
-├── LICENSE             # MIT 许可证
-└── .gitignore          # Git 忽略文件
-```
-
-## 🛠️ 技术栈
-
-- **HTML5 Canvas** - 游戏渲染
-- **Vanilla JavaScript (ES6+)** - 游戏逻辑
-  - Class 语法
-  - Arrow Functions
-  - Template Literals
-  - Destructuring
-- **CSS3** - UI 样式
-
-## 🔧 自定义配置
-
-你可以在 `game.js` 文件开头的 `CONFIG` 对象中修改游戏参数：
-
-```javascript
-const CONFIG = {
-    CANVAS_WIDTH: 1200,      // 画布宽度
-    CANVAS_HEIGHT: 800,      // 画布高度
-    PLAYER_SPEED: 4,         // 玩家移动速度
-    PLAYER_SIZE: 20,         // 玩家大小
-    MAX_ENEMIES: 100,        // 最大敌人数量
-    SPAWN_RADIUS: 800,       // 敌人生成距离
-    DESPAWN_RADIUS: 1000,    // 敌人消失距离
-    INVINCIBILITY_TIME: 500  // 受伤无敌时间(毫秒)
-};
-```
-
-## 📝 更新日志
-
-### v1.0.0 (2024-02-14)
-- ✅ 实现核心游戏机制
-- ✅ 添加8种武器系统
-- ✅ 添加9种被动技能
-- ✅ 添加6种敌人类型
-- ✅ 实现升级选择系统
-- ✅ 添加粒子效果和视觉特效
-- ✅ 添加波次提示系统
-- ✅ 优化游戏难度曲线
-
-## 🎓 学习资源
-
-如果你想学习游戏开发，这个项目包含以下技术点：
-
-- 🎮 游戏循环和状态管理
-- 🎯 碰撞检测系统
-- ✨ 粒子系统实现
-- 🎨 Canvas 绘图和动画
-- 🏗️ 面向对象编程
-- 📊 游戏平衡性设计
-
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
-## 📄 开源协议
-
-[MIT License](LICENSE) - 可自由使用、修改和分发
-
-## 🙏 致谢
-
-灵感来源于 [Poncle](https://poncle.co/) 的《吸血鬼幸存者》(Vampire Survivors)
+- Inspired by [Vampire Survivors](https://poncle.itch.io/vampire-survivors) by
+  Poncle — an absolute masterclass in tight, compulsive gameplay loops. This
+  project is an independent homage, not affiliated with or endorsed by Poncle.
+- Thanks to every contributor who has filed an issue, sent a PR, or translated
+  a string.
 
 ---
 
-**享受游戏！🎮 如果这个项目对你有帮助，请给个 ⭐ Star！**
+## 中文 · 简介
+
+一个受《吸血鬼幸存者》启发的开源网页版幸存者游戏，纯原生 JavaScript + HTML5
+Canvas 实现，**零运行时依赖**。项目采用模块化结构（`src/`），内置中英双语，
+支持键盘、触屏虚拟摇杆与手柄操作，自动保存进度与设置，适配移动端与桌面端。
+
+- 🚀 一键启动：`npm install && npm start`，或直接用浏览器打开 `index.html`
+- 🌐 在线试玩：<https://ricardo-m-l.github.io/canvas-vampire-survivors/>
+- 🤝 欢迎贡献：查看 [CONTRIBUTING.md](./CONTRIBUTING.md)，我们对新手非常友好
+- 📜 协议：MIT，随意 fork 和二次创作
+
+如果喜欢这个项目，请点一个 ⭐ Star 支持一下！

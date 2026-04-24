@@ -21,8 +21,12 @@ export class InputManager {
                 this.onTogglePause();
             }
         };
-        const ku = (e) => { this.keys[e.key.toLowerCase()] = false; };
-        const blur = () => { this.keys = Object.create(null); };
+        const ku = (e) => {
+            this.keys[e.key.toLowerCase()] = false;
+        };
+        const blur = () => {
+            this.keys = Object.create(null);
+        };
 
         target.addEventListener('keydown', kd);
         target.addEventListener('keyup', ku);
@@ -46,27 +50,36 @@ export class InputManager {
     }
 
     getMoveVector() {
-        let x = 0, y = 0;
+        let x = 0,
+            y = 0;
         const k = this.keys;
-        if (k['w'] || k['arrowup'])    y -= 1;
-        if (k['s'] || k['arrowdown'])  y += 1;
-        if (k['a'] || k['arrowleft'])  x -= 1;
+        if (k['w'] || k['arrowup']) y -= 1;
+        if (k['s'] || k['arrowdown']) y += 1;
+        if (k['a'] || k['arrowleft']) x -= 1;
         if (k['d'] || k['arrowright']) x += 1;
         if (x === 0 && y === 0) {
-            x = this.touchVec.x; y = this.touchVec.y;
+            x = this.touchVec.x;
+            y = this.touchVec.y;
         }
         const len = Math.hypot(x, y);
-        if (len > 1) { x /= len; y /= len; }
-        this.moveVec.x = x; this.moveVec.y = y;
+        if (len > 1) {
+            x /= len;
+            y /= len;
+        }
+        this.moveVec.x = x;
+        this.moveVec.y = y;
         return this.moveVec;
     }
 }
 
 class VirtualJoystick {
     constructor(base, knob, cb) {
-        this.base = base; this.knob = knob; this.cb = cb;
+        this.base = base;
+        this.knob = knob;
+        this.cb = cb;
         this.active = false;
-        this.cx = 0; this.cy = 0;
+        this.cx = 0;
+        this.cy = 0;
         this.maxR = 60;
 
         const start = (e) => {
@@ -117,5 +130,7 @@ class VirtualJoystick {
         this.cb(nx / this.maxR, ny / this.maxR);
     }
 
-    destroy() { this._cleanup?.(); }
+    destroy() {
+        this._cleanup?.();
+    }
 }

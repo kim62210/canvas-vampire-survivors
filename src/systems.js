@@ -6,15 +6,22 @@ export class SpatialHash {
         this.cell = cell;
         this.map = new Map();
     }
-    clear() { this.map.clear(); }
-    _key(x, y) { return `${Math.floor(x / this.cell)},${Math.floor(y / this.cell)}`; }
+    clear() {
+        this.map.clear();
+    }
+    _key(x, y) {
+        return `${Math.floor(x / this.cell)},${Math.floor(y / this.cell)}`;
+    }
 
     insertEnemies(enemies) {
         this.clear();
         for (const e of enemies) {
             const k = this._key(e.x, e.y);
             let bucket = this.map.get(k);
-            if (!bucket) { bucket = []; this.map.set(k, bucket); }
+            if (!bucket) {
+                bucket = [];
+                this.map.set(k, bucket);
+            }
             bucket.push(e);
         }
     }
@@ -34,10 +41,14 @@ export class SpatialHash {
     }
 
     findNearestEnemy(x, y, maxRange) {
-        let best = null, bestD = maxRange;
+        let best = null,
+            bestD = maxRange;
         for (const e of this.queryRect(x, y, maxRange)) {
             const d = Math.hypot(e.x - x, e.y - y);
-            if (d < bestD) { bestD = d; best = e; }
+            if (d < bestD) {
+                bestD = d;
+                best = e;
+            }
         }
         // Fallback: if spatial query returned nothing within maxRange, try all
         // (shouldn't matter in practice but guarantees correctness).
@@ -46,10 +57,21 @@ export class SpatialHash {
 }
 
 export class ShakeCamera {
-    constructor() { this.intensity = 0; this.x = 0; this.y = 0; }
-    shake(amount) { this.intensity = Math.max(this.intensity, amount); }
+    constructor() {
+        this.intensity = 0;
+        this.x = 0;
+        this.y = 0;
+    }
+    shake(amount) {
+        this.intensity = Math.max(this.intensity, amount);
+    }
     update(dt, enabled) {
-        if (!enabled || this.intensity <= 0) { this.x = 0; this.y = 0; this.intensity = 0; return; }
+        if (!enabled || this.intensity <= 0) {
+            this.x = 0;
+            this.y = 0;
+            this.intensity = 0;
+            return;
+        }
         const i = this.intensity * 12;
         this.x = (Math.random() - 0.5) * i;
         this.y = (Math.random() - 0.5) * i;
@@ -58,7 +80,10 @@ export class ShakeCamera {
 }
 
 export class FpsMeter {
-    constructor() { this.samples = []; this.fps = 0; }
+    constructor() {
+        this.samples = [];
+        this.fps = 0;
+    }
     tick(dt) {
         this.samples.push(dt);
         if (this.samples.length > 60) this.samples.shift();

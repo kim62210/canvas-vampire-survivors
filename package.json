@@ -1,46 +1,46 @@
 {
-  "name": "canvas-vampire-survivors",
-  "version": "2.0.0",
-  "description": "Vanilla JavaScript HTML5 Canvas roguelite inspired by Vampire Survivors. Zero runtime dependencies.",
-  "main": "server.js",
-  "type": "commonjs",
-  "private": false,
-  "scripts": {
-    "start": "node server.js",
-    "dev": "node server.js",
-    "lint": "eslint \"src/**/*.js\" server.js",
-    "lint:fix": "eslint --fix \"src/**/*.js\" server.js",
-    "format": "prettier --write \"**/*.{js,html,css,md,json}\"",
-    "format:check": "prettier --check \"**/*.{js,html,css,md,json}\"",
-    "test": "node --test test/ || echo 'no tests yet'",
-    "check": "npm run lint && npm run format:check"
-  },
-  "keywords": [
-    "game",
-    "html5",
-    "canvas",
-    "roguelite",
-    "vampire-survivors",
-    "bullet-hell",
-    "browser-game",
-    "vanilla-js",
-    "open-source"
-  ],
-  "author": "Survivor contributors",
-  "license": "MIT",
-  "engines": {
-    "node": ">=18"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Ricardo-M-L/canvas-vampire-survivors.git"
-  },
-  "bugs": {
-    "url": "https://github.com/Ricardo-M-L/canvas-vampire-survivors/issues"
-  },
-  "homepage": "https://github.com/Ricardo-M-L/canvas-vampire-survivors#readme",
-  "devDependencies": {
-    "eslint": "^9.0.0",
-    "prettier": "^3.2.0"
-  }
+    "name": "canvas-vampire-survivors",
+    "version": "2.0.0",
+    "description": "Vanilla JavaScript HTML5 Canvas roguelite inspired by Vampire Survivors. Zero runtime dependencies.",
+    "main": "server.js",
+    "type": "commonjs",
+    "private": false,
+    "scripts": {
+        "start": "node server.js",
+        "dev": "node server.js",
+        "lint": "eslint \"src/**/*.js\" server.js",
+        "lint:fix": "eslint --fix \"src/**/*.js\" server.js",
+        "format": "prettier --write \"**/*.{js,html,css,md,json}\"",
+        "format:check": "prettier --check \"**/*.{js,html,css,md,json}\"",
+        "test": "node --test test/ || echo 'no tests yet'",
+        "check": "npm run lint && npm run format:check"
+    },
+    "keywords": [
+        "game",
+        "html5",
+        "canvas",
+        "roguelite",
+        "vampire-survivors",
+        "bullet-hell",
+        "browser-game",
+        "vanilla-js",
+        "open-source"
+    ],
+    "author": "Survivor contributors",
+    "license": "MIT",
+    "engines": {
+        "node": ">=18"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Ricardo-M-L/canvas-vampire-survivors.git"
+    },
+    "bugs": {
+        "url": "https://github.com/Ricardo-M-L/canvas-vampire-survivors/issues"
+    },
+    "homepage": "https://github.com/Ricardo-M-L/canvas-vampire-survivors#readme",
+    "devDependencies": {
+        "eslint": "^9.0.0",
+        "prettier": "^3.2.0"
+    }
 }

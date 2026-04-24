@@ -39,7 +39,9 @@ export class AudioEngine {
     unlock() {
         if (!this.ctx) this.init();
         if (this.ctx && this.ctx.state === 'suspended') {
-            this.ctx.resume().catch(() => { /* ignore */ });
+            this.ctx.resume().catch(() => {
+                /* ignore */
+            });
         }
         this.unlocked = true;
     }
@@ -53,7 +55,16 @@ export class AudioEngine {
     }
 
     // Generic tone helper --------------------------------------------------
-    tone({ freq = 440, dur = 0.08, type = 'sine', volume = 0.2, attack = 0.005, release = 0.05, sweep = 0, noise = false }) {
+    tone({
+        freq = 440,
+        dur = 0.08,
+        type = 'sine',
+        volume = 0.2,
+        attack = 0.005,
+        release = 0.05,
+        sweep = 0,
+        noise = false
+    }) {
         if (!this.enabled || !this.ctx || !this.unlocked) return;
         const now = this.ctx.currentTime;
         const gain = this.ctx.createGain();
@@ -91,19 +102,32 @@ export class AudioEngine {
     }
 
     // High-level SFX -------------------------------------------------------
-    hit()       { this.tone({ freq: 320, dur: 0.05, type: 'square', volume: 0.12, sweep: -120 }); }
-    shoot()     { this.tone({ freq: 780, dur: 0.04, type: 'triangle', volume: 0.08, sweep: -200 }); }
-    explosion() { this.tone({ noise: true, dur: 0.25, volume: 0.22, release: 0.15 }); }
-    pickup()    { this.tone({ freq: 1200, dur: 0.06, type: 'sine', volume: 0.12, sweep: 400 }); }
-    levelUp()   {
+    hit() {
+        this.tone({ freq: 320, dur: 0.05, type: 'square', volume: 0.12, sweep: -120 });
+    }
+    shoot() {
+        this.tone({ freq: 780, dur: 0.04, type: 'triangle', volume: 0.08, sweep: -200 });
+    }
+    explosion() {
+        this.tone({ noise: true, dur: 0.25, volume: 0.22, release: 0.15 });
+    }
+    pickup() {
+        this.tone({ freq: 1200, dur: 0.06, type: 'sine', volume: 0.12, sweep: 400 });
+    }
+    levelUp() {
         this.tone({ freq: 660, dur: 0.1, type: 'triangle', volume: 0.2 });
         setTimeout(() => this.tone({ freq: 990, dur: 0.12, type: 'triangle', volume: 0.22 }), 90);
         setTimeout(() => this.tone({ freq: 1320, dur: 0.18, type: 'triangle', volume: 0.24 }), 200);
     }
-    damage()    { this.tone({ freq: 180, dur: 0.18, type: 'sawtooth', volume: 0.18, sweep: -80 }); }
-    death()     {
+    damage() {
+        this.tone({ freq: 180, dur: 0.18, type: 'sawtooth', volume: 0.18, sweep: -80 });
+    }
+    death() {
         this.tone({ freq: 220, dur: 0.4, type: 'sawtooth', volume: 0.25, sweep: -180 });
-        setTimeout(() => this.tone({ freq: 110, dur: 0.6, type: 'sawtooth', volume: 0.2, sweep: -80 }), 200);
+        setTimeout(
+            () => this.tone({ freq: 110, dur: 0.6, type: 'sawtooth', volume: 0.2, sweep: -80 }),
+            200
+        );
     }
     bossSpawn() {
         this.tone({ noise: true, dur: 0.4, volume: 0.3, release: 0.25 });

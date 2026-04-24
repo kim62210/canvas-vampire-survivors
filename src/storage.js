@@ -14,7 +14,7 @@
  *   - accumulateTotals(save, run)
  */
 
-import { CONFIG, STORAGE_KEY } from './config.js';
+import { CONFIG, SPEEDRUN_STORAGE_KEY, STORAGE_KEY } from './config.js';
 
 const DEFAULT_SAVE = {
     // Legacy single-slot best-of. Kept for backwards compatibility with v2.0 saves.
@@ -158,4 +158,74 @@ export function mergeDeep(target, source) {
         }
     }
     return target;
+}
+
+// ---------------------------------------------------------------------------
+// Speedrun high-score helpers. Kept in a separate slot so the normal
+// leaderboard and the deterministic runs never commingle. Each entry
+// records: { timeMs, splits[], level, kills, date, weapons, noHit }.
+// ---------------------------------------------------------------------------
+export function loadSpeedrunScores() {
+    try {
+        const raw = usableLS()
+            ? window.localStorage.getItem(SPEEDRUN_STORAGE_KEY)
+            : _speedrunMemory;
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch (err) {
+        console.warn('[storage] Failed to load speedrun scores.', err);
+        return [];
+    }
+}
+
+let _speedrunMemory = null;
+
+export function saveSpeedrunScores(scores) {
+    try {
+        const serialised = JSON.stringify(scores);
+        if (usableLS()) window.localStorage.setItem(SPEEDRUN_STORAGE_KEY, serialised);
+        else _speedrunMemory = serialised;
+    } catch (err) {
+        console.warn('[storage] Failed to write speedrun scores.', err);
+    }
+}
+
+/** Insert a speedrun result; returns 1-based rank or 0 if it didn't qualify. */
+export function recordSpeedrunScore(entry) {
+    const list = loadSpeedrunScores().concat([entry]);
+    list.sort((a, b) => (a.timeMs || Infinity) - (b.timeMs || Infinity));
+    const capped = list.slice(0, CONFIG.SPEEDRUN_MAX_SLOTS);
+    saveSpeedrunScores(capped);
+    const rank = capped.indexOf(entry) + 1;
+    return rank;
+}
+
+export function _resetSpeedrunForTests() {
+    _speedrunMemory = null;
+    if (usableLS()) window.localStorage.removeItem(SPEEDRUN_STORAGE_KEY);
+}
+
+// ---------------------------------------------------------------------------
+// Deterministic 32-bit LCG for Speedrun mode. `nextInt`/`nextFloat` are cheap
+// and predictable; seeding with the same value always produces the same
+// stream, which is the whole point of speedruns.
+// ---------------------------------------------------------------------------
+export class SeededRng {
+    constructor(seed = 1) {
+        // Force unsigned 32-bit; 0 seed is illegal (collapses to 0 forever).
+        this.state = seed >>> 0 || 1;
+    }
+    nextInt() {
+        // LCG parameters from Numerical Recipes.
+        this.state = (Math.imul(this.state, 1664525) + 1013904223) >>> 0;
+        return this.state;
+    }
+    nextFloat() {
+        return this.nextInt() / 0x100000000;
+    }
+    pick(arr) {
+        if (!arr.length) return null;
+        return arr[this.nextInt() % arr.length];
+    }
 }

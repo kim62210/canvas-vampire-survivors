@@ -34,7 +34,16 @@ import { SpatialHash } from './spatial-hash.js';
 import { Pool, resetFloatingText, resetParticle } from './pool.js';
 import { EffectLayer } from './effects.js';
 import { AchievementTracker } from './achievements.js';
-import { accumulateTotals, loadSave, recordHighScore, resetSave, saveSave } from './storage.js';
+import {
+    SeededRng,
+    accumulateTotals,
+    loadSave,
+    loadSpeedrunScores,
+    recordHighScore,
+    recordSpeedrunScore,
+    resetSave,
+    saveSave
+} from './storage.js';
 import { setLocale } from './i18n.js';
 
 registerWeaponClass(Weapon);
@@ -141,6 +150,15 @@ export class Game {
 
         this.currentWave = WAVES[0];
 
+        // Speedrun bookkeeping. When `speedrunMode` is truthy, spawn picks
+        // are deterministic, real-time splits are tracked and the result
+        // lands in the speedrun leaderboard instead of the normal one.
+        this.speedrunMode = false;
+        this.speedrunRng = null;
+        this.speedrunStart = 0;
+        this.speedrunSplits = [];
+        this._nextSplitIdx = 0;
+
         // Per-run bookkeeping used by achievements.
         this.run = this.achievements.run;
 
@@ -165,18 +183,26 @@ export class Game {
         const q = (id) => document.getElementById(id);
         q('btnStart')?.addEventListener('click', () => {
             this.audio.unlock();
+            this.speedrunMode = false;
             this.start();
         });
+        q('btnSpeedrun')?.addEventListener('click', () => {
+            this.audio.unlock();
+            this.startSpeedrun();
+        });
+        q('btnLeaderboard')?.addEventListener('click', () => this.openLeaderboard());
         q('btnSettings')?.addEventListener('click', () => this.openSettings());
         q('btnAchievements')?.addEventListener('click', () => this.openAchievements());
         q('btnRetry')?.addEventListener('click', () => {
             this.ui.hideGameOver();
-            this.start();
+            if (this.speedrunMode) this.startSpeedrun();
+            else this.start();
         });
         q('btnMenu')?.addEventListener('click', () => {
             this.ui.hideGameOver();
             this.ui.showStart();
             this.state = GameState.MENU;
+            this.speedrunMode = false;
         });
         q('btnResume')?.addEventListener('click', () => this.togglePause());
         q('btnQuit')?.addEventListener('click', () => {
@@ -213,10 +239,21 @@ export class Game {
         this._bossWarnedAt.clear();
         this._spawnAccumulator = 0;
         this._lastAnnouncedWave = null;
+        this._nextSplitIdx = 0;
 
         // Reset per-run achievement state.
         this.achievements.resetRun();
         this.run = this.achievements.run;
+        // Seed the fields the v2.4 achievements depend on. Kept here (rather
+        // than in AchievementTracker) because these tie together weapons/ui.
+        this.run.passivesPicked = 0;
+        this.run.maxedWeaponCount = 0;
+        this.run.evolvedBefore = {};
+        this.run.realSecondsToVoidLord = Infinity;
+        this.run.noHitBoss = false;
+        this.run.bossFightNoHit = new Set(); // ids of bosses whose fight we've tracked
+        this._runStartWallClock = performance.now();
+        this.speedrunSplits = [];
 
         this.player = new Player(CONFIG.CANVAS_WIDTH / 2, CONFIG.CANVAS_HEIGHT / 2);
         this.player.weapons.push(new Weapon(WEAPONS.WHIP));
@@ -234,6 +271,20 @@ export class Game {
 
         this.lastTime = performance.now();
         this._scheduleFrame();
+    }
+
+    /**
+     * Speedrun mode: deterministic seed, fixed boss timeline (the `spawnAt`
+     * fields in data.js are already fixed), real-time millisecond clock,
+     * separate leaderboard. We toggle `speedrunMode` before delegating to
+     * `start()` so the spawn path can branch on the seeded RNG.
+     */
+    startSpeedrun() {
+        this.speedrunMode = true;
+        this.speedrunRng = new SeededRng(CONFIG.SPEEDRUN_SEED);
+        this.speedrunStart = performance.now();
+        this.start();
+        this._announce('Speedrun started — deterministic seed.');
     }
 
     togglePause() {
@@ -256,16 +307,33 @@ export class Game {
         this.audio.stopMusic();
         this.audio.death();
 
+        // Update lifetime "unique builds" counter: a build = the sorted set
+        // of weapon ids at death. If we haven't seen this combination before,
+        // bump the counter (capped at a reasonable number to avoid bloat).
+        this.save.totals ??= { kills: 0, timePlayed: 0, runs: 0, bossKills: 0 };
+        this.save.totals.seenBuilds ??= [];
+        const buildKey = this.player.weapons
+            .map((w) => w.id)
+            .sort()
+            .join('+');
+        if (buildKey && !this.save.totals.seenBuilds.includes(buildKey)) {
+            this.save.totals.seenBuilds.push(buildKey);
+            this.save.totals.uniqueBuilds = this.save.totals.seenBuilds.length;
+        }
+
         // Final achievement check.
         this.achievements.check(this);
         this._flushAchievementToasts();
 
         // Record run -------------------------------------------------------
+        const weaponIds = this.player.weapons.map((w) => w.id);
         const entry = {
             kills: this.kills,
             timeSurvived: this.gameTime,
             level: this.player.level,
-            date: Date.now()
+            date: Date.now(),
+            weapons: weaponIds,
+            noHit: (this.run.longestUnhit || 0) >= this.gameTime - 0.5
         };
         recordHighScore(this.save, entry);
         accumulateTotals(this.save, {
@@ -275,7 +343,30 @@ export class Game {
         });
         saveSave(this.save);
 
+        // Speedrun: write to its own leaderboard, and store the split timeline
+        // on the game so the UI can render it in the game-over screen.
+        if (this.speedrunMode) {
+            const sEntry = {
+                timeMs: performance.now() - this.speedrunStart,
+                splits: this.speedrunSplits,
+                level: this.player.level,
+                kills: this.kills,
+                date: Date.now(),
+                weapons: weaponIds,
+                noHit: entry.noHit
+            };
+            const rank = recordSpeedrunScore(sEntry);
+            this._speedrunRank = rank;
+            this._speedrunEntry = sEntry;
+        }
+
         this.ui.showGameOver(this);
+    }
+
+    openLeaderboard() {
+        this.ui.showLeaderboard(this.save.highScores || [], loadSpeedrunScores(), () => {
+            /* closed */
+        });
     }
 
     // --- Frame loop -------------------------------------------------------
@@ -344,6 +435,22 @@ export class Game {
 
         this._spawnLogic(dt, hpMult, dmgMult, diff.spawnMult);
 
+        // Speedrun splits: push once per threshold as gameTime crosses them.
+        if (this.speedrunMode) {
+            const thresholds = CONFIG.SPEEDRUN_SPLITS;
+            while (
+                this._nextSplitIdx < thresholds.length &&
+                this.gameTime >= thresholds[this._nextSplitIdx]
+            ) {
+                const mark = thresholds[this._nextSplitIdx];
+                this.speedrunSplits.push({
+                    mark,
+                    realMs: performance.now() - this.speedrunStart
+                });
+                this._nextSplitIdx++;
+            }
+        }
+
         // Achievement ticks (cheap: most checks short-circuit).
         this.achievements.check(this);
         this._flushAchievementToasts();
@@ -404,6 +511,15 @@ export class Game {
             this.audio.explosion();
             this.achievements.onBossDefeated(e.id);
             this._announce(`${e.id.replace('_', ' ')} defeated`);
+            // Mark no-hit-boss if the player's unhit streak is longer than
+            // the fight itself. We use the unhit timer (seconds without
+            // damage) as a cheap proxy; any damage during the fight resets it.
+            if (this.player.unhitTimer >= 8) this.run.noHitBoss = true;
+            // Speedrun: record wall-clock seconds until each boss.
+            if (e.id === 'void_lord') {
+                this.run.realSecondsToVoidLord =
+                    (performance.now() - this._runStartWallClock) / 1000;
+            }
         }
         if (e.splitter && e.type.splitInto) {
             const childDef = findEnemyDef(e.type.splitInto);
@@ -538,9 +654,25 @@ export class Game {
             if (choice.type === 'weapon') {
                 const existing = this.player.weapons.find((w) => w.id === choice.data.id);
                 if (existing) {
+                    const prevLvl = existing.level;
                     existing.levelUp();
                     if (existing.level >= CONFIG.WEAPON_MAX_LEVEL) {
                         this.achievements.onWeaponMaxed();
+                        // Track how many distinct weapons have been maxed this run.
+                        if (prevLvl < CONFIG.WEAPON_MAX_LEVEL) {
+                            this.run.maxedWeaponCount = (this.run.maxedWeaponCount || 0) + 1;
+                        }
+                    }
+                    // Early-Evolve achievement: fire when the weapon actually
+                    // crosses into its evolution tier before 7:00.
+                    if (
+                        existing.def.evolveLevel &&
+                        prevLvl < existing.def.evolveLevel &&
+                        existing.level >= existing.def.evolveLevel &&
+                        this.gameTime < CONFIG.EARLY_EVOLVE_THRESHOLD
+                    ) {
+                        this.run.evolvedBefore = this.run.evolvedBefore || {};
+                        this.run.evolvedBefore.sevenMin = true;
                     }
                 } else {
                     this.player.weapons.push(new Weapon(choice.data));
@@ -550,6 +682,7 @@ export class Game {
                 if (this.player.passives[choice.data.id].count < CONFIG.PASSIVE_MAX_STACK) {
                     this.player.passives[choice.data.id].count++;
                     this.player.recalculateStats();
+                    this.run.passivesPicked = (this.run.passivesPicked || 0) + 1;
                 }
             }
         }
@@ -600,10 +733,12 @@ export class Game {
     }
 
     _spawnOne(pool, hpMult, dmgMult) {
-        const pick = pool[Math.floor(Math.random() * pool.length)];
+        const rng = this.speedrunMode && this.speedrunRng ? this.speedrunRng : null;
+        const frnd = rng ? () => rng.nextFloat() : Math.random;
+        const pick = pool[Math.floor(frnd() * pool.length)];
         const type = findEnemyDef(pick) || ENEMIES.BAT;
-        const angle = Math.random() * Math.PI * 2;
-        const dist = CONFIG.SPAWN_RADIUS + Math.random() * 120;
+        const angle = frnd() * Math.PI * 2;
+        const dist = CONFIG.SPAWN_RADIUS + frnd() * 120;
         const x = this.player.x + Math.cos(angle) * dist;
         const y = this.player.y + Math.sin(angle) * dist;
         this.enemies.push(new Enemy(x, y, type, hpMult, dmgMult));

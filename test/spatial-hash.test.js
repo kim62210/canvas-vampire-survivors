@@ -140,3 +140,52 @@ test('SpatialHash: many items + many queries (smoke perf check)', () => {
     assert.ok(total >= 0); // just ensure no crash + iteration works
     assert.equal(h.size, 500);
 });
+
+test('SpatialHash: cell-size 1 still works for fractional coords', () => {
+    const h = new SpatialHash(1);
+    h.insert({ x: 0.25, y: 0.75 });
+    h.insert({ x: 1.5, y: 1.5 });
+    assert.equal(h.size, 2);
+    const near = collect(h.queryRect(0, 0, 0));
+    assert.equal(near.length, 1);
+});
+
+test('SpatialHash: queryRect with huge radius scans everything', () => {
+    const h = new SpatialHash(64);
+    const items = [];
+    for (let i = 0; i < 50; i++) {
+        items.push({ x: i * 10, y: i * 10 });
+    }
+    h.insertAll(items);
+    const seen = collect(h.queryRect(250, 250, 10000));
+    assert.equal(seen.length, items.length);
+});
+
+test('SpatialHash: identical coordinates stack in the same cell', () => {
+    const h = new SpatialHash(64);
+    for (let i = 0; i < 10; i++) h.insert({ x: 5, y: 5, id: i });
+    assert.equal(h.size, 10);
+    assert.equal(h.occupiedCellCount(), 1);
+});
+
+test('SpatialHash: findNearest with zero range returns null', () => {
+    const h = new SpatialHash(64);
+    h.insert({ x: 1, y: 1 });
+    assert.equal(h.findNearest(0, 0, 0), null);
+});
+
+test('SpatialHash: findNearest returns closest even when multiple share a cell', () => {
+    const h = new SpatialHash(64);
+    h.insert({ x: 0.1, y: 0, id: 'c' });
+    h.insert({ x: 0.2, y: 0, id: 'far' });
+    h.insert({ x: 0.05, y: 0, id: 'closest' });
+    assert.equal(h.findNearest(0, 0, 1).id, 'closest');
+});
+
+test('SpatialHash: large negative AND positive coordinates work together', () => {
+    const h = new SpatialHash(64);
+    h.insert({ x: -5000, y: -5000, id: 'a' });
+    h.insert({ x: 5000, y: 5000, id: 'b' });
+    assert.equal(h.occupiedCellCount(), 2);
+    assert.equal(h.findNearest(-4990, -4990, 100).id, 'a');
+});

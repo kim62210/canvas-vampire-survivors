@@ -121,6 +121,10 @@ export class Weapon {
                 return this._fireAura(player, game);
             case 'mine':
                 return this._fireMine(player, game);
+            case 'nova':
+                return this._fireNova(player, game);
+            case 'drain':
+                return this._fireDrain(player, game);
         }
     }
 
@@ -268,5 +272,74 @@ export class Weapon {
             );
         }
         game.audio?.shoot?.();
+    }
+
+    /**
+     * Frost Nova: radial burst centred on the hero that damages every foe
+     * within `range` and applies a timed slow. Evolved variant fires a
+     * second delayed ring at 60% strength for a staggered AOE.
+     */
+    _fireNova(player, game) {
+        const range = this.getRange(player);
+        const baseDmg = this.getDamage(player);
+        const slowPct = this.def.slowPct ?? 0.5;
+        const slowDur = this.def.slowDuration ?? 1.2;
+        for (const enemy of game.enemies) {
+            const d = Math.hypot(enemy.x - player.x, enemy.y - player.y);
+            if (d < range) {
+                const dmg = this._rollCrit(player, game, baseDmg, enemy.x, enemy.y - 20, '#88ddff');
+                enemy.takeDamage(dmg);
+                // Slow is cooperative: entities.js reads `slowTimer` / `slowPct`.
+                if (!enemy.slowTimer || enemy.slowTimer < slowDur) {
+                    enemy.slowTimer = slowDur;
+                    enemy.slowPct = slowPct;
+                }
+            }
+        }
+        game.createParticles(player.x, player.y, '#aaeeff', 24);
+        if (this.isEvolved()) {
+            // Queue a follow-up pulse ~0.4s later, at 60% damage.
+            setTimeout(() => {
+                if (!game.player || game.player.dead) return;
+                for (const e of game.enemies) {
+                    const d = Math.hypot(e.x - player.x, e.y - player.y);
+                    if (d < range) e.takeDamage(baseDmg * 0.6);
+                }
+                game.createParticles(player.x, player.y, '#88ccff', 16);
+            }, 400);
+        }
+        game.audio?.shoot?.();
+    }
+
+    /**
+     * Soul Drain: short-range tether to the nearest foe. Ticks damage each
+     * fire, and heals the hero for `lifestealPct × damageDealt`. Evolved
+     * variant drains two foes simultaneously.
+     */
+    _fireDrain(player, game) {
+        const range = this.getRange(player);
+        const baseDmg = this.getDamage(player);
+        const steal = this.def.lifestealPct ?? 0.25;
+        const targetCount = this.isEvolved() ? 2 : 1;
+        const targets = [];
+        // Pick nearest N enemies within range.
+        const nearby = game.enemies
+            .filter((e) => Math.hypot(e.x - player.x, e.y - player.y) < range)
+            .sort(
+                (a, b) =>
+                    Math.hypot(a.x - player.x, a.y - player.y) -
+                    Math.hypot(b.x - player.x, b.y - player.y)
+            );
+        for (let i = 0; i < targetCount && i < nearby.length; i++) targets.push(nearby[i]);
+        if (!targets.length) return;
+        let totalDmg = 0;
+        for (const e of targets) {
+            const dmg = this._rollCrit(player, game, baseDmg, e.x, e.y - 16, '#ff66aa');
+            e.takeDamage(dmg);
+            totalDmg += dmg;
+            // Cheap "tether" visual = particle streak.
+            game.createParticles((player.x + e.x) / 2, (player.y + e.y) / 2, '#ff88cc', 2);
+        }
+        if (player.heal) player.heal(totalDmg * steal);
     }
 }

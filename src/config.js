@@ -37,7 +37,15 @@ export const CONFIG = {
     DT_CLAMP: 0.05, // max dt per frame (s); guards against tab-resume explosions
     WAVE_DURATION: 30, // seconds per wave announcement
     HIGHSCORE_SLOTS: 10,
-    VERSION: '2.3.0'
+    // --- v2.4: speedrun + launch tuning ---------------------------------
+    SPEEDRUN_SEED: 0x5357524e, // 'SPRN' — deterministic per run
+    SPEEDRUN_SPLITS: [60, 180, 300, 450, 600, 720], // secs: 1,3,5,7.5,10,12 min
+    SPEEDRUN_MAX_SLOTS: 10,
+    LEADERBOARD_PAGE_SIZE: 20, // how many rows the scroll UI renders at a time
+    EARLY_EVOLVE_THRESHOLD: 420, // seconds — used by Early Evolve achievement
+    NOVA_SLOW_DEFAULT: 0.5, // fallback slow % when def omits slowPct
+    BOMBER_DEFAULT_RADIUS: 120, // used if data.js omits blastRadius
+    VERSION: '2.4.0'
 };
 
 export const GameState = Object.freeze({
@@ -57,3 +65,4 @@ export const Difficulty = Object.freeze({
 });
 
 export const STORAGE_KEY = 'vs_clone_save_v2';
+export const SPEEDRUN_STORAGE_KEY = 'speedrun_highscores';

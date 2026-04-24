@@ -29,6 +29,7 @@ function makeGame() {
         createFloatingText(text, x, y, color, opts) {
             texts.push({ text, x, y, color, opts });
         },
+        createParticles() {},
         audio: { shoot() {}, explosion() {} },
         projectiles: [],
         enemies: [],
@@ -189,4 +190,112 @@ test('Weapon: config WEAPON_MAX_LEVEL + evolveLevel agree on 5', () => {
     for (const w of Object.values(WEAPONS)) {
         if (w.evolveLevel) assert.equal(w.evolveLevel, 5, `weapon ${w.id}`);
     }
+});
+
+test('Weapon: nova fire applies damage + slow to nearby enemies', () => {
+    const w = new Weapon(WEAPONS.FROST_NOVA);
+    const p = makePlayer();
+    const enemy = {
+        x: 50,
+        y: 0,
+        hp: 100,
+        takeDamage(d) {
+            this.hp -= d;
+        },
+        slowTimer: 0,
+        slowPct: 0
+    };
+    const farEnemy = {
+        x: 9999,
+        y: 0,
+        hp: 100,
+        takeDamage(d) {
+            this.hp -= d;
+        },
+        slowTimer: 0,
+        slowPct: 0
+    };
+    const g = makeGame();
+    g.enemies = [enemy, farEnemy];
+    g.player = p;
+    g.createParticles = () => {};
+    // Manually invoke via the dispatcher.
+    w.fire(p, g);
+    assert.ok(enemy.hp < 100, 'nearby enemy should be hit');
+    assert.ok(enemy.slowTimer > 0, 'nearby enemy should be slowed');
+    assert.equal(farEnemy.hp, 100, 'distant enemy should be untouched');
+});
+
+test('Weapon: drain heals the player via lifesteal', () => {
+    const w = new Weapon(WEAPONS.SOUL_DRAIN);
+    let healed = 0;
+    const p = {
+        ...makePlayer(),
+        heal(n) {
+            healed += n;
+        }
+    };
+    const enemy = {
+        x: 10,
+        y: 0,
+        hp: 200,
+        takeDamage(d) {
+            this.hp -= d;
+        }
+    };
+    const g = makeGame();
+    g.enemies = [enemy];
+    g.player = p;
+    w.fire(p, g);
+    assert.ok(enemy.hp < 200, 'enemy took damage');
+    assert.ok(healed > 0, 'player should have been healed by lifesteal');
+});
+
+test('Weapon: drain does nothing when no enemies in range', () => {
+    const w = new Weapon(WEAPONS.SOUL_DRAIN);
+    const p = {
+        ...makePlayer(),
+        heal() {
+            throw new Error('should not heal without a target');
+        }
+    };
+    const g = makeGame();
+    g.enemies = [{ x: 99999, y: 0, hp: 100, takeDamage() {} }];
+    g.player = p;
+    assert.doesNotThrow(() => w.fire(p, g));
+});
+
+test('Weapon: boomerang projectile def has type=projectile + boomerang flag', () => {
+    assert.equal(WEAPONS.BOOMERANG.type, 'projectile');
+    assert.equal(WEAPONS.BOOMERANG.boomerang, true);
+});
+
+test('Weapon: getDamage returns 0 when baseDamage is 0', () => {
+    const w = new Weapon({
+        id: 'null',
+        baseDamage: 0,
+        baseCooldown: 1,
+        baseRange: 100,
+        type: 'projectile'
+    });
+    assert.equal(w.getDamage(makePlayer()), 0);
+});
+
+test('Weapon: getCooldown is strictly positive even at very high level', () => {
+    const w = new Weapon(WEAPONS.WHIP);
+    for (let i = 0; i < 50; i++) w.levelUp();
+    assert.ok(w.getCooldown(makePlayer()) > 0);
+});
+
+test('Weapon: range with areaMult=0 still returns a finite number', () => {
+    const w = new Weapon(WEAPONS.WHIP);
+    const r = w.getRange(makePlayer({ areaMult: 0 }));
+    assert.equal(r, 0);
+});
+
+test('Weapon: orbit shard damage scales with player damageMult', () => {
+    const w = new Weapon(WEAPONS.ORBIT);
+    const low = w.getDamage(makePlayer({ dmgMult: 1 }));
+    const high = w.getDamage(makePlayer({ dmgMult: 3 }));
+    assert.ok(Math.abs(high / low - 3) < 1e-6);
 });

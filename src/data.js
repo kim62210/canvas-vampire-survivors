@@ -123,6 +123,54 @@ export const WEAPONS = {
         piercing: true,
         type: 'aura',
         continuous: true
+    },
+    // --- v2.4 additions ---------------------------------------------------
+    FROST_NOVA: {
+        id: 'frost_nova',
+        name: 'Frost Nova',
+        icon: '❄️',
+        description: 'Expanding ring of ice slows foes caught in the burst. Evolves: twin-ring.',
+        baseDamage: 28,
+        baseCooldown: 3.2,
+        baseRange: 200, // blast radius
+        projectileCount: 1,
+        piercing: true,
+        type: 'nova',
+        slowPct: 0.5,
+        slowDuration: 1.2,
+        evolveLevel: 5,
+        evolveName: 'Glacial Cascade'
+    },
+    SOUL_DRAIN: {
+        id: 'soul_drain',
+        name: 'Soul Drain',
+        icon: '🩸',
+        description: 'Beam that tethers the nearest foe and heals on tick. Evolves: dual-lash.',
+        baseDamage: 8,
+        baseCooldown: 0.25, // tick rate
+        baseRange: 260,
+        projectileCount: 1,
+        piercing: true,
+        type: 'drain',
+        lifestealPct: 0.25,
+        evolveLevel: 5,
+        evolveName: 'Vampiric Chord'
+    },
+    BOOMERANG: {
+        id: 'boomerang',
+        name: 'Boomerang',
+        icon: '🪃',
+        description: 'Flung forward, homes back to the hero. Evolves: twin arc.',
+        baseDamage: 18,
+        baseCooldown: 1.1,
+        baseRange: 340,
+        projectileCount: 1,
+        piercing: true,
+        type: 'projectile',
+        speed: 380,
+        boomerang: true,
+        evolveLevel: 5,
+        evolveName: 'Twin Arc'
     }
 };
 
@@ -327,6 +375,37 @@ export const ENEMIES = {
         exp: 6,
         color: '#66ddaa',
         size: 10
+    },
+    // --- v2.4 additions: bomber (self-destructs) + illusionist (clone) ---
+    BOMBER: {
+        id: 'bomber',
+        name: 'Bomber',
+        archetype: 'bomber',
+        bomber: true,
+        fuseRange: 80, // begins countdown when within this distance
+        fuseTime: 1.4, // seconds before detonation
+        blastRadius: 120,
+        blastDamage: 40,
+        hp: 35,
+        speed: 120,
+        damage: 10,
+        exp: 28,
+        color: '#ff6644',
+        size: 14
+    },
+    ILLUSIONIST: {
+        id: 'illusionist',
+        name: 'Illusionist',
+        archetype: 'illusionist',
+        illusionist: true,
+        cloneCooldown: 5.5,
+        cloneCount: 2,
+        hp: 42,
+        speed: 95,
+        damage: 12,
+        exp: 30,
+        color: '#cc88ff',
+        size: 15
     }
 };
 
@@ -363,6 +442,33 @@ export const BOSSES = {
         boss: true,
         ability: 'charge',
         spawnAt: 600 // 10 minutes
+    },
+    // --- v2.4 mid/late bosses --------------------------------------------
+    NECROMANCER: {
+        id: 'necromancer',
+        name: 'Necromancer',
+        hp: 4200,
+        speed: 70,
+        damage: 50,
+        exp: 850,
+        color: '#3a1a4a',
+        size: 54,
+        boss: true,
+        ability: 'summon',
+        spawnAt: 450 // 7:30
+    },
+    CHRONO_LICH: {
+        id: 'chrono_lich',
+        name: 'Chrono Lich',
+        hp: 10000,
+        speed: 55,
+        damage: 75,
+        exp: 2000,
+        color: '#0b2a4a',
+        size: 72,
+        boss: true,
+        ability: 'charge',
+        spawnAt: 720 // 12:00
     }
 };
 
@@ -391,42 +497,42 @@ export const WAVES = [
     {
         from: 120,
         to: 180,
-        pool: ['wolf', 'ghost', 'slime', 'mage'],
+        pool: ['wolf', 'ghost', 'slime', 'mage', 'bomber'],
         spawnMult: 1.3,
         label: 'Splitters'
     },
     {
         from: 180,
         to: 240,
-        pool: ['wolf', 'golem', 'ghost', 'slime'],
+        pool: ['wolf', 'golem', 'ghost', 'slime', 'bomber'],
         spawnMult: 1.4,
         label: 'Vanguard'
     },
     {
         from: 240,
         to: 300,
-        pool: ['golem', 'ghost', 'slime', 'mage'],
+        pool: ['golem', 'ghost', 'slime', 'mage', 'illusionist'],
         spawnMult: 1.5,
         label: 'Pressure'
     },
     {
         from: 300,
         to: 420,
-        pool: ['wolf', 'golem', 'ghost', 'slime', 'mage'],
+        pool: ['wolf', 'golem', 'ghost', 'slime', 'mage', 'bomber', 'illusionist'],
         spawnMult: 1.6,
         label: 'Post-Reaper'
     },
     {
         from: 420,
         to: 600,
-        pool: ['golem', 'slime', 'mage', 'ghost', 'wolf'],
+        pool: ['golem', 'slime', 'mage', 'ghost', 'wolf', 'illusionist'],
         spawnMult: 1.75,
         label: 'Escalation'
     },
     {
         from: 600,
         to: Infinity,
-        pool: ['golem', 'slime', 'mage', 'ghost', 'wolf', 'skeleton'],
+        pool: ['golem', 'slime', 'mage', 'ghost', 'wolf', 'skeleton', 'bomber', 'illusionist'],
         spawnMult: 2.0,
         label: 'Endgame'
     }
@@ -520,6 +626,50 @@ export const ACHIEVEMENTS = [
         icon: '📈',
         description: 'Reach hero level 20.',
         check: (c) => c.game.player?.level >= 20
+    },
+    // --- v2.4 additions ---------------------------------------------------
+    {
+        id: 'speed_demon',
+        name: 'Speed Demon',
+        icon: '💨',
+        description: 'Defeat the Void Lord in under 5 minutes of real time.',
+        check: (c) =>
+            !!c.run.bossesDefeated?.void_lord && (c.run.realSecondsToVoidLord || Infinity) < 300
+    },
+    {
+        id: 'no_hit_boss',
+        name: 'Flawless Duel',
+        icon: '🕊️',
+        description: 'Defeat any boss without taking damage during the fight.',
+        check: (c) => !!c.run.noHitBoss
+    },
+    {
+        id: 'max_all',
+        name: 'Max All',
+        icon: '👑',
+        description: 'Reach max level on every weapon slot in a single run.',
+        check: (c) => (c.run.maxedWeaponCount || 0) >= 6
+    },
+    {
+        id: 'early_evolve',
+        name: 'Early Evolve',
+        icon: '🔮',
+        description: 'Evolve a weapon before the 7-minute mark.',
+        check: (c) => !!c.run.evolvedBefore?.sevenMin
+    },
+    {
+        id: 'triple_build',
+        name: 'Triple Threat',
+        icon: '🎲',
+        description: 'Finish 3 distinct weapon-composition runs (lifetime).',
+        check: (c) => (c.game.save?.totals?.uniqueBuilds || 0) >= 3
+    },
+    {
+        id: 'zen_5min',
+        name: 'Zen Walker',
+        icon: '🧘',
+        description: 'Survive 5 minutes without picking up a single passive.',
+        check: (c) => c.game.gameTime >= 300 && (c.run.passivesPicked || 0) === 0
     }
 ];
 
@@ -531,5 +681,9 @@ export const UNLOCKS = {
     slayer_100: { weapon: 'knife' },
     survive_5min: { weapon: 'orbit' },
     boss_slayer: { weapon: 'lightning' },
-    survive_10min: { weapon: 'mine' }
+    survive_10min: { weapon: 'mine' },
+    // v2.4 unlocks
+    survive_15min: { weapon: 'boomerang' },
+    void_breaker: { weapon: 'frost_nova' },
+    speed_demon: { weapon: 'soul_drain' }
 };

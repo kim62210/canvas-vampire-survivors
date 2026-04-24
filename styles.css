@@ -705,6 +705,63 @@ canvas {
     font-style: italic;
 }
 
+/* Speedrun splits + leaderboard wide view ---------------------------- */
+.splits {
+    margin: 6px 0 10px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.04);
+    font-size: 12px;
+}
+.splits-head {
+    color: var(--accent);
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+.split-row {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 10px;
+}
+.hs-head.wide,
+.hs-row.wide {
+    grid-template-columns: 24px 70px 60px 60px 1.4fr 100px 50px;
+}
+.hs-list.scroll {
+    max-height: 260px;
+    overflow-y: auto;
+}
+.leaderboard-card {
+    max-width: 720px;
+    width: 90vw;
+}
+.lb-section {
+    margin-top: 10px;
+}
+.lb-section h3 {
+    color: var(--accent);
+    font-size: 13px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+}
+.lb-json {
+    width: 100%;
+    margin-top: 10px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 11px;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    color: #ddd;
+    border-radius: 6px;
+    resize: vertical;
+}
+.no-hit {
+    color: #66ddaa;
+    font-weight: 700;
+}
+
 /* Evolve badge on level-up option ----------------------------------- */
 .upgrade-option .evolve-tag {
     color: #ff88bb;

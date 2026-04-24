@@ -49,9 +49,116 @@ export class UI {
             'achievementToasts',
             'highScoreList',
             'waveLabel',
-            'achievementsScreen'
+            'achievementsScreen',
+            'leaderboardScreen'
         ];
         for (const id of ids) this.els[id] = document.getElementById(id);
+    }
+
+    /**
+     * Full-screen leaderboard dialog. Renders both regular + speedrun runs in
+     * separate scrollable sections, with export/import for sharing. This is
+     * the main-menu entry point; the game-over summary still shows a compact
+     * top-10 list inside the run recap.
+     */
+    showLeaderboard(normalScores, speedrunScores, onClose) {
+        const m = this.els.leaderboardScreen;
+        if (!m) return;
+        const renderRow = (r, i) => {
+            const mm = Math.floor((r.timeSurvived ?? 0) / 60)
+                .toString()
+                .padStart(2, '0');
+            const ss = Math.floor((r.timeSurvived ?? 0) % 60)
+                .toString()
+                .padStart(2, '0');
+            const d = new Date(r.date || 0);
+            const dstr = isNaN(d.getTime())
+                ? '—'
+                : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+                      d.getDate()
+                  ).padStart(2, '0')}`;
+            const ws = Array.isArray(r.weapons) && r.weapons.length ? r.weapons.join(' + ') : '—';
+            const nh = r.noHit ? `<span class="no-hit">${t('noHit')}</span>` : '';
+            return `<div class="hs-row wide"><span>${i + 1}</span><span>${mm}:${ss}</span><span>Lv.${r.level ?? 1}</span><span>${r.kills ?? 0}</span><span class="weapons">${ws}</span><span>${dstr}</span><span>${nh}</span></div>`;
+        };
+        const renderSpeedRow = (r, i) => {
+            const ms = r.timeMs || 0;
+            const mm = Math.floor(ms / 60000)
+                .toString()
+                .padStart(2, '0');
+            const ss = Math.floor((ms % 60000) / 1000)
+                .toString()
+                .padStart(2, '0');
+            const ml = Math.floor(ms % 1000)
+                .toString()
+                .padStart(3, '0');
+            const d = new Date(r.date || 0);
+            const dstr = isNaN(d.getTime())
+                ? '—'
+                : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+                      d.getDate()
+                  ).padStart(2, '0')}`;
+            const ws = Array.isArray(r.weapons) && r.weapons.length ? r.weapons.join(' + ') : '—';
+            return `<div class="hs-row wide"><span>${i + 1}</span><span>${mm}:${ss}.${ml}</span><span>Lv.${r.level ?? 1}</span><span>${r.kills ?? 0}</span><span class="weapons">${ws}</span><span>${dstr}</span></div>`;
+        };
+        m.innerHTML = `
+            <div class="overlay-card leaderboard-card">
+                <h2>${t('leaderboard')}</h2>
+                <section class="lb-section">
+                    <h3>${t('highScores')} (${normalScores.length})</h3>
+                    <div class="hs-list scroll">
+                        ${
+                            normalScores.length
+                                ? `<div class="hs-head wide"><span>#</span><span>${t('time')}</span><span>${t('level')}</span><span>${t('kills')}</span><span>${t('weapons')}</span><span>${t('date')}</span><span>${t('noHit')}</span></div>` +
+                                  normalScores.map(renderRow).join('')
+                                : `<div class="hs-empty">${t('noHighScores')}</div>`
+                        }
+                    </div>
+                </section>
+                <section class="lb-section">
+                    <h3>${t('speedrun')} (${speedrunScores.length})</h3>
+                    <div class="hs-list scroll">
+                        ${
+                            speedrunScores.length
+                                ? `<div class="hs-head wide"><span>#</span><span>${t('time')}</span><span>${t('level')}</span><span>${t('kills')}</span><span>${t('weapons')}</span><span>${t('date')}</span></div>` +
+                                  speedrunScores.map(renderSpeedRow).join('')
+                                : `<div class="hs-empty">${t('noHighScores')}</div>`
+                        }
+                    </div>
+                </section>
+                <textarea id="lbJson" class="lb-json" rows="4" aria-label="${t('paste')}" placeholder='${t('paste')}'></textarea>
+                <div class="btn-row">
+                    <button id="lbExport" class="btn ghost">${t('export')}</button>
+                    <button id="lbImport" class="btn ghost">${t('import')}</button>
+                    <button id="lbClose" class="btn primary">${t('close')}</button>
+                </div>
+            </div>`;
+        m.style.display = 'flex';
+        const close = () => {
+            m.style.display = 'none';
+            onClose && onClose();
+        };
+        m.querySelector('#lbClose')?.addEventListener('click', close);
+        const ta = m.querySelector('#lbJson');
+        m.querySelector('#lbExport')?.addEventListener('click', () => {
+            if (ta) ta.value = JSON.stringify({ normal: normalScores, speedrun: speedrunScores });
+        });
+        m.querySelector('#lbImport')?.addEventListener('click', () => {
+            if (!ta?.value?.trim()) return;
+            try {
+                const parsed = JSON.parse(ta.value);
+                // Caller wires the merge into storage; here we just fire an event.
+                const ev = new CustomEvent('vs-leaderboard-import', { detail: parsed });
+                window.dispatchEvent(ev);
+            } catch (err) {
+                console.warn('[ui] Import JSON parse failed', err);
+                ta.value = 'Invalid JSON: ' + err.message;
+            }
+        });
+    }
+
+    hideLeaderboard() {
+        if (this.els.leaderboardScreen) this.els.leaderboardScreen.style.display = 'none';
     }
 
     /**
@@ -373,10 +480,31 @@ export class UI {
         // Render leaderboard under the run summary.
         if (this.els.highScoreList) {
             const rows = game.save.highScores || [];
+            // Speedrun splits block (if applicable).
+            let splitsHtml = '';
+            if (game.speedrunMode && game.speedrunSplits?.length) {
+                splitsHtml =
+                    `<div class="splits"><div class="splits-head">${t('splits')}</div>` +
+                    game.speedrunSplits
+                        .map((sp) => {
+                            const mm = Math.floor(sp.mark / 60)
+                                .toString()
+                                .padStart(2, '0');
+                            const ss = Math.floor(sp.mark % 60)
+                                .toString()
+                                .padStart(2, '0');
+                            const rs = (sp.realMs / 1000).toFixed(2);
+                            return `<div class="split-row"><span>${mm}:${ss}</span><span>${rs}s</span></div>`;
+                        })
+                        .join('') +
+                    '</div>';
+            }
             if (!rows.length) {
-                this.els.highScoreList.innerHTML = `<div class="hs-empty">${t('noHighScores')}</div>`;
+                this.els.highScoreList.innerHTML =
+                    splitsHtml + `<div class="hs-empty">${t('noHighScores')}</div>`;
             } else {
                 this.els.highScoreList.innerHTML =
+                    splitsHtml +
                     `<div class="hs-head"><span>#</span><span>${t('time')}</span><span>${t('level')}</span><span>${t('kills')}</span><span>${t('date')}</span></div>` +
                     rows
                         .map((r, i) => {

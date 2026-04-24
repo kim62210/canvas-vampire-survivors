@@ -11,6 +11,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Placeholder for upcoming changes. Contributors, add your entries here.
 
+## [2.4.0] - 2026-04-25
+
+Content + launch prep release. The catalogue roughly doubles in depth
+(3 new weapons, 2 new enemies, 2 new bosses, 6 new achievements), a
+fully deterministic Speedrun mode lands, and the press-kit docs cover
+HN / Reddit / Dev.to / Twitter launch surfaces. Still no runtime
+dependencies.
+
+### Added
+
+- **Weapons** (`src/data.js` + `src/weapons.js`):
+    - Frost Nova — radial burst that damages + slows foes, evolves to a
+      double-pulse `Glacial Cascade`.
+    - Soul Drain — short-range tether that lifesteals 25% of dealt damage,
+      evolves to a two-target `Vampiric Chord`.
+    - Boomerang — thrown forward, homes back to the hero, evolves to a
+      twin-arc pattern.
+- **Enemies**: Bomber (armed fuse, self-destructs for 40 AOE dmg),
+  Illusionist (every ~5 s spawns 2 low-HP clones). Both are in the
+  wave-director rotation from Splitters onwards.
+- **Bosses**: Necromancer at 7:30, Chrono Lich at 12:00. Both reuse the
+  existing ability dispatch (`summon` / `charge`).
+- **Achievements**: `speed_demon`, `no_hit_boss`, `max_all`, `early_evolve`,
+  `triple_build`, `zen_5min`. Three of them also wire new unlocks
+  (Boomerang / Frost Nova / Soul Drain as starter-weapon options).
+- **Speedrun mode** (`src/main.js#startSpeedrun`): deterministic LCG
+  (`SeededRng` in `storage.js`), fixed `SPEEDRUN_SEED`, millisecond-
+  precision timer, split-time timeline at `CONFIG.SPEEDRUN_SPLITS`
+  (1/3/5/7.5/10/12 min), separate `speedrun_highscores` localStorage
+  slot. Retry preserves Speedrun mode; Quit exits back to the normal
+  menu.
+- **Leaderboard screen** (`src/ui.js#showLeaderboard`): full-screen
+  dialog accessible from the main menu, scrollable rows showing time /
+  level / kills / weapon build / date / no-hit badge, plus Export /
+  Import JSON text area for sharing runs.
+- `docs/LAUNCH_POST.md` — 500-word launch blog draft tailored for HN /
+  Reddit / Dev.to.
+- `docs/PRESS_KIT.md` — 20-word positioning + 140-char tweet + 1-minute
+  pitch + fact sheet.
+- `docs/TWEET_DRAFTS.md` — 5 tweet angles (technical, nostalgia,
+  challenge, tutorial, social-good).
+- `docs/REDDIT_POST.md` — r/WebGames and r/roguelites post templates.
+- `docs/FAQ.md` — 10 common-question answers for new users.
+- Speedrun per-run splits appear on the Game Over screen.
+
+### Changed
+
+- `CONFIG` centralises previously-inline magic numbers:
+  `SPEEDRUN_SEED`, `SPEEDRUN_SPLITS`, `SPEEDRUN_MAX_SLOTS`,
+  `LEADERBOARD_PAGE_SIZE`, `EARLY_EVOLVE_THRESHOLD`,
+  `NOVA_SLOW_DEFAULT`, `BOMBER_DEFAULT_RADIUS`. `VERSION` → 2.4.0.
+- `package.json` keywords expanded: adds `html5-canvas-game`,
+  `vampire-survivors-clone`, `browser-roguelite`, `speedrun`,
+  `zero-dependencies`, `indie-game` for discoverability.
+- `Game._applyUpgrade` now records: `maxedWeaponCount`, `passivesPicked`,
+  `evolvedBefore.sevenMin`, so the new achievements can query a single
+  source of truth.
+- `Game.gameOver` persists the weapon composition and a no-hit flag
+  with each high-score entry; lifetime `seenBuilds` drives the
+  Triple-Threat achievement.
+- `WAVES` pool broadened to include Bomber from 120 s and Illusionist
+  from 240 s, so mid-game has more to chew on.
+
+### Tests
+
+- Test suite expanded from 73 to 95+ cases. New coverage: speedrun
+  storage slot, seeded RNG determinism, all new weapon types, new enemy
+  archetype bookkeeping, edge cases on pool recycling and spatial-hash
+  queries.
+
 ## [2.3.0] - 2026-04-25
 
 Performance, accessibility, and testing pass. The frame-rate is now stable at
@@ -171,7 +241,8 @@ full open-source contribution workflow. No runtime dependencies were added.
 - Particle effects and basic wave announcements.
 - Single-file `game.js` implementation (~1400 lines).
 
-[Unreleased]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.0.0...v2.2.0
 [2.0.0]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v1.0.0...v2.0.0

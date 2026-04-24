@@ -1,6 +1,6 @@
 {
     "name": "canvas-vampire-survivors",
-    "version": "2.3.0",
+    "version": "2.4.0",
     "description": "Vanilla JavaScript HTML5 Canvas roguelite inspired by Vampire Survivors. Zero runtime dependencies.",
     "main": "server.js",
     "type": "commonjs",
@@ -18,12 +18,18 @@
     "keywords": [
         "game",
         "html5",
+        "html5-canvas-game",
         "canvas",
         "roguelite",
         "vampire-survivors",
+        "vampire-survivors-clone",
+        "browser-roguelite",
         "bullet-hell",
         "browser-game",
         "vanilla-js",
+        "zero-dependencies",
+        "indie-game",
+        "speedrun",
         "open-source"
     ],
     "author": "Survivor contributors",

@@ -60,7 +60,17 @@ const STRINGS = {
         noHighScores: 'No runs recorded yet.',
         achievements: 'Achievements',
         viewAchievements: 'View Achievements',
-        totals: 'Totals'
+        totals: 'Totals',
+        speedrun: 'Speedrun',
+        leaderboard: 'Leaderboard',
+        export: 'Export',
+        import: 'Import',
+        paste: 'Paste JSON',
+        splits: 'Splits',
+        noHit: 'No-Hit',
+        weapons: 'Weapons',
+        speedrunMode: 'Speedrun Mode',
+        newPb: 'New personal best!'
     },
     zh: {
         title: '幸存者',
@@ -109,7 +119,17 @@ const STRINGS = {
         noHighScores: '暂无记录',
         achievements: '成就',
         viewAchievements: '查看成就',
-        totals: '累计'
+        totals: '累计',
+        speedrun: '速通',
+        leaderboard: '排行榜',
+        export: '导出',
+        import: '导入',
+        paste: '粘贴 JSON',
+        splits: '分段',
+        noHit: '无伤',
+        weapons: '武器',
+        speedrunMode: '速通模式',
+        newPb: '个人最佳！'
     }
 };
 

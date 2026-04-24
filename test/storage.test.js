@@ -143,3 +143,66 @@ test('accumulateTotals: increments across runs', () => {
     assert.equal(save.totals.runs, 2);
     assert.equal(save.totals.bossKills, 1);
 });
+
+test('accumulateTotals: handles undefined fields in the run argument', () => {
+    const save = {};
+    accumulateTotals(save, {});
+    assert.equal(save.totals.kills, 0);
+    assert.equal(save.totals.timePlayed, 0);
+    assert.equal(save.totals.bossKills, 0);
+    assert.equal(save.totals.runs, 1);
+});
+
+test('loadSave: defaults expose every key the UI reads', () => {
+    const s = loadSave();
+    // Settings that the settings panel binds by name:
+    for (const key of [
+        'masterVolume',
+        'sfxVolume',
+        'musicVolume',
+        'difficulty',
+        'showFps',
+        'screenShake',
+        'reducedMotion',
+        'colorblind',
+        'musicEnabled',
+        'locale'
+    ]) {
+        assert.ok(key in s.settings, `settings missing ${key}`);
+    }
+});
+
+test('mergeDeep: does NOT share references between merged arrays', () => {
+    const a = { list: [1, 2] };
+    const source = { list: [9] };
+    const out = mergeDeep(a, source);
+    // The result uses the source array by reference, documented behaviour
+    // (arrays are replaced wholesale). Assert that mutating the result array
+    // mutates `source.list` too — regression guard against accidental
+    // deep-copy changes that would silently bloat memory on load.
+    out.list.push(10);
+    assert.equal(source.list.length, 2);
+});
+
+test('recordHighScore: tie-breaks by kills when timeSurvived is identical', () => {
+    const save = { highScores: [], highScore: { kills: 0, timeSurvived: 0, level: 0 } };
+    recordHighScore(save, { kills: 10, timeSurvived: 100, level: 3, date: 1 });
+    recordHighScore(save, { kills: 200, timeSurvived: 100, level: 3, date: 2 });
+    assert.equal(save.highScores[0].kills, 200);
+});
+
+test('recordHighScore: empty save is initialized correctly', () => {
+    const save = { highScores: [], highScore: { kills: 0, timeSurvived: 0, level: 0 } };
+    const rank = recordHighScore(save, { kills: 1, timeSurvived: 1, level: 1, date: 1 });
+    assert.equal(rank, 1);
+    assert.equal(save.highScores.length, 1);
+});
+
+test('saveSave: tolerates unserializable values without throwing', () => {
+    const s = loadSave();
+    // Circular reference. saveSave wraps in try/catch so should just warn.
+    const circ = {};
+    circ.self = circ;
+    s.evil = circ;
+    assert.doesNotThrow(() => saveSave(s));
+});

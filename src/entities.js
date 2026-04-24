@@ -241,12 +241,24 @@ export class Enemy {
         this.splitter = !!type.splitter;
         this.dasher = !!type.dasher;
         this.shielded = !!type.shielded;
+        this.bomber = !!type.bomber;
+        this.illusionist = !!type.illusionist;
 
         this.fireTimer = type.fireCooldown ? type.fireCooldown * (0.5 + Math.random() * 0.5) : 0;
         this.dashTimer = type.dashInterval ? type.dashInterval * (0.3 + Math.random() * 0.7) : 0;
         this.dashActive = 0;
         this.dashAngle = 0;
         this.shieldHp = type.shieldHp ? type.shieldHp * hpMult : 0;
+        // Bomber fuse (armed only when close to player).
+        this.fuseTimer = 0;
+        this.fuseArmed = false;
+        // Illusionist clone cooldown (jittered so the wave doesn't sync).
+        this.cloneTimer = type.cloneCooldown ? type.cloneCooldown * (0.6 + Math.random() * 0.8) : 0;
+        // Frost Nova slow. `slowTimer` > 0 scales movement by (1 - slowPct).
+        this.slowTimer = 0;
+        this.slowPct = 0;
+        // Flag used to mark clone-spawned enemies so they don't re-clone.
+        this.isClone = false;
     }
 
     update(dt, game) {
@@ -258,12 +270,79 @@ export class Enemy {
         const tx = d > 0.01 ? dx / d : 0;
         const ty = d > 0.01 ? dy / d : 0;
 
+        // Decay slow timer.
+        if (this.slowTimer > 0) this.slowTimer -= dt;
+        const slowMult = this.slowTimer > 0 ? 1 - (this.slowPct || 0) : 1;
+
+        // --- Bomber: chase normally until close, then fuse + detonate. ---
+        if (this.bomber) {
+            const fuseRange = this.type.fuseRange || 80;
+            if (d < fuseRange) {
+                this.fuseArmed = true;
+            }
+            if (this.fuseArmed) {
+                this.fuseTimer += dt;
+                if (this.fuseTimer >= (this.type.fuseTime || 1.4)) {
+                    const br = this.type.blastRadius || 120;
+                    const bd = (this.type.blastDamage || 40) * (game.enemyDmgMult || 1);
+                    // Damage player if in range.
+                    const pd = Math.hypot(game.player.x - this.x, game.player.y - this.y);
+                    if (pd < br && !game.player.invincible) {
+                        game.player.takeDamage(bd, game);
+                        game.createFloatingText(
+                            Math.round(bd),
+                            game.player.x,
+                            game.player.y - 28,
+                            '#ff4433'
+                        );
+                    }
+                    game.createParticles(this.x, this.y, '#ff8833', 24);
+                    game.shake?.(0.25);
+                    game.audio?.explosion?.();
+                    this.hp = 0; // self-destruct
+                    return;
+                }
+            }
+            vx = tx * this.speed * slowMult;
+            vy = ty * this.speed * slowMult;
+            this.x += vx * dt;
+            this.y += vy * dt;
+            if (this.flashTimer > 0) this.flashTimer -= dt;
+            return;
+        }
+
+        // --- Illusionist: chaser that periodically spawns 2 clones. -----
+        if (this.illusionist && !this.isClone) {
+            this.cloneTimer -= dt;
+            if (this.cloneTimer <= 0 && game.enemies.length < CONFIG.MAX_ENEMIES) {
+                this.cloneTimer = this.type.cloneCooldown || 5.5;
+                const n = this.type.cloneCount || 2;
+                for (let i = 0; i < n; i++) {
+                    const a = (i / n) * Math.PI * 2 + Math.random() * 0.4;
+                    const clone = new Enemy(
+                        this.x + Math.cos(a) * 24,
+                        this.y + Math.sin(a) * 24,
+                        this.type,
+                        this.maxHp / Math.max(1, this.type.hp),
+                        (game.enemyDmgMult || 1) * 0.6
+                    );
+                    clone.isClone = true;
+                    clone.hp = Math.max(8, this.type.hp * 0.4);
+                    clone.maxHp = clone.hp;
+                    // Keep the signature purple, but a touch paler so they read as illusions.
+                    clone.color = '#e0b0ff';
+                    game.enemies.push(clone);
+                }
+                game.createParticles(this.x, this.y, '#cc88ff', 12);
+            }
+        }
+
         if (this.ranged && this.type.keepDistance) {
             // Stay at preferred range: advance when far, retreat when close.
             const keep = this.type.keepDistance;
             const dir = d > keep + 30 ? 1 : d < keep - 30 ? -1 : 0;
-            vx = tx * this.speed * dir;
-            vy = ty * this.speed * dir;
+            vx = tx * this.speed * dir * slowMult;
+            vy = ty * this.speed * dir * slowMult;
             // Fire if in range and off cooldown.
             this.fireTimer -= dt;
             if (this.fireTimer <= 0 && d < this.type.firingRange) {
@@ -286,19 +365,19 @@ export class Enemy {
             this.dashTimer -= dt;
             if (this.dashActive > 0) {
                 this.dashActive -= dt;
-                vx = Math.cos(this.dashAngle) * (this.type.dashSpeed || 300);
-                vy = Math.sin(this.dashAngle) * (this.type.dashSpeed || 300);
+                vx = Math.cos(this.dashAngle) * (this.type.dashSpeed || 300) * slowMult;
+                vy = Math.sin(this.dashAngle) * (this.type.dashSpeed || 300) * slowMult;
             } else if (this.dashTimer <= 0) {
                 this.dashAngle = Math.atan2(dy, dx);
                 this.dashActive = this.type.dashDuration || 0.5;
                 this.dashTimer = this.type.dashInterval || 3.5;
             } else {
-                vx = tx * this.speed;
-                vy = ty * this.speed;
+                vx = tx * this.speed * slowMult;
+                vy = ty * this.speed * slowMult;
             }
         } else {
-            vx = tx * this.speed;
-            vy = ty * this.speed;
+            vx = tx * this.speed * slowMult;
+            vy = ty * this.speed * slowMult;
         }
 
         this.x += vx * dt;
@@ -332,8 +411,15 @@ export class Enemy {
 
     render(ctx) {
         ctx.save();
+        // Slowed foes get a cold cast.
         if (this.flashTimer > 0) {
             ctx.fillStyle = '#ffffff';
+        } else if (this.slowTimer > 0) {
+            ctx.fillStyle = '#88ccff';
+        } else if (this.bomber && this.fuseArmed) {
+            // Blink red while the fuse is burning.
+            const blink = Math.floor(performance.now() / 120) % 2 === 0;
+            ctx.fillStyle = blink ? '#ffffff' : this.color;
         } else {
             ctx.fillStyle = this.color;
         }

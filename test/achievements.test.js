@@ -165,3 +165,85 @@ test('AchievementTracker: catalogue has 10+ entries and unique ids', () => {
     const unique = new Set(ids);
     assert.equal(unique.size, ids.length);
 });
+
+// --- v2.4 additions ---------------------------------------------------
+
+test('AchievementTracker: speed_demon needs BOTH void_lord + sub-5min real time', () => {
+    const save = { achievements: {} };
+    const t = new AchievementTracker(save);
+    // Only boss defeated, but no real-time window set → no unlock.
+    t.run.bossesDefeated.void_lord = true;
+    t.check({ kills: 0, gameTime: 0, player: { level: 1 } });
+    assert.ok(!save.achievements.speed_demon);
+    // With a qualifying wall-clock time it should unlock.
+    t.run.realSecondsToVoidLord = 240;
+    t.check({ kills: 0, gameTime: 0, player: { level: 1 } });
+    assert.ok(save.achievements.speed_demon);
+});
+
+test('AchievementTracker: max_all only fires at 6 maxed weapons', () => {
+    const save = { achievements: {} };
+    const t = new AchievementTracker(save);
+    t.run.maxedWeaponCount = 5;
+    t.check({ kills: 0, gameTime: 0, player: { level: 1 } });
+    assert.ok(!save.achievements.max_all);
+    t.run.maxedWeaponCount = 6;
+    t.check({ kills: 0, gameTime: 0, player: { level: 1 } });
+    assert.ok(save.achievements.max_all);
+});
+
+test('AchievementTracker: early_evolve requires the explicit flag', () => {
+    const save = { achievements: {} };
+    const t = new AchievementTracker(save);
+    t.check({ kills: 0, gameTime: 100, player: { level: 1 } });
+    assert.ok(!save.achievements.early_evolve);
+    t.run.evolvedBefore = { sevenMin: true };
+    t.check({ kills: 0, gameTime: 100, player: { level: 1 } });
+    assert.ok(save.achievements.early_evolve);
+});
+
+test('AchievementTracker: zen_5min demands ZERO passives during the 5 min', () => {
+    const save = { achievements: {} };
+    const t = new AchievementTracker(save);
+    t.run.passivesPicked = 0;
+    // Less than 300s → not yet.
+    t.check({ kills: 0, gameTime: 299, player: { level: 1 } });
+    assert.ok(!save.achievements.zen_5min);
+    // At 300s with 0 passives → unlock.
+    t.check({ kills: 0, gameTime: 300, player: { level: 1 } });
+    assert.ok(save.achievements.zen_5min);
+});
+
+test('AchievementTracker: zen_5min fails the moment a passive was picked', () => {
+    const save = { achievements: {} };
+    const t = new AchievementTracker(save);
+    t.run.passivesPicked = 1;
+    t.check({ kills: 0, gameTime: 600, player: { level: 1 } });
+    assert.ok(!save.achievements.zen_5min);
+});
+
+test('AchievementTracker: triple_build reads save.totals.uniqueBuilds', () => {
+    const save = { achievements: {} };
+    const t = new AchievementTracker(save);
+    t.check({ kills: 0, gameTime: 0, player: { level: 1 }, save: { totals: { uniqueBuilds: 2 } } });
+    assert.ok(!save.achievements.triple_build);
+    t.check({ kills: 0, gameTime: 0, player: { level: 1 }, save: { totals: { uniqueBuilds: 3 } } });
+    assert.ok(save.achievements.triple_build);
+});
+
+test('AchievementTracker: no_hit_boss requires the explicit run flag', () => {
+    const save = { achievements: {} };
+    const t = new AchievementTracker(save);
+    t.check({ kills: 0, gameTime: 0, player: { level: 1 } });
+    assert.ok(!save.achievements.no_hit_boss);
+    t.run.noHitBoss = true;
+    t.check({ kills: 0, gameTime: 0, player: { level: 1 } });
+    assert.ok(save.achievements.no_hit_boss);
+});
+
+test('AchievementTracker: v2.4 unlocks point at real weapons', () => {
+    // Regression: ensure the v2.4 UNLOCKS additions are all wired.
+    for (const key of ['survive_15min', 'void_breaker', 'speed_demon']) {
+        assert.ok(UNLOCKS[key], `${key} missing from UNLOCKS`);
+    }
+});

@@ -140,3 +140,58 @@ test('Pool end-to-end: churn without creating unbounded objects', () => {
     }
     assert.equal(p.stats().created, 32);
 });
+
+test('Pool: acquired counter decrements on release but never goes negative', () => {
+    const p = new Pool(() => ({}));
+    const a = p.acquire();
+    assert.equal(p.stats().acquired, 1);
+    p.release(a);
+    // An extra release (e.g. double-free bug) must not crash or go negative.
+    p.release(a);
+    assert.ok(p.stats().acquired >= 0);
+});
+
+test('Pool: default maxSize is 512', () => {
+    const p = new Pool(() => ({}));
+    assert.equal(p.stats().maxSize, 512);
+});
+
+test('resetParticle: zero speed keeps entity stationary', () => {
+    const obj = {};
+    resetParticle(obj, 10, 20, '#fff', { angle: 0, speed: 0 });
+    assert.equal(obj.vx, 0);
+    assert.equal(obj.vy, 0);
+});
+
+test('resetFloatingText: empty opts leaves weight as default "bold"', () => {
+    const obj = {};
+    resetFloatingText(obj, 'x', 0, 0, '#fff');
+    assert.equal(obj.weight, 'bold');
+});
+
+test('resetEnemyProjectile: negative angles map to correct velocity signs', () => {
+    const obj = {};
+    resetEnemyProjectile(obj, 0, 0, -Math.PI / 2, 100, 5);
+    assert.ok(Math.abs(obj.vx) < 1e-6);
+    assert.ok(Math.abs(obj.vy + 100) < 1e-6);
+});
+
+test('Pool: reset callback argument forwarding is positional', () => {
+    const factory = () => ({});
+    const reset = (obj, a, b, c) => {
+        obj.a = a;
+        obj.b = b;
+        obj.c = c;
+    };
+    const p = new Pool(factory, reset);
+    const o = p.acquire(1, 2, 3);
+    assert.equal(o.a, 1);
+    assert.equal(o.b, 2);
+    assert.equal(o.c, 3);
+});
+
+test('Pool: release(undefined) is a no-op (no throw)', () => {
+    const p = new Pool(() => ({}));
+    assert.doesNotThrow(() => p.release(undefined));
+    assert.equal(p.stats().free, 0);
+});

@@ -9,6 +9,79 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 _No unreleased changes._
 
+## [2.7.0] - 2026-04-25
+
+Stage 3, gamepad support, deeper mobile polish. Survivor's third map
+**Frozen Tundra** ships with three new gameplay modifiers (-10% move speed,
++20% enemy HP, periodic cold tick) and a frost-themed final boss; the input
+layer gains a real Web Gamepad polling loop with edge-triggered menu
+navigation; mobile gets a special-skill button alongside the joystick, a
+size knob in settings, and a one-shot PWA install prompt. Still zero runtime
+dependencies; tests grow to **195** total.
+
+### Added (iter-14)
+
+- **Tundra stage** (`src/stages.js`, `STAGES.TUNDRA`). Cool palette
+  (`#2a3a4f`), wolf/golem-biased spawn pools, and a brand-new `modifiers`
+  schema exposed via `getStageModifiers(id)`:
+    - `playerSpeedMult: 0.9` (icy footing, -10% movement, applied in
+      `Player.update` via `game.stageMods`)
+    - `enemyHpMult: 1.2` (folded into difficulty `hpMult` so every spawn
+      path inherits it)
+    - Cold tick — `coldTickInterval: 10`, `coldTickDamage: 1` HP. Drained
+      by `Game._applyColdTick` outside i-frames; clamped above 0 HP so
+      death is always attributable to a real hit.
+    - `warmthSourceEnabled: false` placeholder for the warmth pickup
+      (intentionally disabled this iteration).
+- **IceQueen** boss (`BOSSES.ICE_QUEEN`, `data.js`). Frosty cyan halo
+  rendered by `Enemy.render` when `type.iceQueen` is set. Tundra swaps her
+  in for VoidLord at 10:00 via `bossOverrides`; she never auto-spawns on
+  forest/crypt.
+- **Gamepad input layer** (`src/input.js`). `InputManager.pollGamepad()`
+  reads `navigator.getGamepads()` once per frame (called from the main
+  loop), feeds the left stick into `gamepadVec`, the right stick into
+  `aimVec`, and emits edge-triggered callbacks: A → confirm, B → cancel,
+  Start → pause, LB / RB → cycle menu options. 18% deadzone with live-band
+  renormalisation; safe no-op when the API is missing (Node tests, older
+  Safari). New `applyGamepadDeadzone()` and `GAMEPAD_BUTTON` exports.
+- **Mobile special-skill button** (`#specialSkillBtn`) — bottom-right
+  counterpart to the joystick, wired through
+  `InputManager.attachSpecialButton`.
+- **Touch button size** setting (`save.settings.touchButtonScale`,
+  0.8 / 1.0 / 1.2). Applied as CSS custom properties on the document root
+  via `Game._applyTouchScale`. Helper: `getTouchButtonScale(save)`.
+- **PWA install prompt** (`#pwaInstallPrompt`). Floats once on
+  `beforeinstallprompt`; dismissal persists in `save.flags.pwaPromptSeen`.
+- **Three new passives** (`src/data.js#PASSIVES`):
+    - `dodge` — Evasion, dodge chance +5% per stack (capped 60%)
+    - `magnet_plus` — Pickup Magnet+, range +35% per stack (multiplies
+      against the existing MAGNET passive)
+    - `damage_reduction` — Bulwark, incoming damage -8% per stack
+      (capped 60%, applied after armor in `Player.takeDamage`)
+- **Weapon evolution micro-tweaks**:
+    - Knife → Blade Fan: +10% crit chance on rolls
+    - Lightning → Thunder Call: +15% crit chance on rolls
+    - Orbiter → Twin Halo: +10% damage
+    - Boomerang → Twin Arc: -5% cooldown
+- `docs/CONTROLS.md` — single-page reference covering keyboard, touch and
+  gamepad bindings.
+- `test/iter14.test.js` — 28 tests covering tundra modifiers, IceQueen
+  swap, daily rotation, gamepad polling with a mocked accessor, the new
+  passives, evolution tweaks, and the touch-button-scale helper.
+
+### Changed
+
+- Daily-challenge stage rotation now picks across three stages
+  (forest / crypt / tundra) instead of two. `dailyChallenge('YYYY-MM-DD')`
+  remains deterministic.
+- `getBossesFor` honours stage `bossOverrides` and skips override-only
+  bosses (currently IceQueen) on stages that don't target them, so the
+  forest/crypt boss timelines are unchanged.
+
+### Tests
+
+- 167 → 195 total tests (+28). All green; no flakes.
+
 ## [2.6.0] - 2026-04-25
 
 Content + finishing-touches release. The catalogue gains a second stage and a

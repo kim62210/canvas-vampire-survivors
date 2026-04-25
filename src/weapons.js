@@ -52,12 +52,22 @@ export class Weapon {
     }
 
     getDamage(player) {
-        const base = this.def.baseDamage * (1 + (this.level - 1) * 0.2) * player.getDamageMult();
+        let base = this.def.baseDamage * (1 + (this.level - 1) * 0.2) * player.getDamageMult();
+        // iter-14 evolution micro-tweak: a per-weapon evolved damage scalar.
+        if (this.isEvolved() && this.def.evolveDamageMult) {
+            base *= this.def.evolveDamageMult;
+        }
         return base;
     }
 
     _rollCrit(player, game, baseDamage, x, y, color) {
-        const chance = player.getCritChance();
+        // iter-14: evolved weapons may add a flat crit-chance bonus on top
+        // of the player's passive-derived crit chance. Stacks additively
+        // because the player's crit chance is already a sum of LUCK stacks.
+        let chance = player.getCritChance();
+        if (this.isEvolved() && this.def.evolveBonusCrit) {
+            chance += this.def.evolveBonusCrit;
+        }
         if (chance > 0 && Math.random() < chance) {
             const dmg = baseDamage * 2;
             game.createFloatingText(Math.round(dmg), x, y, '#ffee44', { crit: true });
@@ -68,7 +78,12 @@ export class Weapon {
     }
 
     getCooldown(player) {
-        return this.def.baseCooldown * Math.pow(0.92, this.level - 1) * player.getCooldownMult();
+        let cd = this.def.baseCooldown * Math.pow(0.92, this.level - 1) * player.getCooldownMult();
+        // iter-14: evolution can shave additional cooldown (Twin Arc).
+        if (this.isEvolved() && this.def.evolveCooldownMult) {
+            cd *= this.def.evolveCooldownMult;
+        }
+        return cd;
     }
 
     getRange(player) {

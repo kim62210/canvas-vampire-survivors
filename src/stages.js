@@ -19,6 +19,19 @@
  *   - getBossesFor(id)           → BossDef[]   (cloned + spawnAt remapped)
  *   - getBackgroundFor(id)       → { fill, gridAlpha }
  *   - listStages()               → StageDef[]  (stable order)
+ *   - getStageModifiers(id)      → { playerSpeedMult, enemyHpMult,
+ *                                    coldTickInterval, coldTickDamage }
+ *
+ * iter-14 introduces the third stage `tundra`. On top of the existing pool
+ * / boss / palette knobs, tundra ships three brand-new gameplay levers,
+ * exposed under `getStageModifiers(id)` so the consumer (`main.js`) can apply
+ * them generically rather than hard-coding string checks:
+ *   - playerSpeedMult: multiplier baked into player speed (0.9 = -10%).
+ *   - enemyHpMult:      multiplier baked into enemy HP at spawn (1.2 = +20%).
+ *   - coldTickInterval: seconds between cold ticks (0 = disabled).
+ *   - coldTickDamage:   HP drained per tick (1 by default).
+ * The IceQueen boss replaces VoidLord on tundra to give a visually distinct
+ * 10-minute fight (see `bossOverrides`).
  */
 
 import { BOSSES, WAVES } from './data.js';
@@ -80,6 +93,58 @@ export const STAGES = Object.freeze({
             // Necromancer also pulled in slightly so the 4:00→7:30 gap is healthier.
             necromancer: -30
         }
+    }),
+    // ----------------------------------------------------------------------
+    // iter-14 — Tundra
+    //
+    // The third map. Bosses keep the same schedule as forest, but the entire
+    // map applies three soft pressure modifiers:
+    //   - playerSpeedMult 0.9   (ice underfoot, -10% movement)
+    //   - enemyHpMult     1.2   (thicker furred enemies, +20% HP)
+    //   - cold tick       1 HP / 10 s (slow attrition)
+    // The cold tick is implemented in main.js (`_applyColdTick`) and reads
+    // its config from `getStageModifiers(id)` so the modifier surface stays
+    // declarative. The "warmth-source" pickup that temporarily disables the
+    // cold tick is *intentionally disabled this iteration* — see
+    // `warmthSourceEnabled: false` — so we ship the harder difficulty without
+    // the relief item until the pickup pipeline is hooked up properly.
+    //
+    // Visual: cold blue palette (#2a3a4f) with a slightly more visible grid
+    // so the snow lines read on the canvas. The 10-minute boss is replaced
+    // with IceQueen (see data.js BOSSES.ICE_QUEEN) via `bossOverrides`.
+    // ----------------------------------------------------------------------
+    TUNDRA: Object.freeze({
+        id: 'tundra',
+        name: 'Frozen Tundra',
+        icon: '❄️',
+        description: 'Slippery snow (-10% speed), tougher beasts (+20% HP), creeping cold.',
+        background: { fill: '#2a3a4f', gridAlpha: 0.05 },
+        musicStyle: 'forest',
+        poolOverrides: {
+            // Wolves and golems thrive in snow, mages and bats less so.
+            wolf: 1.5,
+            golem: 1.4,
+            zombie: 1.1,
+            skeleton: 1.1,
+            bat: 0.5,
+            mage: 0.7
+        },
+        extraEnemies: [],
+        // Bosses keep their forest-default timings — the difficulty comes
+        // from the always-on modifiers, not from rushing the schedule.
+        bossOffsets: {},
+        // 10-minute boss reskin: replace VoidLord with IceQueen on tundra.
+        bossOverrides: { void_lord: 'ice_queen' },
+        modifiers: Object.freeze({
+            playerSpeedMult: 0.9,
+            enemyHpMult: 1.2,
+            coldTickInterval: 10, // seconds
+            coldTickDamage: 1, // HP per tick
+            // Pickup item placeholder. Disabled this iteration (no spawn
+            // logic, no pickup handler) — surfaced in the schema so the UI
+            // and tests can assert the flag exists.
+            warmthSourceEnabled: false
+        })
     })
 });
 
@@ -96,7 +161,33 @@ export function getStage(id) {
 
 /** Stable ordering for the stage picker UI. */
 export function listStages() {
-    return [STAGES.FOREST, STAGES.CRYPT];
+    return [STAGES.FOREST, STAGES.CRYPT, STAGES.TUNDRA];
+}
+
+/**
+ * Default modifier set used as the floor for any stage that doesn't define
+ * its own. Forest + Crypt rely on these defaults so existing balance is
+ * untouched. Frozen on first construction so callers can `Object.assign`
+ * over a copy without mutating the source.
+ */
+const DEFAULT_MODIFIERS = Object.freeze({
+    playerSpeedMult: 1,
+    enemyHpMult: 1,
+    coldTickInterval: 0,
+    coldTickDamage: 0,
+    warmthSourceEnabled: false
+});
+
+/**
+ * Return the gameplay modifier bundle for a stage. Always returns a complete
+ * object (defaults filled in for stages that don't declare every field), so
+ * callers can read `mods.coldTickInterval` without `?? 0` everywhere.
+ * @param {string} id
+ * @returns {{playerSpeedMult:number, enemyHpMult:number, coldTickInterval:number, coldTickDamage:number, warmthSourceEnabled:boolean}}
+ */
+export function getStageModifiers(id) {
+    const stage = getStage(id);
+    return { ...DEFAULT_MODIFIERS, ...(stage.modifiers || {}) };
 }
 
 /**
@@ -118,16 +209,53 @@ export function getWavesFor(id) {
  * Return a copy of BOSSES with `spawnAt` shifted by the stage's per-boss
  * offset. The offset is clamped to a minimum of 30s so a stage cannot try
  * to spawn the boss before the player has any weapons online.
+ *
+ * `bossOverrides` (added in iter-14 for tundra) lets a stage swap one boss
+ * id for another at the same `spawnAt`. We look up the replacement by id in
+ * the BOSSES table; an unknown override is ignored (caller still sees the
+ * original entry) so a typo can't drop a boss from the schedule entirely.
+ * Any boss whose own id is the *target* of an override on this stage is
+ * skipped — otherwise tundra would spawn both VoidLord and IceQueen at the
+ * 10-minute mark.
  * @returns {Array<{id:string, spawnAt:number, def:object}>}
  */
 export function getBossesFor(id) {
     const stage = getStage(id);
     const offsets = stage.bossOffsets || {};
-    return Object.values(BOSSES).map((b) => {
+    const overrides = stage.bossOverrides || {};
+    // Set of replacement target ids to skip when we hit them in the source
+    // table directly (e.g. ICE_QUEEN.spawnAt would otherwise duplicate-spawn).
+    const replacementTargets = new Set(Object.values(overrides));
+    const bossesById = {};
+    for (const b of Object.values(BOSSES)) bossesById[b.id] = b;
+
+    // Bosses that are *only* spawned via a stage's `bossOverrides` mapping
+    // and never on their own. Currently just IceQueen (tundra-exclusive).
+    // Skipping these on stages that don't override into them keeps the
+    // forest/crypt boss timelines pristine.
+    const overrideOnlyIds = new Set(['ice_queen']);
+
+    const out = [];
+    for (const b of Object.values(BOSSES)) {
+        if (overrideOnlyIds.has(b.id) && !replacementTargets.has(b.id)) {
+            continue;
+        }
+        if (replacementTargets.has(b.id) && !overrides[b.id]) {
+            // This boss is *only* spawned via override on this stage.
+            continue;
+        }
+        let def = b;
+        if (overrides[b.id]) {
+            const replacement = bossesById[overrides[b.id]];
+            if (replacement) def = replacement;
+        }
         const off = offsets[b.id] || 0;
         const spawnAt = Math.max(30, b.spawnAt + off);
-        return { ...b, spawnAt };
-    });
+        // Carry the *original* id key for boss-spawned tracking sets so
+        // `_bossesSpawned.has('void_lord')` doesn't double-fire on tundra.
+        out.push({ ...def, spawnAt, sourceId: b.id });
+    }
+    return out;
 }
 
 /** Background palette helper; the renderer reads this once per frame. */

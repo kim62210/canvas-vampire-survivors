@@ -40,7 +40,12 @@ export class Player {
     update(dt, game) {
         // Movement ---------------------------------------------------------
         const v = game.input.getMoveVector();
-        const speed = CONFIG.PLAYER_SPEED * this.getSpeedMult();
+        // iter-14: stage modifier (e.g. tundra applies 0.9 here for icy
+        // footing). Defaults to 1 when no stage modifiers are present so
+        // forest/crypt and unit tests that don't construct a full Game still
+        // behave identically to v2.6.
+        const stageSpeedMult = game.stageMods?.playerSpeedMult ?? 1;
+        const speed = CONFIG.PLAYER_SPEED * this.getSpeedMult() * stageSpeedMult;
         this.x += v.x * speed * dt;
         this.y += v.y * speed * dt;
 
@@ -147,6 +152,21 @@ export class Player {
     getCritChance() {
         return this._passiveSum('critChance');
     }
+    /**
+     * iter-14: dodge chance from the new Evasion passive. Soft-capped at 60%
+     * so a player who stacks five copies still gets hit sometimes — full
+     * immortality would break the late-game balance entirely.
+     */
+    getDodgeChance() {
+        return Math.min(0.6, this._passiveSum('dodgeChance'));
+    }
+    /**
+     * iter-14: percentage damage reduction (Bulwark). Multiplies *after*
+     * armor subtraction, soft-capped at 60% for the same reason as dodge.
+     */
+    getDamageReduction() {
+        return Math.min(0.6, this._passiveSum('damageReduction'));
+    }
 
     gainExp(amount) {
         this.exp += amount * this.getExpMult();
@@ -163,7 +183,17 @@ export class Player {
 
     takeDamage(damage, game) {
         if (this.invincible || this.dead) return;
-        const taken = Math.max(1, damage - this.getArmor());
+        // iter-14: dodge fires *before* armor / damageReduction so a dodged
+        // hit also doesn't burn an invincibility window — feels like the hit
+        // missed entirely. We still emit a "Miss!" floater so the player
+        // gets feedback that the passive triggered.
+        const dodge = this.getDodgeChance();
+        if (dodge > 0 && Math.random() < dodge) {
+            game?.createFloatingText?.('Miss!', this.x, this.y - 30, '#88ffcc');
+            return;
+        }
+        const afterArmor = Math.max(1, damage - this.getArmor());
+        const taken = Math.max(1, afterArmor * (1 - this.getDamageReduction()));
         this.hp -= taken;
         this.invincible = true;
         this.invincibleTimer = CONFIG.INVINCIBILITY_TIME;
@@ -466,11 +496,27 @@ export class Enemy {
         ctx.fillRect(this.x - w / 2, this.y - this.size - 10, w * pct, 4);
 
         if (this.boss) {
-            ctx.strokeStyle = '#ff33aa';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, this.size + 4, 0, Math.PI * 2);
-            ctx.stroke();
+            // iter-14: IceQueen wears a frosty cyan halo + a faint inner ring
+            // so she reads as "the ice variant" at a glance even from across
+            // the arena. Other bosses keep the original magenta crown.
+            if (this.type?.iceQueen) {
+                ctx.strokeStyle = 'rgba(170,220,255,0.85)';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size + 4, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.strokeStyle = 'rgba(220,240,255,0.45)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size + 10, 0, Math.PI * 2);
+                ctx.stroke();
+            } else {
+                ctx.strokeStyle = '#ff33aa';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size + 4, 0, Math.PI * 2);
+                ctx.stroke();
+            }
         }
         ctx.restore();
     }

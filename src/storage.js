@@ -51,12 +51,18 @@ const DEFAULT_SAVE = {
         locale: 'en',
         stage: 'forest',
         // iter-13: global mute toggle, persisted so refresh keeps the choice.
-        muted: false
+        muted: false,
+        // iter-14: touch UI scaling. 0.8 = small, 1.0 = default, 1.2 = large.
+        // Applied by ui.js as CSS custom properties on the document root
+        // (--touch-button-size etc) so the joystick + special button grow
+        // together. Clamped to the 0.8–1.4 range on read.
+        touchButtonScale: 1
     },
     runs: 0,
     // iter-13: one-time flags. `howToSeen` flips on the first dismiss of the
     // /howtoplay overlay; we only auto-show it for new players.
-    flags: { howToSeen: false }
+    // iter-14 adds `pwaPromptSeen` so the install pop-up only floats once.
+    flags: { howToSeen: false, pwaPromptSeen: false }
 };
 
 let memoryFallback = null;
@@ -167,6 +173,18 @@ export function recordHighScore(save, entry) {
 export function getStageHighScores(save, stageId) {
     if (!save || !save.stageHighScores) return [];
     return Array.isArray(save.stageHighScores[stageId]) ? save.stageHighScores[stageId] : [];
+}
+
+/**
+ * iter-14: read the touch-button scale, clamped to a sane band. Defaults to
+ * 1.0 if the field is missing (older saves) or out of range. Exposed as a
+ * helper rather than a raw read so the UI never has to apply the clamp
+ * inline.
+ */
+export function getTouchButtonScale(save) {
+    const v = Number(save?.settings?.touchButtonScale);
+    if (!Number.isFinite(v)) return 1;
+    return Math.min(1.4, Math.max(0.8, v));
 }
 
 export function accumulateTotals(save, run) {

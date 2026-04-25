@@ -5,25 +5,90 @@
  * Mobile polish: 15% inner deadzone, squared response curve on the outer
  * band, edge double-tap to toggle pause.
  *
- * Dependencies: DOM (window/document event APIs).
+ * iter-14 added a real Gamepad polling loop. The browser's Gamepad API is
+ * pull-based: the page only sees current state when it reads
+ * `navigator.getGamepads()`. We poll in `pollGamepad()` (called once per
+ * frame from main.js — drop-in safe, never throws if the API or pad is
+ * absent) and feed the left analog into a gamepad-move vector, the right
+ * analog into `aimVec` (consumed by manual-aim weapons later) and synthesise
+ * edge-triggered button events for menu navigation: A=select, B=cancel,
+ * Start=pause, LB/RB=cycle menu options. We expose those edges via small
+ * callbacks (`onGamepadConfirm`, `onGamepadCancel`, `onGamepadCycleNext`,
+ * `onGamepadCyclePrev`) so the UI doesn't have to know about gamepad
+ * indices.
+ *
+ * Dependencies: DOM (window/document event APIs); navigator.getGamepads is
+ * feature-detected so this module imports cleanly in Node-side tests.
  *
  * Exports:
  *   - class InputManager
+ *   - GAMEPAD_BUTTON   named indices for tests + UI bindings
+ *   - applyGamepadDeadzone(value, dz?)
  */
 
 const JOYSTICK_DEADZONE = 0.15;
 const DOUBLE_TAP_WINDOW_MS = 260;
+const GAMEPAD_AXIS_DEADZONE = 0.18;
+
+// Standard mapping (Xbox / DS4) — these indices are stable across the major
+// browsers when the pad reports `mapping === 'standard'`. Names mirror Xbox
+// labels for reader clarity. Exported so tests (and future remap UI) can
+// reference them by name instead of by magic number.
+export const GAMEPAD_BUTTON = Object.freeze({
+    A: 0,
+    B: 1,
+    X: 2,
+    Y: 3,
+    LB: 4,
+    RB: 5,
+    LT: 6,
+    RT: 7,
+    BACK: 8,
+    START: 9
+});
+
+/**
+ * Apply a symmetric deadzone to a single analog axis value. Values within
+ * `±dz` collapse to 0; values outside remap linearly to [-1, 1] over the
+ * live band so the player isn't stuck at a constant magnitude after the
+ * deadzone clip. Exported for unit tests.
+ * @param {number} v   raw axis value, -1..1
+ * @param {number} [dz=GAMEPAD_AXIS_DEADZONE]
+ * @returns {number}
+ */
+export function applyGamepadDeadzone(v, dz = GAMEPAD_AXIS_DEADZONE) {
+    if (!Number.isFinite(v)) return 0;
+    const a = Math.abs(v);
+    if (a < dz) return 0;
+    const sign = v < 0 ? -1 : 1;
+    return sign * ((a - dz) / (1 - dz));
+}
 
 export class InputManager {
     constructor() {
         this.keys = Object.create(null);
         this.moveVec = { x: 0, y: 0 };
         this.touchVec = { x: 0, y: 0 };
+        // Gamepad state: separate vector so both keyboard and pad can be
+        // active at once and we resolve in `getMoveVector()` with kbd > pad.
+        this.gamepadVec = { x: 0, y: 0 };
+        // Right analog → aim. Manual-aim weapons read this directly.
+        this.aimVec = { x: 0, y: 0 };
         this.paused = false;
         this.listeners = [];
         this.joystick = null;
         this.onTogglePause = () => {};
+        // iter-14 menu hooks. Default to no-op so an attached UI can opt in
+        // selectively. The poller calls these on edge transitions only.
+        this.onGamepadConfirm = () => {};
+        this.onGamepadCancel = () => {};
+        this.onGamepadCycleNext = () => {};
+        this.onGamepadCyclePrev = () => {};
         this._lastEdgeTapAt = 0;
+        // Previous-frame button snapshot for edge detection.
+        this._prevButtons = [];
+        // Bookkeeping for the special-skill button on touch (iter-14).
+        this.onTouchSpecial = () => {};
     }
 
     attach(target = window) {
@@ -83,6 +148,84 @@ export class InputManager {
         });
     }
 
+    /**
+     * iter-14: bind the right-hand "special skill" button on the mobile HUD.
+     * The button is just a div; we install touchstart/click and forward
+     * through `onTouchSpecial`. Caller wires that to whatever the special
+     * action is for the current run.
+     */
+    attachSpecialButton(btnEl) {
+        if (!btnEl) return;
+        const fire = (e) => {
+            e.preventDefault?.();
+            this.onTouchSpecial();
+        };
+        btnEl.addEventListener('touchstart', fire, { passive: false });
+        btnEl.addEventListener('click', fire);
+        this.listeners.push(['touchstart', fire, btnEl]);
+        this.listeners.push(['click', fire, btnEl]);
+    }
+
+    /**
+     * iter-14: Gamepad polling. Call from the per-frame loop. Safely no-ops
+     * when the API is absent (Node tests, Safari pre-15.4 mobile, etc.) or
+     * when no pad is connected. The first connected pad with non-null state
+     * wins; we don't try to merge multiple controllers.
+     *
+     * Edge-triggered: emits each button callback exactly once per press.
+     */
+    pollGamepad(getPads = _defaultGetGamepads) {
+        const pads = getPads();
+        if (!pads) return;
+        let pad = null;
+        for (const p of pads) {
+            if (p) {
+                pad = p;
+                break;
+            }
+        }
+        if (!pad) {
+            this.gamepadVec.x = 0;
+            this.gamepadVec.y = 0;
+            this.aimVec.x = 0;
+            this.aimVec.y = 0;
+            this._prevButtons.length = 0;
+            return;
+        }
+        // Axes 0/1 = left stick, 2/3 = right stick on the standard mapping.
+        const lx = applyGamepadDeadzone(pad.axes[0] || 0);
+        const ly = applyGamepadDeadzone(pad.axes[1] || 0);
+        // Normalise the diagonal so a fully-pressed stick at 45° still gives
+        // magnitude 1 rather than √2 (matches keyboard expectations).
+        const lmag = Math.hypot(lx, ly);
+        if (lmag > 1) {
+            this.gamepadVec.x = lx / lmag;
+            this.gamepadVec.y = ly / lmag;
+        } else {
+            this.gamepadVec.x = lx;
+            this.gamepadVec.y = ly;
+        }
+        const rx = applyGamepadDeadzone(pad.axes[2] || 0);
+        const ry = applyGamepadDeadzone(pad.axes[3] || 0);
+        this.aimVec.x = rx;
+        this.aimVec.y = ry;
+
+        // Edge-triggered button → callback fan-out.
+        const buttons = pad.buttons || [];
+        const wasPressed = (i) => !!this._prevButtons[i];
+        const isPressed = (i) => !!(buttons[i] && buttons[i].pressed);
+        const edge = (i) => isPressed(i) && !wasPressed(i);
+
+        if (edge(GAMEPAD_BUTTON.A)) this.onGamepadConfirm();
+        if (edge(GAMEPAD_BUTTON.B)) this.onGamepadCancel();
+        if (edge(GAMEPAD_BUTTON.START)) this.onTogglePause();
+        if (edge(GAMEPAD_BUTTON.RB)) this.onGamepadCycleNext();
+        if (edge(GAMEPAD_BUTTON.LB)) this.onGamepadCyclePrev();
+
+        // Snapshot for next frame.
+        this._prevButtons = buttons.map((b) => !!(b && b.pressed));
+    }
+
     getMoveVector() {
         let x = 0,
             y = 0;
@@ -91,9 +234,18 @@ export class InputManager {
         if (k['s'] || k['arrowdown']) y += 1;
         if (k['a'] || k['arrowleft']) x -= 1;
         if (k['d'] || k['arrowright']) x += 1;
+        // Resolve in priority order: keyboard > gamepad > touch joystick. We
+        // already normalise touch and gamepad to magnitude ≤ 1, so the final
+        // hypot clamp below is mostly a no-op except when keyboard supplies
+        // a diagonal.
         if (x === 0 && y === 0) {
-            x = this.touchVec.x;
-            y = this.touchVec.y;
+            if (this.gamepadVec.x !== 0 || this.gamepadVec.y !== 0) {
+                x = this.gamepadVec.x;
+                y = this.gamepadVec.y;
+            } else {
+                x = this.touchVec.x;
+                y = this.touchVec.y;
+            }
         }
         const len = Math.hypot(x, y);
         if (len > 1) {
@@ -103,6 +255,18 @@ export class InputManager {
         this.moveVec.x = x;
         this.moveVec.y = y;
         return this.moveVec;
+    }
+}
+
+/** Default gamepad accessor. Wrapped so tests can inject a mock. */
+function _defaultGetGamepads() {
+    if (typeof navigator === 'undefined' || typeof navigator.getGamepads !== 'function') {
+        return null;
+    }
+    try {
+        return navigator.getGamepads();
+    } catch {
+        return null;
     }
 }
 

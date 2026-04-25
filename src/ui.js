@@ -614,6 +614,7 @@ export class UI {
                 ${checkboxRow('colorblind', !!settings.colorblind)}
                 ${checkboxRow('damageNumbers', settings.damageNumbers !== false)}
                 ${selectRow('locale', settings.locale, availableLocales())}
+                ${selectRow('touchButtonScale', String(settings.touchButtonScale ?? 1), ['0.8', '1', '1.2'])}
                 <div class="settings-buttons">
                     <button class="danger" data-action="reset">${t('resetData')}</button>
                     <button data-action="close">${t('close')}</button>
@@ -640,6 +641,14 @@ export class UI {
             }
             if (key === 'colorblind') {
                 document.body.classList.toggle('cb-mode', !!val);
+            }
+            // iter-14: touchButtonScale is exposed as a select with string
+            // values ('0.8' / '1' / '1.2'); coerce back to number before
+            // persisting so getTouchButtonScale's clamp works correctly.
+            if (key === 'touchButtonScale') {
+                const num = parseFloat(val);
+                onChange(key, Number.isFinite(num) ? num : 1);
+                return;
             }
             onChange(key, val);
         }

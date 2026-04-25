@@ -37,6 +37,7 @@ import { AchievementTracker } from './achievements.js';
 import {
     SeededRng,
     accumulateTotals,
+    getTouchButtonScale,
     loadSave,
     loadSpeedrunScores,
     recordHighScore,
@@ -49,6 +50,7 @@ import {
     DEFAULT_STAGE_ID,
     getBackgroundFor,
     getBossesFor,
+    getStageModifiers,
     getWavesFor,
     pickWeighted
 } from './stages.js';
@@ -206,6 +208,13 @@ export class Game {
         // Apply any persisted mute on boot so a refresh keeps the choice.
         if (this.save.settings.muted) this.audio.setMuted(true);
 
+        // iter-14: apply touch-button scale to CSS custom properties.
+        this._applyTouchScale();
+        // iter-14: PWA install prompt (one-shot per save). Listens for the
+        // browser's `beforeinstallprompt` once; if it fires before the user
+        // has dismissed it ever, we surface our own little banner.
+        this._wirePwaPrompt();
+
         window.addEventListener('resize', () => this._resize());
         this._resize();
     }
@@ -306,6 +315,97 @@ export class Game {
         const joy = document.getElementById('joystickBase');
         const knob = document.getElementById('joystickKnob');
         if (joy && knob) this.input.attachJoystick(joy, knob);
+        // iter-14: mobile special-skill button. The button is a placeholder
+        // for now — wires through to togglePause until per-build skills are
+        // implemented, so the press at least gives the player a way out.
+        const special = document.getElementById('specialSkillBtn');
+        if (special) {
+            this.input.attachSpecialButton(special);
+            this.input.onTouchSpecial = () => this.togglePause();
+        }
+        // iter-14: gamepad confirm/cancel/menu wiring. We map A→togglePause
+        // and B→togglePause as well for now (overlay UIs read DOM keystrokes
+        // directly), but Start is the canonical pause toggle.
+        this.input.onGamepadConfirm = () => {
+            // Forward as a synthetic Enter keypress so existing menu close
+            // handlers fire without each one having to know about gamepads.
+            this._dispatchKey('Enter');
+        };
+        this.input.onGamepadCancel = () => {
+            this._dispatchKey('Escape');
+        };
+        this.input.onGamepadCycleNext = () => this._dispatchKey('Tab');
+        this.input.onGamepadCyclePrev = () => this._dispatchKey('Tab', { shiftKey: true });
+    }
+
+    /** Dispatch a synthetic keydown so DOM listeners react to gamepad nav. */
+    _dispatchKey(key, opts = {}) {
+        if (typeof window === 'undefined' || typeof KeyboardEvent === 'undefined') return;
+        const ev = new KeyboardEvent('keydown', { key, bubbles: true, ...opts });
+        (document.activeElement || document.body).dispatchEvent(ev);
+    }
+
+    /**
+     * iter-14: write the touch-button scale to CSS custom properties on the
+     * document root. Multiplies the base sizes (defined in styles.css under
+     * `:root`) by the user's setting so the joystick + special button stay
+     * proportional. No-op outside the browser (test env).
+     */
+    _applyTouchScale() {
+        if (typeof document === 'undefined' || !document.documentElement) return;
+        const scale = getTouchButtonScale(this.save);
+        const base = 140;
+        const knob = 58;
+        const special = 96;
+        const root = document.documentElement.style;
+        root.setProperty('--touch-button-size', `${Math.round(base * scale)}px`);
+        root.setProperty('--touch-knob-size', `${Math.round(knob * scale)}px`);
+        root.setProperty('--touch-special-size', `${Math.round(special * scale)}px`);
+    }
+
+    /**
+     * iter-14: install-prompt plumbing. Browsers fire `beforeinstallprompt`
+     * once when the page meets the install criteria. We stash the deferred
+     * event, surface a small in-page banner the first time, and remember the
+     * user's choice (install / dismiss) so we never nag them again. We
+     * intentionally avoid auto-prompting — Chrome ranks repeated prompts as
+     * spam; the user has to click our button.
+     */
+    _wirePwaPrompt() {
+        if (typeof window === 'undefined') return;
+        if (this.save?.flags?.pwaPromptSeen) return;
+        let deferred = null;
+        const banner = document.getElementById('pwaInstallPrompt');
+        const installBtn = document.getElementById('pwaInstallBtn');
+        const dismissBtn = document.getElementById('pwaInstallDismiss');
+        if (!banner || !installBtn || !dismissBtn) return;
+        const markSeen = () => {
+            this.save.flags = this.save.flags || {};
+            this.save.flags.pwaPromptSeen = true;
+            saveSave(this.save);
+            banner.style.display = 'none';
+        };
+        window.addEventListener(
+            'beforeinstallprompt',
+            (e) => {
+                e.preventDefault?.();
+                deferred = e;
+                banner.style.display = 'flex';
+            },
+            { once: true }
+        );
+        installBtn.addEventListener('click', async () => {
+            if (deferred) {
+                deferred.prompt?.();
+                try {
+                    await deferred.userChoice;
+                } catch {
+                    /* ignore */
+                }
+            }
+            markSeen();
+        });
+        dismissBtn.addEventListener('click', markSeen);
     }
 
     _bindDomButtons() {
@@ -388,6 +488,11 @@ export class Game {
         this.stageWaves = getWavesFor(this.stageId);
         this.stageBosses = this._applyDailyBossOffset(getBossesFor(this.stageId));
         this.currentWave = this.stageWaves[0];
+        // iter-14: cache the active stage's gameplay modifiers (player speed,
+        // enemy HP, cold tick). Looked up here so the per-frame hot path
+        // doesn't pay the indirection — `getStageModifiers` walks STAGES.
+        this.stageMods = getStageModifiers(this.stageId);
+        this._coldTickAccum = 0;
 
         // Reset per-run achievement state.
         this.achievements.resetRun();
@@ -622,6 +727,10 @@ export class Game {
         // one step, and (b) frame-rate spikes don't create tunneling bugs.
         const dt = Math.min((now - this.lastTime) / 1000, CONFIG.DT_CLAMP);
         this.lastTime = now;
+        // iter-14: pull the gamepad once per frame so axes + button edges
+        // are fresh by the time update() reads `getMoveVector`. Safe no-op
+        // when no pad is attached.
+        this.input.pollGamepad?.();
         if (this.state === GameState.PLAYING) {
             this.update(dt);
         }
@@ -645,6 +754,8 @@ export class Game {
             this.gameOver();
             return;
         }
+        // iter-14: stage modifiers — cold tick (no-op on forest/crypt).
+        this._applyColdTick(dt);
 
         // Spatial hash rebuild BEFORE anyone queries it.
         this.spatial.insertAll(this.enemies);
@@ -716,7 +827,41 @@ export class Game {
             Difficulty[(this.save.settings.difficulty || 'normal').toUpperCase()] ||
             Difficulty.NORMAL;
         const timeDiff = 1 + Math.floor(this.gameTime / 60) * 0.3;
-        return { diff, hpMult: diff.hpMult * timeDiff, dmgMult: diff.dmgMult * timeDiff };
+        // Stage modifier folds into hpMult at the source so every spawn path
+        // (waves, splitter children, bosses) inherits the +20% on tundra
+        // without each call site reaching back into stages.js.
+        const stageHpMult = this.stageMods?.enemyHpMult ?? 1;
+        return {
+            diff,
+            hpMult: diff.hpMult * timeDiff * stageHpMult,
+            dmgMult: diff.dmgMult * timeDiff
+        };
+    }
+
+    /**
+     * iter-14: tundra cold tick. Drains 1 HP every `coldTickInterval` seconds
+     * (default 10) on stages that opt in. Skipped on stages with
+     * `coldTickInterval == 0` (forest, crypt). Bypasses i-frames and armor on
+     * purpose — it's an attrition mechanic, not damage — and never kills the
+     * player outright (clamps at 1 HP) so death is always attributable to a
+     * real hit.
+     */
+    _applyColdTick(dt) {
+        const mods = this.stageMods;
+        if (!mods || !mods.coldTickInterval) return;
+        if (!this.player || this.player.dead) return;
+        this._coldTickAccum += dt;
+        while (this._coldTickAccum >= mods.coldTickInterval) {
+            this._coldTickAccum -= mods.coldTickInterval;
+            const dmg = mods.coldTickDamage || 1;
+            // Drain HP without going through takeDamage so we don't refresh
+            // i-frames or trigger the no-hit invalidation (cold is ambient).
+            const next = Math.max(1, this.player.hp - dmg);
+            if (next < this.player.hp) {
+                this.player.hp = next;
+                this.createFloatingText(`-${dmg}❄`, this.player.x, this.player.y - 36, '#88ccff');
+            }
+        }
     }
 
     _updateEnemies(dt, hpMult, dmgMult) {
@@ -1202,6 +1347,10 @@ export class Game {
                 if (key === 'masterVolume' || key === 'sfxVolume' || key === 'musicVolume')
                     this.audio.applyVolumes();
                 if (key === 'musicEnabled') this.audio.toggleMusic(value);
+                // iter-14: re-apply CSS custom properties when the touch
+                // button scale changes so the player sees the buttons
+                // resize live without reloading the page.
+                if (key === 'touchButtonScale') this._applyTouchScale();
             },
             () => {
                 /* closed */

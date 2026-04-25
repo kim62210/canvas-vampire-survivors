@@ -80,6 +80,7 @@ const STRINGS = {
         copied: 'Copied to clipboard',
         copyManual: 'Select & copy manually',
         damageNumbers: 'Show damage numbers',
+        touchButtonScale: 'Touch button size',
         // iter-13: streak / help / how-to-play / hotkeys
         viewStreak: 'View Streak',
         dailyStreak: 'Daily Streak',
@@ -172,6 +173,7 @@ const STRINGS = {
         copied: '已复制到剪贴板',
         copyManual: '请手动复制',
         damageNumbers: '显示伤害数字',
+        touchButtonScale: '触摸按钮大小',
         // iter-13: 连胜/帮助/玩法/快捷键
         viewStreak: '查看连胜',
         dailyStreak: '每日挑战连胜',

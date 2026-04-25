@@ -174,6 +174,17 @@ flowchart TD
 
 ## 🆕 What's new
 
+- **v2.7** — Stage 3 + gamepad + deeper mobile polish. **Frozen Tundra**
+  ships as the third map with three new modifiers (-10% move speed, +20%
+  enemy HP, periodic 1 HP cold tick) and a frost-themed final boss
+  **IceQueen**. The input layer now polls the Web Gamepad API every frame
+  (left stick = move, right = aim, A = confirm, B = cancel, Start = pause,
+  LB / RB = cycle menu options); see [`docs/CONTROLS.md`](./docs/CONTROLS.md).
+  Mobile gets a special-skill button next to the joystick, a 0.8 / 1.0 / 1.2
+  size knob in settings, and a one-shot PWA install prompt. Three new
+  passives (Evasion, Pickup Magnet+, Bulwark) plus four evolution
+  micro-tweaks. **195** unit tests, still zero runtime deps. See
+  [CHANGELOG.md](./CHANGELOG.md#270---2026-04-25).
 - **v2.6** — Content + finishing-touches release. Two stages now ship
   (Whisperwood + the new ranged-heavy Sunken Crypt), plus a daily
   challenge with deterministic per-UTC-day seed and Wordle-style share
@@ -249,7 +260,8 @@ Highlights:
 
 ## 🗺️ Roadmap
 
-- [x] Map variants (ruins, crypt, forest) with distinct enemy pools — _v2.6_
+- [x] Map variants (forest, crypt, tundra) with distinct enemy pools — _v2.7_
+- [x] Gamepad support with menu navigation — _v2.7_
 - [ ] Weapon evolution combinations (item × passive)
 - [ ] Meta-progression: persistent unlocks between runs
 - [ ] Additional languages (ES, JA, FR — PRs welcome)

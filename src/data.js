@@ -66,7 +66,11 @@ export const WEAPONS = {
         type: 'projectile',
         speed: 620,
         evolveLevel: 5,
-        evolveName: 'Blade Fan'
+        evolveName: 'Blade Fan',
+        // iter-14 evolution micro-tweak: the fan also gets a flat +10% crit
+        // chance on top of the player's current critChance roll. Picked up
+        // by Weapon._rollCrit when the weapon `isEvolved()`.
+        evolveBonusCrit: 0.1
     },
     ORBIT: {
         id: 'orbit',
@@ -80,7 +84,9 @@ export const WEAPONS = {
         piercing: true,
         type: 'orbit',
         evolveLevel: 5,
-        evolveName: 'Twin Halo'
+        evolveName: 'Twin Halo',
+        // iter-14: evolved Twin Halo also boosts shard damage by +10%.
+        evolveDamageMult: 1.1
     },
     LIGHTNING: {
         id: 'lightning',
@@ -95,7 +101,9 @@ export const WEAPONS = {
         chain: true,
         chainCount: 3,
         evolveLevel: 5,
-        evolveName: 'Thunder Call'
+        evolveName: 'Thunder Call',
+        // iter-14: evolved Thunder Call rolls a +15% crit on the strikes.
+        evolveBonusCrit: 0.15
     },
     MINE: {
         id: 'mine',
@@ -170,7 +178,9 @@ export const WEAPONS = {
         speed: 380,
         boomerang: true,
         evolveLevel: 5,
-        evolveName: 'Twin Arc'
+        evolveName: 'Twin Arc',
+        // iter-14: Twin Arc fires 5% faster than its base cooldown formula.
+        evolveCooldownMult: 0.95
     }
 };
 
@@ -247,6 +257,35 @@ export const PASSIVES = {
         icon: '🍀',
         description: 'Crit chance +5%',
         effect: { critChance: 0.05 }
+    },
+    // --- iter-14 passives -------------------------------------------------
+    // The three new passives all hook into existing player stats so the level-
+    // up roller pool grows without any new code path. `dodgeChance` is summed
+    // (capped at 0.6 in entities.js) and consulted before damage is applied;
+    // `magnetMult` is reused for Pickup Magnet+ which stacks multiplicatively
+    // on the existing MAGNET passive; `damageReduction` is summed and clamped
+    // to a soft 0.6 cap on the consumer side so the player can't go fully
+    // immortal even with five stacks.
+    DODGE: {
+        id: 'dodge',
+        name: 'Evasion',
+        icon: '💨',
+        description: 'Dodge chance +5%',
+        effect: { dodgeChance: 0.05 }
+    },
+    MAGNET_PLUS: {
+        id: 'magnet_plus',
+        name: 'Pickup Magnet+',
+        icon: '🧲',
+        description: 'Pickup range +35%',
+        effect: { magnetMult: 0.35 }
+    },
+    DAMAGE_REDUCTION: {
+        id: 'damage_reduction',
+        name: 'Bulwark',
+        icon: '🛡️',
+        description: 'Incoming damage -8%',
+        effect: { damageReduction: 0.08 }
     }
 };
 
@@ -469,6 +508,30 @@ export const BOSSES = {
         boss: true,
         ability: 'charge',
         spawnAt: 720 // 12:00
+    },
+    // --- iter-14 tundra final boss ---------------------------------------
+    // IceQueen is a frost-palette variant of the 10-minute boss. The tundra
+    // stage swaps her in for VoidLord via `bossOverrides`; on other stages she
+    // never auto-spawns. Listed here so the boss list, daily-mode replays and
+    // achievement registry can reference her by id without a special case.
+    ICE_QUEEN: {
+        id: 'ice_queen',
+        name: 'The Ice Queen',
+        hp: 6200,
+        speed: 55,
+        damage: 60,
+        exp: 1300,
+        color: '#88ccff',
+        size: 66,
+        boss: true,
+        ability: 'charge',
+        // Listed at 660 to keep the BOSSES timeline strictly ascending
+        // (Reaper 300 < Necro 450 < VoidLord 600 < IceQueen 660 < ChronoLich
+        // 720). Tundra's `bossOverrides` swaps her into VoidLord's 600 slot
+        // at runtime; this raw value is never read on tundra (the override
+        // path uses the source boss's spawnAt + offset).
+        spawnAt: 660,
+        iceQueen: true // visual flag, read by entities renderer for frost halo
     }
 };
 

@@ -123,6 +123,33 @@
                 <div id="joystickKnob" class="joystick-knob"></div>
             </div>
 
+            <!-- iter-14: special-skill button (touch only). Bottom-right counterpart
+                 to the joystick on mobile. Opens the pause menu by default until
+                 per-build skills are wired in. -->
+            <button
+                id="specialSkillBtn"
+                class="special-skill-btn"
+                aria-label="Special skill"
+                aria-hidden="true"
+            >
+                ✦
+            </button>
+
+            <!-- iter-14: PWA install prompt. Shown once on first load on a browser
+                 that fires `beforeinstallprompt`; dismissed forever once the user
+                 acts on it. -->
+            <div
+                id="pwaInstallPrompt"
+                class="pwa-install-prompt"
+                role="dialog"
+                aria-live="polite"
+                style="display: none"
+            >
+                <span>Install Survivor as an app for full-screen play.</span>
+                <button id="pwaInstallBtn" class="btn primary">Install</button>
+                <button id="pwaInstallDismiss" class="btn">Not now</button>
+            </div>
+
             <!-- Menus -->
             <div
                 id="startScreen"

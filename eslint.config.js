@@ -40,6 +40,7 @@ module.exports = [
                 FormData: 'readonly',
                 Event: 'readonly',
                 CustomEvent: 'readonly',
+                KeyboardEvent: 'readonly',
                 structuredClone: 'readonly',
                 alert: 'readonly',
                 confirm: 'readonly',

@@ -118,7 +118,7 @@ test('daily: dailyChallenge is deterministic per date and pins a stage', () => {
     const b = dailyChallenge('2026-04-25');
     assert.equal(a.seed, b.seed);
     assert.equal(a.stage, b.stage);
-    assert.ok(['forest', 'crypt'].includes(a.stage));
+    assert.ok(['forest', 'crypt', 'tundra'].includes(a.stage));
     assert.equal(typeof dailySeed('2026-04-26'), 'number');
 });
 

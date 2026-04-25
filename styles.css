@@ -529,12 +529,21 @@ canvas {
 }
 
 /* Virtual joystick (touch only) -------------------------------------- */
+/* iter-14: edge-button size is now driven by --touch-button-size, set on
+   <html> by storage.js settings.touchButtonScale (0.8 / 1.0 / 1.2). The
+   joystick base + knob and the special-skill button all scale together so
+   thumb reach stays consistent. */
+:root {
+    --touch-button-size: 140px;
+    --touch-knob-size: 58px;
+    --touch-special-size: 96px;
+}
 .joystick {
     position: absolute;
     bottom: 80px;
     left: 30px;
-    width: 140px;
-    height: 140px;
+    width: var(--touch-button-size);
+    height: var(--touch-button-size);
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.05);
     border: 2px solid rgba(255, 255, 255, 0.08);
@@ -546,18 +555,59 @@ canvas {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 58px;
-    height: 58px;
+    width: var(--touch-knob-size);
+    height: var(--touch-knob-size);
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.2);
     border: 2px solid rgba(255, 255, 255, 0.25);
     transform: translate(-50%, -50%);
 }
 
+/* Special-skill button — mirrors the joystick on the bottom-right. */
+.special-skill-btn {
+    position: absolute;
+    bottom: 100px;
+    right: 30px;
+    width: var(--touch-special-size);
+    height: var(--touch-special-size);
+    border-radius: 50%;
+    background: rgba(120, 80, 200, 0.25);
+    color: #fff;
+    border: 2px solid rgba(180, 140, 255, 0.55);
+    font-size: 36px;
+    line-height: 1;
+    display: none;
+    pointer-events: auto;
+    touch-action: none;
+    cursor: pointer;
+}
+.special-skill-btn:active {
+    background: rgba(160, 110, 240, 0.4);
+}
+
 @media (hover: none) and (pointer: coarse) {
-    .joystick {
+    .joystick,
+    .special-skill-btn {
         display: block;
     }
+}
+
+/* iter-14: PWA install prompt slot. */
+.pwa-install-prompt {
+    position: fixed;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 12px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    z-index: 9999;
+    font-size: 14px;
 }
 
 /* Accessibility ------------------------------------------------------ */

@@ -66,8 +66,11 @@ export function dailySeed(dateStr) {
 export function dailyChallenge(dateStr) {
     const date = dateStr || todayKey();
     const seed = dailySeed(date);
-    // Even seed → forest, odd seed → crypt. Cheap deterministic coin flip.
-    const stage = seed % 2 === 0 ? 'forest' : 'crypt';
+    // iter-14: rotation expands from 2 → 3 stages so tundra also gets daily
+    // play. Use Math.abs to avoid negative-modulo surprises (cyrb53 is
+    // unsigned but we mask through |0 elsewhere, so be defensive).
+    const stages = ['forest', 'crypt', 'tundra'];
+    const stage = stages[Math.abs(seed) % stages.length];
     // Boss timing pin: pull every boss in by a deterministic 0–60s offset.
     // Same date → same offset everywhere.
     const bossOffset = -((seed >>> 8) % 61); // -60..0
@@ -269,7 +272,8 @@ export function buildShareText(entry, history) {
     const ss = Math.floor((entry.timeSurvived || 0) % 60)
         .toString()
         .padStart(2, '0');
-    const stageLabel = entry.stage === 'crypt' ? 'Crypt' : 'Forest';
+    const stageLabel =
+        entry.stage === 'crypt' ? 'Crypt' : entry.stage === 'tundra' ? 'Tundra' : 'Forest';
     const result = entry.won ? '🏆 WIN' : `⏱ ${mm}:${ss}`;
     const lines = [
         `Survivor Daily ${entry.date} · ${stageLabel}`,

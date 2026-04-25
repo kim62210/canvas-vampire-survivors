@@ -1,6 +1,6 @@
 {
     "name": "canvas-vampire-survivors",
-    "version": "2.6.0",
+    "version": "2.7.0",
     "description": "Vanilla JavaScript HTML5 Canvas roguelite inspired by Vampire Survivors. Zero runtime dependencies.",
     "main": "server.js",
     "type": "commonjs",

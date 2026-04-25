@@ -13,11 +13,11 @@ without resorting to keyword-stuffing or paid promotion.
 
 ## The three repos
 
-| Repo                        | One-liner                                                                       | Stack                                       | Status               |
-| --------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------- | -------------------- |
-| **canvas-vampire-survivors** | Vanilla-JS Vampire-Survivors clone, zero runtime deps, plays on GitHub Pages.   | HTML5 Canvas · ES modules · Web Audio · PWA | v2.7 (this repo)     |
-| **openhand**                | LLM-agnostic, plugin-first agent framework, sandboxed tools by default.         | TypeScript strict · npm workspaces · Docker | v0.7                 |
-| **terminal-quest-cli**      | Bilingual terminal RPG with 11 quests, 11 minigames, 5 locales.                 | Node ≥14 · zero deps · npm publishable      | v2.8                 |
+| Repo                         | One-liner                                                                     | Stack                                       | Status           |
+| ---------------------------- | ----------------------------------------------------------------------------- | ------------------------------------------- | ---------------- |
+| **canvas-vampire-survivors** | Vanilla-JS Vampire-Survivors clone, zero runtime deps, plays on GitHub Pages. | HTML5 Canvas · ES modules · Web Audio · PWA | v2.7 (this repo) |
+| **openhand**                 | LLM-agnostic, plugin-first agent framework, sandboxed tools by default.       | TypeScript strict · npm workspaces · Docker | v0.7             |
+| **terminal-quest-cli**       | Bilingual terminal RPG with 11 quests, 11 minigames, 5 locales.               | Node ≥14 · zero deps · npm publishable      | v2.8             |
 
 Live entry points:
 

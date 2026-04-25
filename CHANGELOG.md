@@ -139,7 +139,7 @@ runtime dependencies; tests grow to **241** total.
 - **Keyboard remap** (`src/keymap.js`). Seven canonical actions —
   `up`/`down`/`left`/`right`/`pause`/`help`/`mute` — each backed by a
   list of bound keys. Defaults match the historic hard-coded set: WASD
-  + arrow keys for movement, Esc/P for pause, H/? for help, M for
+  and arrow keys for movement, Esc/P for pause, H/? for help, M for
   mute. The remap dialog opens from Settings → "Customize controls":
   click a row to enter capture mode, press any key to bind. Conflict
   detection is automatic (the same key can't be bound to two actions),
@@ -602,7 +602,8 @@ full open-source contribution workflow. No runtime dependencies were added.
 - Particle effects and basic wave announcements.
 - Single-file `game.js` implementation (~1400 lines).
 
-[Unreleased]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.6.0...HEAD
+[Unreleased]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.7.0...HEAD
+[2.7.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.3.0...v2.4.0

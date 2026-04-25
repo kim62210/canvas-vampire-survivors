@@ -76,7 +76,7 @@ The full sister-document set lives under `docs/`:
 
 22. [ ] `git tag -a v2.8.0 -m "v2.8.0 — launch ready"`, `git push --tags`.
 23. [ ] `gh release create v2.8.0 --title "v2.8.0 — Launch ready"
-        --notes-file docs/v2.8.0-NOTES.md` (or paste the body from the
+--notes-file docs/v2.8.0-NOTES.md` (or paste the body from the
         notes file). Mark **not** prerelease.
 24. [ ] Attach a zip of the prebuilt `dist/` (just `git archive`) so users
         without a Node toolchain can grab a runnable folder.

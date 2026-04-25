@@ -116,6 +116,9 @@ test('data: ACHIEVEMENTS has unique ids and v2.4 new ones exist', () => {
 test('data: every UNLOCKS weapon id exists in WEAPONS', () => {
     const weaponIds = new Set(Object.values(WEAPONS).map((w) => w.id));
     for (const [ach, unlock] of Object.entries(UNLOCKS)) {
+        // iter-20: cosmetic-only unlocks (no `weapon` field) are intentional
+        // and skipped by this regression — see UNLOCKS for sprite_trail etc.
+        if (!unlock.weapon) continue;
         assert.ok(weaponIds.has(unlock.weapon), `unlock for ${ach} → ${unlock.weapon} missing`);
     }
 });

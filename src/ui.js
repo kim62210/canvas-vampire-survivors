@@ -69,6 +69,29 @@ export class UI {
             'btnStageChip'
         ];
         for (const id of ids) this.els[id] = document.getElementById(id);
+        // iter-20: harden ARIA on the dynamic overlay hosts. The static
+        // overlays in index.html (`startScreen`, `levelUpMenu`, `pauseMenu`,
+        // `gameOver`) already declare role+aria-modal at the markup level;
+        // these are the dynamically-populated dialogs that share the same
+        // `.overlay` class and need the same announcement contract for
+        // assistive tech to pick them up consistently.
+        for (const id of [
+            'achievementsScreen',
+            'leaderboardScreen',
+            'stagePickerScreen',
+            'streakScreen',
+            'helpScreen',
+            'howToPlayScreen',
+            'settingsMenu'
+        ]) {
+            const el = this.els[id];
+            if (!el || typeof el.setAttribute !== 'function') continue;
+            // Some test stubs don't implement hasAttribute — fall back to
+            // unconditional set in that case, which is still idempotent.
+            const hasAttr = typeof el.hasAttribute === 'function';
+            if (!hasAttr || !el.hasAttribute('role')) el.setAttribute('role', 'dialog');
+            if (!hasAttr || !el.hasAttribute('aria-modal')) el.setAttribute('aria-modal', 'true');
+        }
     }
 
     /**

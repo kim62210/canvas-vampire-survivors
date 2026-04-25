@@ -181,6 +181,26 @@ export const WEAPONS = {
         evolveName: 'Twin Arc',
         // iter-14: Twin Arc fires 5% faster than its base cooldown formula.
         evolveCooldownMult: 0.95
+    },
+    // --- iter-20: Konami Code unlock --------------------------------------
+    // Hidden weapon awarded on the first time the player enters the Konami
+    // Code on the main menu. Behaves like a fast piercing projectile (a nod
+    // to retro shoot-'em-ups). Not part of the regular drop pool — only
+    // available as a starter once UNLOCKS.konami_code is earned.
+    RETRO_BLASTER: {
+        id: 'retro_blaster',
+        name: 'Retro Blaster',
+        icon: '👾',
+        description: '8-bit arcade beam. Pierces forward in a tight burst. Evolves: triple beam.',
+        baseDamage: 14,
+        baseCooldown: 0.5,
+        baseRange: 480,
+        projectileCount: 2,
+        piercing: true,
+        type: 'projectile',
+        speed: 700,
+        evolveLevel: 5,
+        evolveName: 'Pixel Storm'
     }
 };
 
@@ -733,6 +753,41 @@ export const ACHIEVEMENTS = [
         icon: '🧘',
         description: 'Survive 5 minutes without picking up a single passive.',
         check: (c) => c.game.gameTime >= 300 && (c.run.passivesPicked || 0) === 0
+    },
+    // --- iter-20: hidden / easter-egg achievements ------------------------
+    // These three are intentionally undocumented in the gallery's tooltip
+    // copy until they're earned (the UI reveals them once unlocked). Their
+    // `hidden: true` flag is read by ui.js to gate the description preview.
+    {
+        id: 'konami_code',
+        name: 'Konami Code',
+        icon: '🎮',
+        description: 'Found the legendary cheat. Unlocks the Retro Blaster.',
+        hidden: true,
+        check: (c) => !!c.run.konamiCode
+    },
+    {
+        id: 'speedrun_plus',
+        name: 'Speedrunner Plus',
+        icon: '⚡',
+        description:
+            'Cleared a major boss in under 5 minutes of real time. Unlocks a sprite trail.',
+        hidden: true,
+        // The tracker sets `run.fastBossClear` whenever any boss falls in
+        // under 300 wall-clock seconds. Reaper on the Crypt stage (4:00
+        // spawn) is the only viable path; on Forest it's intentionally
+        // unreachable without pause-abuse, which the speedrun anchor
+        // already filters out.
+        check: (c) => !!c.run.fastBossClear
+    },
+    {
+        id: 'pacifist_provoked',
+        name: 'Pacifist Provoked',
+        icon: '🕊️',
+        description:
+            'Survived 60 seconds with zero kills — let the world do the work. Unlocks a special boss title.',
+        hidden: true,
+        check: (c) => (c.run.pacifistTimer || 0) >= 60 && c.game.kills === 0
     }
 ];
 
@@ -748,5 +803,12 @@ export const UNLOCKS = {
     // v2.4 unlocks
     survive_15min: { weapon: 'boomerang' },
     void_breaker: { weapon: 'frost_nova' },
-    speed_demon: { weapon: 'soul_drain' }
+    speed_demon: { weapon: 'soul_drain' },
+    // iter-20: easter-egg unlocks. Konami grants a starter weapon, the
+    // other two unlock cosmetic flags consumed by the renderer / UI but
+    // are still surfaced as standard UNLOCKS entries so the achievement
+    // gallery can show their reward chip consistently.
+    konami_code: { weapon: 'retro_blaster' },
+    speedrun_plus: { cosmetic: 'sprite_trail' },
+    pacifist_provoked: { cosmetic: 'boss_title_pacifist' }
 };

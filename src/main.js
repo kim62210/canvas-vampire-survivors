@@ -59,6 +59,7 @@ import {
 import { dailyChallenge, saveDailyResult } from './daily.js';
 import { TutorialState } from './tutorial.js';
 import { ReplayPlayer, ReplayRecorder, loadReplay, saveReplay } from './replay.js';
+import { KonamiDetector } from './konami.js';
 
 registerWeaponClass(Weapon);
 
@@ -200,6 +201,10 @@ export class Game {
         this._bindDomButtons();
         this._bindLeaderboardImport();
         this._bindGlobalHotkeys();
+        // iter-20: Konami code detector. Active only on the main menu (state
+        // === MENU); the listener is hot-installed but checks the state on
+        // every push so it never interferes with gameplay input.
+        this._bindKonamiCode();
 
         // iter-13: paint the Stage chip on the main menu so a returning
         // player sees which map their next Start Run would launch.
@@ -279,6 +284,42 @@ export class Game {
             },
             true
         );
+    }
+
+    /**
+     * iter-20: install the Konami Code detector. Listens on the main menu
+     * only — the gameplay input layer already owns arrows during a run, and
+     * we don't want a stray cheat-code press during combat to flicker an
+     * unlock toast. On a successful sequence we flip a per-run flag, run
+     * the achievement check immediately, and surface a small announcement
+     * via the existing live-region helper. The unlock weapon is wired
+     * through UNLOCKS so the next Start Run gets it as a starter option.
+     */
+    _bindKonamiCode() {
+        if (typeof window === 'undefined') return;
+        this._konami = new KonamiDetector(() => this._onKonamiUnlocked());
+        window.addEventListener('keydown', (e) => {
+            if (this.state !== GameState.MENU) return;
+            // Ignore when typing into the leaderboard import textarea etc.
+            const tag = (e.target && e.target.tagName) || '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+            this._konami.push(e.key);
+        });
+    }
+
+    /** Konami sequence completed: flip the per-run flag and unlock the cheat. */
+    _onKonamiUnlocked() {
+        // `this.run` is aliased to `this.achievements.run` (see constructor +
+        // start()), so setting the flag in one place is enough for the
+        // achievement check to read it.
+        if (this.run) this.run.konamiCode = true;
+        try {
+            this.achievements.check(this);
+        } catch {
+            /* swallow — boot-time miss is fine */
+        }
+        this._flushAchievementToasts?.();
+        this._announce('Cheat code unlocked. Retro Blaster available.');
     }
 
     /** Toggle a global mute and persist so a refresh keeps the choice. */
@@ -1013,7 +1054,12 @@ export class Game {
         if (this.state === GameState.PLAYING) {
             this.update(dt);
         }
-        this.effects.update(dt);
+        // iter-20: pass the canvas viewport so EffectLayer can recycle
+        // off-screen emoji rain drops without reaching back into the DOM.
+        this.effects.update(dt, {
+            w: this.canvas?.width || CONFIG.CANVAS_WIDTH,
+            h: this.canvas?.height || CONFIG.CANVAS_HEIGHT
+        });
         this.render(dt);
         this.fpsMeter.tick(dt);
         this.ui.setFps(this.fpsMeter.fps, this.save.settings.showFps);
@@ -1065,6 +1111,18 @@ export class Game {
         }
         // iter-14: stage modifiers — cold tick (no-op on forest/crypt).
         this._applyColdTick(dt);
+
+        // iter-20: pacifist-provoked timer. Counts up while the player has
+        // zero kills; a single kill breaks the streak and forfeits the
+        // window for the rest of the run (we cap at 60 + 1 to avoid
+        // unbounded float growth and to make the achievement check trivial).
+        if (this.run) {
+            if (this.kills === 0) {
+                if ((this.run.pacifistTimer || 0) < 61) {
+                    this.run.pacifistTimer = (this.run.pacifistTimer || 0) + dt;
+                }
+            }
+        }
 
         // Spatial hash rebuild BEFORE anyone queries it.
         this.spatial.insertAll(this.enemies);
@@ -1221,6 +1279,14 @@ export class Game {
             if (e.id === 'void_lord') {
                 this.run.realSecondsToVoidLord =
                     (performance.now() - this._runStartWallClock) / 1000;
+            }
+            // iter-20: hidden Speedrunner Plus achievement. Any boss kill in
+            // under 5 minutes wall-clock counts. The pause anchor inside
+            // `togglePause` keeps `_runStartWallClock` honest, so a player
+            // can't pad the timer by sitting in the pause menu.
+            if (this._runStartWallClock) {
+                const realSec = (performance.now() - this._runStartWallClock) / 1000;
+                if (realSec < 300) this.run.fastBossClear = true;
             }
         }
         if (e.splitter && e.type.splitInto) {
@@ -1513,6 +1579,16 @@ export class Game {
             this.audio.achievement();
             this.effects.achievement();
             this._announce(`Achievement unlocked: ${ach.name}. ${ach.description}`);
+            // iter-20: harmless emoji-rain celebration the first time the
+            // player crosses the 15-minute Survivor threshold. We trigger
+            // off the achievement-just-unlocked event rather than polling
+            // the save flag so a returning player who already has the
+            // achievement doesn't get rained on every run.
+            if (ach.id === 'survive_15min') {
+                const w = this.canvas?.width || CONFIG.CANVAS_WIDTH;
+                const h = this.canvas?.height || CONFIG.CANVAS_HEIGHT;
+                this.effects.celebrate(w, h);
+            }
         }
     }
 

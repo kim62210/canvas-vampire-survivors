@@ -255,6 +255,74 @@ export class UI {
         if (this.els.howToPlayScreen) this.els.howToPlayScreen.style.display = 'none';
     }
 
+    /**
+     * iter-15: replay menu. Shows a short summary of the saved replay and
+     * three speed buttons (1×, 2×, 4×). When `blob` is null we render a
+     * "no replay yet" empty state and only show Close.
+     */
+    showReplayMenu(blob, onPlay) {
+        let m = document.getElementById('replayScreen');
+        if (!m) {
+            m = document.createElement('div');
+            m.id = 'replayScreen';
+            m.className = 'overlay';
+            m.style.display = 'none';
+            const container = document.getElementById('gameContainer');
+            container?.appendChild(m);
+        }
+        if (!blob) {
+            m.innerHTML = `
+                <div class="overlay-card replay-card">
+                    <h2>${t('replayLastRun')}</h2>
+                    <div class="hs-empty">${t('noReplay')}</div>
+                    <div class="btn-row">
+                        <button id="replayClose" class="btn primary">${t('close')}</button>
+                    </div>
+                </div>`;
+            m.style.display = 'flex';
+            m.querySelector('#replayClose')?.addEventListener('click', () => {
+                m.style.display = 'none';
+            });
+            return;
+        }
+        const mm = Math.floor((blob.finalTime || 0) / 60)
+            .toString()
+            .padStart(2, '0');
+        const ss = Math.floor((blob.finalTime || 0) % 60)
+            .toString()
+            .padStart(2, '0');
+        m.innerHTML = `
+            <div class="overlay-card replay-card">
+                <h2>${t('replayLastRun')}</h2>
+                <div class="replay-summary">
+                    <div><strong>${t('time')}:</strong> ${mm}:${ss}</div>
+                    <div><strong>${t('level')}:</strong> ${blob.finalLevel ?? 1}</div>
+                    <div><strong>${t('kills')}:</strong> ${blob.finalKills ?? 0}</div>
+                    <div><strong>${t('stage')}:</strong> ${blob.stage}</div>
+                </div>
+                <div class="btn-row" role="group" aria-label="${t('replaySpeed')}">
+                    <button class="btn primary" data-replay-speed="1">1×</button>
+                    <button class="btn ghost" data-replay-speed="2">2×</button>
+                    <button class="btn ghost" data-replay-speed="4">4×</button>
+                </div>
+                <div class="btn-row">
+                    <button id="replayClose" class="btn ghost">${t('close')}</button>
+                </div>
+            </div>`;
+        m.style.display = 'flex';
+        const close = () => {
+            m.style.display = 'none';
+        };
+        m.querySelectorAll('[data-replay-speed]').forEach((b) =>
+            b.addEventListener('click', () => {
+                const s = parseFloat(b.dataset.replaySpeed) || 1;
+                close();
+                onPlay && onPlay(s);
+            })
+        );
+        m.querySelector('#replayClose')?.addEventListener('click', close);
+    }
+
     showLeaderboard(normalScores, speedrunScores, onClose) {
         const m = this.els.leaderboardScreen;
         if (!m) return;
@@ -613,6 +681,7 @@ export class UI {
                 ${checkboxRow('reducedMotion', settings.reducedMotion)}
                 ${checkboxRow('colorblind', !!settings.colorblind)}
                 ${checkboxRow('damageNumbers', settings.damageNumbers !== false)}
+                ${checkboxRow('criticalFlash', settings.criticalFlash !== false)}
                 ${selectRow('locale', settings.locale, availableLocales())}
                 ${selectRow('touchButtonScale', String(settings.touchButtonScale ?? 1), ['0.8', '1', '1.2'])}
                 <div class="settings-buttons">

@@ -1084,3 +1084,67 @@ body.cb-mode .exp-fill {
 .howto-list li + li {
     margin-top: 6px;
 }
+
+/* iter-15: tutorial offer + tutorial banner + replay menu --------------- */
+.tutorial-offer {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(8, 6, 18, 0.78);
+    backdrop-filter: blur(2px);
+    z-index: 60;
+}
+.tutorial-offer-card {
+    background: #1a1432;
+    border: 1px solid #3a2f5a;
+    border-radius: 14px;
+    padding: 22px 26px;
+    text-align: center;
+    max-width: 380px;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+}
+.tutorial-banner {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(20, 12, 38, 0.92);
+    border: 1px solid #4a3a8a;
+    border-radius: 10px;
+    padding: 10px 16px;
+    color: #f3edff;
+    font-size: 13px;
+    line-height: 1.4;
+    max-width: min(560px, 90vw);
+    z-index: 50;
+    pointer-events: none;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+.tutorial-banner strong {
+    display: block;
+    color: #ffd66b;
+    margin-bottom: 4px;
+}
+.tutorial-banner .tutorial-body {
+    display: block;
+}
+.tutorial-banner .tutorial-skip-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 11px;
+    opacity: 0.7;
+}
+.replay-card {
+    max-width: 480px;
+}
+.replay-summary {
+    text-align: left;
+    margin: 12px 0 18px;
+    padding: 10px 14px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.7;
+}

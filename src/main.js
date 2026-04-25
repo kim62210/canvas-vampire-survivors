@@ -45,7 +45,7 @@ import {
     resetSave,
     saveSave
 } from './storage.js';
-import { setLocale } from './i18n.js';
+import { setLocale, t as _t } from './i18n.js';
 import {
     DEFAULT_STAGE_ID,
     getBackgroundFor,
@@ -55,6 +55,8 @@ import {
     pickWeighted
 } from './stages.js';
 import { dailyChallenge, saveDailyResult } from './daily.js';
+import { TutorialState } from './tutorial.js';
+import { ReplayPlayer, ReplayRecorder, loadReplay, saveReplay } from './replay.js';
 
 registerWeaponClass(Weapon);
 
@@ -193,16 +195,40 @@ export class Game {
         // player sees which map their next Start Run would launch.
         this.ui.updateStageChip(this.stageId);
 
+        // iter-15: tutorial state machine + replay bookkeeping. Both are
+        // inert until explicitly engaged by the player (via Try Tutorial /
+        // Replay Last Run). Recorder is created on every run start in
+        // `start()` and only persisted when the run ends; replay player is
+        // only created on demand.
+        this.tutorial = new TutorialState();
+        this.replayRecorder = null;
+        this.replayPlayer = null;
+        this.replayActive = false;
+        // Per-frame snapshot of move vector for the recorder (kept on the
+        // game so other systems can also peek at the most recent input).
+        this._lastMoveVec = { x: 0, y: 0 };
+        // Cached tutorial banner element handle; assigned lazily on first
+        // tutorial activation so we don't pay for it on returning players.
+        this._tutorialBanner = null;
+
         // First-launch How-to-Play: show once, persist a flag so we don't
         // nag returning players. Wrapped in a microtask so DOM is settled.
+        // iter-15: same one-time gate now also offers the 5-step tutorial.
         if (!this.save?.flags?.howToSeen) {
             Promise.resolve().then(() => {
                 this.ui.showHowToPlay(() => {
                     this.save.flags = this.save.flags || {};
                     this.save.flags.howToSeen = true;
                     saveSave(this.save);
+                    // After the how-to-play closes, offer the interactive
+                    // tutorial if it hasn't already been completed.
+                    if (!this.save.flags.tutorialDone) this._offerTutorial();
                 });
             });
+        } else if (!this.save?.flags?.tutorialDone) {
+            // Returning player who saw HTP but never finished the tutorial:
+            // nudge once on the next cold-boot, no other interruption.
+            Promise.resolve().then(() => this._offerTutorial());
         }
 
         // Apply any persisted mute on boot so a refresh keeps the choice.
@@ -430,6 +456,9 @@ export class Game {
         q('btnAchievements')?.addEventListener('click', () => this.openAchievements());
         q('btnViewStreak')?.addEventListener('click', () => this.openStreak());
         q('btnHowTo')?.addEventListener('click', () => this.openHowToPlay());
+        // iter-15: replay-last-run + tutorial entry points on the start menu.
+        q('btnReplay')?.addEventListener('click', () => this.openReplay());
+        q('btnTutorial')?.addEventListener('click', () => this.startTutorialRun());
         q('btnRetry')?.addEventListener('click', () => {
             this.ui.hideGameOver();
             if (this.dailyMode) this.startDaily();
@@ -526,6 +555,25 @@ export class Game {
         this.save.runs = (this.save.runs || 0) + 1;
         saveSave(this.save);
 
+        // iter-15: spin up a fresh replay recorder for the new run, unless
+        // we're playing back an existing replay. We use a deterministic seed
+        // when one is available (speedrun / daily) so playback can recreate
+        // identical spawns. Outside those modes, the recorder records the
+        // wall-clock seed so replay still mostly reproduces the run, but
+        // RNG-driven systems (Math.random) will diverge — documented in
+        // docs/USER_GUIDE.md and the CHANGELOG.
+        if (!this.replayActive) {
+            const seed = this.speedrunRng?.state || Date.now() & 0xffffffff || 1;
+            this.replayRecorder = new ReplayRecorder({
+                seed,
+                stage: this.stageId,
+                difficulty: this.save.settings.difficulty || 'normal',
+                dt: 1 / 60
+            });
+        } else {
+            this.replayRecorder = null;
+        }
+
         this.audio.unlock();
         this.audio.startMusic();
 
@@ -595,11 +643,178 @@ export class Game {
         });
     }
 
+    /**
+     * iter-15: surface a small "Try Tutorial" prompt above the start menu
+     * on first launch. Yes/skip button writes `tutorialDone=true` either way
+     * so the prompt never re-appears.
+     */
+    _offerTutorial() {
+        if (typeof document === 'undefined') return;
+        if (this.save?.flags?.tutorialDone) return;
+        // Ensure the host overlay exists (created lazily so the DOM stays
+        // unchanged for users who never trigger it).
+        let overlay = document.getElementById('tutorialOffer');
+        if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.id = 'tutorialOffer';
+            overlay.className = 'tutorial-offer';
+            overlay.setAttribute('role', 'dialog');
+            overlay.setAttribute('aria-live', 'polite');
+            overlay.style.display = 'none';
+            const container = document.getElementById('gameContainer');
+            container?.appendChild(overlay);
+        }
+        const dismiss = () => {
+            overlay.style.display = 'none';
+            this.save.flags = this.save.flags || {};
+            this.save.flags.tutorialDone = true;
+            saveSave(this.save);
+        };
+        const accept = () => {
+            overlay.style.display = 'none';
+            this.startTutorialRun();
+        };
+        overlay.innerHTML = `
+            <div class="overlay-card tutorial-offer-card">
+                <h2>${_t('tutorialOffer')}</h2>
+                <div class="btn-row">
+                    <button id="tutorialOfferYes" class="btn primary">${_t('tryTutorial')}</button>
+                    <button id="tutorialOfferNo" class="btn ghost">${_t('skipTutorial')}</button>
+                </div>
+            </div>`;
+        overlay.style.display = 'flex';
+        overlay.querySelector('#tutorialOfferYes')?.addEventListener('click', accept);
+        overlay.querySelector('#tutorialOfferNo')?.addEventListener('click', dismiss);
+    }
+
+    /**
+     * Begin the tutorial: hand the menu off to a normal `start()` then flip
+     * the tutorial state on. Esc skips at any point. Once the last step is
+     * acknowledged we persist `tutorialDone=true`.
+     */
+    startTutorialRun() {
+        this.tutorial = new TutorialState();
+        this.tutorial.start();
+        this.audio.unlock();
+        this.speedrunMode = false;
+        this.dailyMode = false;
+        this.start();
+        this._renderTutorialBanner();
+        // Esc handler that explicitly skips the tutorial. Only fires while
+        // the tutorial is active and a step is on screen — once the run is
+        // over (success or skip) we detach the listener.
+        if (typeof window !== 'undefined') {
+            const onKey = (e) => {
+                if (!this.tutorial.active) return;
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    this.tutorial.skip();
+                    this._renderTutorialBanner();
+                    this.save.flags = this.save.flags || {};
+                    this.save.flags.tutorialDone = true;
+                    saveSave(this.save);
+                    window.removeEventListener('keydown', onKey, true);
+                }
+            };
+            window.addEventListener('keydown', onKey, true);
+            this._tutorialKeyHandler = onKey;
+        }
+    }
+
+    /** Lazily mount + repaint the tutorial banner overlay. */
+    _renderTutorialBanner() {
+        if (typeof document === 'undefined') return;
+        let banner = this._tutorialBanner;
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'tutorialBanner';
+            banner.className = 'tutorial-banner';
+            banner.setAttribute('aria-live', 'polite');
+            const container = document.getElementById('gameContainer');
+            container?.appendChild(banner);
+            this._tutorialBanner = banner;
+        }
+        const prompt = this.tutorial.currentPrompt();
+        if (!prompt) {
+            banner.style.display = 'none';
+            // If the tutorial just completed cleanly, persist the flag.
+            if (this.tutorial.completed) {
+                this.save.flags = this.save.flags || {};
+                this.save.flags.tutorialDone = true;
+                saveSave(this.save);
+                this._announce(_t('tutorialDone'));
+            }
+            return;
+        }
+        banner.innerHTML = `
+            <strong>${prompt.title}</strong>
+            <span class="tutorial-body">${prompt.body}</span>
+            <span class="tutorial-skip-hint">${_t('tutorialSkipHint')}</span>`;
+        banner.style.display = 'block';
+    }
+
+    /**
+     * iter-15: open the replay menu. Loads the most recent saved replay
+     * (single-slot) and lets the player pick a 1× / 2× / 4× playback speed.
+     * If no replay is saved, surface a friendly note.
+     */
+    openReplay() {
+        const blob = loadReplay();
+        this.ui.showReplayMenu(blob, (speed) => {
+            if (!blob) return;
+            this._beginReplay(blob, speed);
+        });
+    }
+
+    /**
+     * Engage replay playback: build a ReplayPlayer, start the run with the
+     * persisted seed/stage/difficulty, and route input through the player.
+     */
+    _beginReplay(blob, speed) {
+        this.replayPlayer = new ReplayPlayer(blob, { speed });
+        this.replayActive = true;
+        // Pin the same stage + difficulty so spawn determinism holds.
+        if (blob.stage) this.save.settings.stage = blob.stage;
+        if (blob.difficulty) this.save.settings.difficulty = blob.difficulty;
+        // Reuse the speedrun seeding plumbing for spawn determinism. We
+        // explicitly toggle off speedrunMode (no leaderboard write) but keep
+        // the seeded RNG branch alive by setting `_replaySeededRng`.
+        this.speedrunMode = false;
+        this.dailyMode = false;
+        this.speedrunRng = new SeededRng(blob.seed);
+        // Use start() to do the rest of the setup (player, weapons, UI).
+        this.start();
+        // After start() resets state, force-feed the replay seed back in
+        // because start() does not touch speedrunRng outside its modes.
+        this.speedrunRng = new SeededRng(blob.seed);
+        // Banner the user so they know inputs are disabled.
+        this._announce(_t('replayPlaying'));
+    }
+
+    /**
+     * End an active replay session — called when the player runs out of
+     * frames or hits Esc / Quit. Returns the engine to the menu cleanly.
+     */
+    _endReplay() {
+        this.replayActive = false;
+        this.replayPlayer = null;
+        this.state = GameState.MENU;
+        cancelAnimationFrame(this.raf);
+        this.audio.stopMusic();
+        this.ui.hideGameOver();
+        this.ui.showStart();
+    }
+
     togglePause() {
         if (this.state === GameState.PLAYING) {
             this.state = GameState.PAUSED;
             this.ui.showPause();
             this.audio.stopMusic();
+            // iter-15: tutorial step 5 waits for a pause toggle.
+            if (this.tutorial?.active) {
+                this.tutorial.notifyPause();
+                this._renderTutorialBanner();
+            }
         } else if (this.state === GameState.PAUSED) {
             this.state = GameState.PLAYING;
             this.ui.hidePause();
@@ -614,6 +829,23 @@ export class Game {
         cancelAnimationFrame(this.raf);
         this.audio.stopMusic();
         this.audio.death();
+        // iter-15: snapshot + persist the recorded replay (single slot).
+        // We do this before any of the leaderboard / achievement logic so a
+        // crash inside those paths never loses the replay. Skipped during
+        // playback (no recorder).
+        if (this.replayRecorder) {
+            try {
+                this.replayRecorder.finalize({
+                    kills: this.kills,
+                    time: this.gameTime,
+                    level: this.player?.level || 1
+                });
+                saveReplay(this.replayRecorder.serialize());
+            } catch (err) {
+                console.warn('[main] failed to persist replay', err);
+            }
+            this.replayRecorder = null;
+        }
 
         // Update lifetime "unique builds" counter: a build = the sorted set
         // of weapon ids at death. If we haven't seen this combination before,
@@ -748,6 +980,36 @@ export class Game {
         this.enemyDmgMult = dmgMult; // used by enemy projectile spawn
 
         this.currentWave = this._selectWave();
+
+        // iter-15: replay playback drives input by replacing
+        // `input.getMoveVector` with the recorded vector for the current
+        // frame. We tick the player AFTER this swap; the swap is undone via
+        // `input.getMoveVector = original` only when the replay finishes.
+        if (this.replayActive && this.replayPlayer) {
+            const v = this.replayPlayer.getMoveVector();
+            this.input.getMoveVector = () => v;
+            this.replayPlayer.tick();
+            if (this.replayPlayer.done) {
+                // Out of frames: end the replay before computing player update
+                // so the run terminates cleanly on the next loop iteration.
+                this._endReplay();
+                return;
+            }
+        }
+
+        // iter-15: snapshot the current input so the recorder + tutorial
+        // both see the same vector this frame. Reading `getMoveVector`
+        // twice would otherwise be cheap but inconsistent under replay.
+        const moveSnapshot = this.input.getMoveVector();
+        this._lastMoveVec = { x: moveSnapshot.x, y: moveSnapshot.y };
+        if (this.replayRecorder && !this.replayActive) {
+            this.replayRecorder.record(this._lastMoveVec);
+        }
+        // Tutorial state-machine tick. Cheap no-op unless active.
+        if (this.tutorial?.active) {
+            this.tutorial.tick(dt, this._lastMoveVec);
+            this._renderTutorialBanner();
+        }
 
         this.player.update(dt, this);
         if (this.player.dead) {
@@ -964,6 +1226,16 @@ export class Game {
                             { crit }
                         );
                     }
+                    // iter-15 polish: brief red flash on critical hits, opt-out
+                    // via Settings → criticalFlash. Suppressed when reduced
+                    // motion is on so it never overrides accessibility.
+                    if (
+                        crit &&
+                        this.save.settings.criticalFlash !== false &&
+                        !this.save.settings.reducedMotion
+                    ) {
+                        this.effects.criticalHit();
+                    }
                     this.effects.hit(enemy.x, enemy.y);
                     if (!p.piercing) {
                         p._onEnd(this);
@@ -992,10 +1264,22 @@ export class Game {
     }
 
     _updateExpOrbs(dt) {
+        // iter-15: snapshot the orb-collected counter before the per-frame
+        // update so we can fire `tutorial.notifyOrbPickup()` on the rising
+        // edge. ExpOrb.update bumps `game.run.orbsCollected`; comparing the
+        // two values is cheaper than wrapping ExpOrb.
+        const before = this.run?.orbsCollected || 0;
         for (let i = this.expOrbs.length - 1; i >= 0; i--) {
             const o = this.expOrbs[i];
             o.update(dt, this);
             if (o.shouldRemove) this.expOrbs.splice(i, 1);
+        }
+        if (this.tutorial?.active) {
+            const after = this.run?.orbsCollected || 0;
+            for (let k = 0; k < after - before; k++) {
+                this.tutorial.notifyOrbPickup();
+            }
+            if (after !== before) this._renderTutorialBanner();
         }
     }
 
@@ -1006,6 +1290,12 @@ export class Game {
             this.audio.levelUp();
             this.effects.levelUp(this.player.x, this.player.y);
             this._announce(`Level ${this.player.level}! Choose an upgrade.`);
+            // iter-15: notify the tutorial state machine — its "level up"
+            // step waits for exactly this event.
+            if (this.tutorial?.active) {
+                this.tutorial.notifyLevelUp();
+                this._renderTutorialBanner();
+            }
             this.ui.showLevelUp(this.player, (choice) => this._applyUpgrade(choice));
         }
     }
@@ -1155,7 +1445,10 @@ export class Game {
         this.ui.showBossBanner();
         this.audio.bossSpawn();
         this.effects.bossSpawn();
-        this.shake(0.8);
+        // iter-15 polish: bump boss-spawn camera shake by +50% (0.8 → 1.2).
+        // The reduced-motion gate inside `shake()` still applies so
+        // accessibility users are unaffected.
+        this.shake(1.2);
         this._announce(`Boss incoming: ${bossDef.name || bossDef.id}`);
     }
 

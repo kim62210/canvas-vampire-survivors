@@ -56,13 +56,17 @@ const DEFAULT_SAVE = {
         // Applied by ui.js as CSS custom properties on the document root
         // (--touch-button-size etc) so the joystick + special button grow
         // together. Clamped to the 0.8–1.4 range on read.
-        touchButtonScale: 1
+        touchButtonScale: 1,
+        // iter-15: optional red flash on critical hits. Defaults to on; the
+        // user can toggle off in Settings if they find it disruptive.
+        criticalFlash: true
     },
     runs: 0,
     // iter-13: one-time flags. `howToSeen` flips on the first dismiss of the
     // /howtoplay overlay; we only auto-show it for new players.
     // iter-14 adds `pwaPromptSeen` so the install pop-up only floats once.
-    flags: { howToSeen: false, pwaPromptSeen: false }
+    // iter-15 adds `tutorialDone` so the 5-step tutorial only auto-offers once.
+    flags: { howToSeen: false, pwaPromptSeen: false, tutorialDone: false }
 };
 
 let memoryFallback = null;

@@ -128,6 +128,14 @@ export class EffectLayer {
         this.flash.flash('200,255,200', 0.18, 2);
     }
     /**
+     * iter-15 polish: short red flash on a critical hit. Kept very brief
+     * (high decay) so the player still sees the action under it. Drives
+     * the optional `criticalFlash` setting in main.js.
+     */
+    criticalHit() {
+        this.flash.flash('255,80,80', 0.18, 6);
+    }
+    /**
      * Schedule a callback to fire after `seconds` of simulation time. The queue
      * is drained inside `update(dt)`, so it implicitly pauses with the game.
      * Returns a token whose `.cancelled = true` stops the callback.

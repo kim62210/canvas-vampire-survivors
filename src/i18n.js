@@ -104,7 +104,18 @@ const STRINGS = {
         howToBody2: 'Pick up green orbs to gain XP. Each level lets you choose one upgrade.',
         howToBody3: 'Survive long enough and a boss appears every few minutes.',
         howToBody4: 'Hit P or Esc to pause, M to mute, H to see this list any time.',
-        gotIt: 'Got it'
+        gotIt: 'Got it',
+        // iter-15: tutorial / replay / critical flash
+        tutorialOffer: 'Welcome! Take a quick 5-step tutorial?',
+        tryTutorial: 'Try Tutorial',
+        skipTutorial: 'Skip',
+        tutorialSkipHint: 'Press Esc to skip.',
+        tutorialDone: 'Tutorial complete!',
+        replayLastRun: 'Replay Last Run',
+        noReplay: 'No replay saved yet — finish a run first.',
+        replaySpeed: 'Speed',
+        replayPlaying: 'Replay (input disabled)',
+        criticalFlash: 'Critical-hit screen flash'
     },
     zh: {
         title: '幸存者',
@@ -196,7 +207,18 @@ const STRINGS = {
         howToBody2: '拾取绿色经验球升级，每升一级可以选一个强化。',
         howToBody3: '活得够久就会出现 BOSS——每隔几分钟一只。',
         howToBody4: '随时按 P/Esc 暂停、M 静音、H 显示此说明。',
-        gotIt: '知道了'
+        gotIt: '知道了',
+        // iter-15
+        tutorialOffer: '欢迎！想先来个 5 步教学吗？',
+        tryTutorial: '开始教学',
+        skipTutorial: '跳过',
+        tutorialSkipHint: '按 Esc 跳过。',
+        tutorialDone: '教学完成！',
+        replayLastRun: '重播上一局',
+        noReplay: '还没有可重播的对局——先打完一把吧。',
+        replaySpeed: '速度',
+        replayPlaying: '重播中（输入已禁用）',
+        criticalFlash: '暴击屏幕闪光'
     }
 };
 

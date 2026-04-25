@@ -7,7 +7,75 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_No unreleased changes._
+### Draft — v2.8 (iter-15: tutorial + replay)
+
+> This block is a **draft** for the next release. The version field in
+> `package.json` is intentionally **not** bumped yet — author review pending.
+
+Onboarding, replays, and a final round of polish. New players now get a
+proper 5-step interactive tutorial; everyone gets a one-slot replay system
+with three playback speeds; and the existing screen-shake/flash plumbing is
+tuned. Still zero runtime dependencies; tests grow to **215** total.
+
+#### Added (iter-15)
+
+- **Tutorial state machine** (`src/tutorial.js`, `TutorialState`,
+  `TUTORIAL_STEPS`). Five ordered steps:
+    1. `move` — auto-advances after 0.4s of non-zero input.
+    2. `autoAttack` — auto-advances after 1.5s of gameplay.
+    3. `pickupExp` — advances on the first XP orb pickup.
+    4. `levelUp` — advances on the first level-up dialog.
+    5. `pause` — advances on the first pause toggle.
+
+    Esc skips at any step; either path persists `save.flags.tutorialDone`
+    so returning players are never re-prompted. The host renders a banner
+    via `Game._renderTutorialBanner` (lazily mounted; absent for users who
+    never trigger the flow). Pure-Node testable — the state machine owns no DOM.
+
+- **Replay system** (`src/replay.js`):
+    - `ReplayRecorder` captures a quantised (-1..1, 2-decimal) move
+      vector per frame plus the seed/stage/difficulty.
+    - `compressFrames` / `expandFrames` apply RLE to the frame list so
+      stationary stretches collapse to a single triplet.
+    - `saveReplay` / `loadReplay` use a dedicated localStorage slot
+      (`vs_replay_last_v1`) — single slot by design, so the save never
+      grows unbounded.
+    - `ReplayPlayer` ticks at 1× / 2× / 4× speed (other inputs snap to
+      the nearest legal value via `clampSpeed`).
+    - 30-minute (108k frames at 60 fps) hard cap on a single recording.
+- **Replay UI** (`UI.showReplayMenu`, "Replay Last Run" button on the
+  start menu). Renders the run summary (time/level/kills/stage) and three
+  speed buttons. Player input is disabled while a replay is active.
+- **First-launch tutorial offer**. After the existing How-to-Play closes,
+  a small opt-in dialog asks "Try Tutorial?". Yes starts the run with
+  the state machine engaged; Skip persists the flag and never re-asks.
+- **Critical-hit screen flash**. Brief red flash (`EffectLayer.criticalHit`,
+  ~0.18 alpha, 6× decay) on every crit. Toggle in Settings →
+  `criticalFlash`. Auto-suppressed when Reduced Motion is on.
+- **`docs/USER_GUIDE.md`** — comprehensive player handbook covering
+  controls, the tutorial, replays, stages, weapons, evolutions, passives,
+  achievements, difficulty strategy, daily streaks, and troubleshooting.
+- **`test/iter15.test.js`** — 20 new tests covering the tutorial state
+  machine (active/skip/advance/notifications) and the replay
+  record→serialise→load→playback roundtrip including RLE correctness,
+  speed clamping and out-of-frames detection.
+
+#### Changed
+
+- **Boss-spawn camera shake** intensity bumped +50% (0.8 → 1.2). The
+  reduced-motion gate inside `Game.shake` still applies so accessibility
+  users feel nothing change.
+- `save.settings` gains `criticalFlash` (default `true`).
+  `save.flags` gains `tutorialDone` (default `false`).
+- `index.html` adds `#btnTutorial` and `#btnReplay` to the main-menu
+  button row plus i18n keys for both languages.
+- `Game.start()` now constructs a `ReplayRecorder` per run (skipped
+  during playback). `Game.gameOver()` finalises and persists it before
+  the leaderboard write so a crash in achievements never loses the replay.
+
+#### Tests
+
+- 195 → 215 total tests (+20). All green; no flakes.
 
 ## [2.7.0] - 2026-04-25
 

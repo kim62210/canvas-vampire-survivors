@@ -18,30 +18,30 @@ those commits on `main`.
 Listed newest first. Each entry names the iter branch, the headline commit, and
 the user-visible payload it added to the game.
 
-| Iter | Branch | Key commit | Headline payload |
-| --- | --- | --- | --- |
-| 22 | `iter-22-smoke-fix` | `3068db5` | Smoke-test fix: first-run overlays no longer block `#btnStart` on clean profiles. |
-| 21 | `iter-21-verify` | `ce36ec7` | Verification-only pass; minimum CHANGELOG / Prettier touch-ups. |
-| 20 | `iter-20-easter-and-polish` | `e571ad3` | Easter-egg achievements, emoji-rain effect, polish pass. |
-| 19 | `iter-19-haptic-and-remap` | `907f43b` | Mobile haptics + customisable keyboard remap. |
-| 18 | `iter-18-launch-ready` | `b9a0502` | Launch-ready release materials (RELEASE_CHECKLIST, LAUNCH_POST, PRESS_KIT) + cross-promo. |
-| 17 | `iter-17-final-consolidation` | `916c841` | Final consolidation — JOURNEY, badges, no logic changes. |
-| 16 | `iter-16-bug-bash` | `08cc430` | Deep bug-bash: locale flip, pause-time, quota fallback, spatial perf. |
-| 15 | `iter-15-tutorial-and-replay` | `1d34657` | Tutorial state machine + replay system (v2.8 draft). |
-| 14 | `iter-14-stage-3-and-gamepad` | `eca8a68` | Tundra stage, gamepad support, mobile polish (v2.7.0). |
-| 13 | `iter-13-finishing-touches` | `62d4500` | Finishing touches (v2.6.0). |
-| —  | `iter-12-content-and-live-test` | `c1c05e0` | Hotfix: build daily-share grid via array, not `string.slice`. |
-| 12 | `iter-12-content-and-live-test` | `bf3de26` | Stages, daily challenge, live deploy QA. |
-| —  | `iter-11-url-foundry` | `62851e4` | URL rewrite: `Ricardo-M-L` → `ricardo-foundry` across docs and badges. |
-| 10 | `iter-10-final-mile` | `7c26135` | Camera follow + multi-scene smoke + a11y zero-violation pass. |
-| 9  | `iter-9-runtime-qa` | `f5c4d46` | Real-browser runtime QA + arena clamp fix. |
-| —  | `iter-8-final-polish` | `dcd7f83` | v2.5 final polish — upgraded screenshots, release notes, scripts. |
-| —  | `iter-7-reflection-and-polish` | `a86adb3` | v2.5 reflection pass — fix 5 weaknesses, release prep. |
-| 6  | `iter-6-content-and-launch` | `d6502fa` | v2.4: content density + launch prep. |
-| 5  | `iter-5-perf-and-a11y` | `805953f` | v2.3: perf + a11y + `node:test` suite. |
-| 4  | `iter-4-visual-and-demo` | `ab2b09e` | v2.2: visual + distribution polish for first impression. |
-| 3  | `iter-3-gameplay-depth` | `dea4ee8` | v2.1: gameplay depth — evolutions, waves, achievements, effects. |
-| 2  | `iter-2-oss-and-readme` | `8d5da4e` | OSS scaffolding, CI, Pages deploy, README rewrite. |
+| Iter | Branch                          | Key commit | Headline payload                                                                          |
+| ---- | ------------------------------- | ---------- | ----------------------------------------------------------------------------------------- |
+| 22   | `iter-22-smoke-fix`             | `3068db5`  | Smoke-test fix: first-run overlays no longer block `#btnStart` on clean profiles.         |
+| 21   | `iter-21-verify`                | `ce36ec7`  | Verification-only pass; minimum CHANGELOG / Prettier touch-ups.                           |
+| 20   | `iter-20-easter-and-polish`     | `e571ad3`  | Easter-egg achievements, emoji-rain effect, polish pass.                                  |
+| 19   | `iter-19-haptic-and-remap`      | `907f43b`  | Mobile haptics + customisable keyboard remap.                                             |
+| 18   | `iter-18-launch-ready`          | `b9a0502`  | Launch-ready release materials (RELEASE_CHECKLIST, LAUNCH_POST, PRESS_KIT) + cross-promo. |
+| 17   | `iter-17-final-consolidation`   | `916c841`  | Final consolidation — JOURNEY, badges, no logic changes.                                  |
+| 16   | `iter-16-bug-bash`              | `08cc430`  | Deep bug-bash: locale flip, pause-time, quota fallback, spatial perf.                     |
+| 15   | `iter-15-tutorial-and-replay`   | `1d34657`  | Tutorial state machine + replay system (v2.8 draft).                                      |
+| 14   | `iter-14-stage-3-and-gamepad`   | `eca8a68`  | Tundra stage, gamepad support, mobile polish (v2.7.0).                                    |
+| 13   | `iter-13-finishing-touches`     | `62d4500`  | Finishing touches (v2.6.0).                                                               |
+| —    | `iter-12-content-and-live-test` | `c1c05e0`  | Hotfix: build daily-share grid via array, not `string.slice`.                             |
+| 12   | `iter-12-content-and-live-test` | `bf3de26`  | Stages, daily challenge, live deploy QA.                                                  |
+| —    | `iter-11-url-foundry`           | `62851e4`  | URL rewrite: `Ricardo-M-L` → `ricardo-foundry` across docs and badges.                    |
+| 10   | `iter-10-final-mile`            | `7c26135`  | Camera follow + multi-scene smoke + a11y zero-violation pass.                             |
+| 9    | `iter-9-runtime-qa`             | `f5c4d46`  | Real-browser runtime QA + arena clamp fix.                                                |
+| —    | `iter-8-final-polish`           | `dcd7f83`  | v2.5 final polish — upgraded screenshots, release notes, scripts.                         |
+| —    | `iter-7-reflection-and-polish`  | `a86adb3`  | v2.5 reflection pass — fix 5 weaknesses, release prep.                                    |
+| 6    | `iter-6-content-and-launch`     | `d6502fa`  | v2.4: content density + launch prep.                                                      |
+| 5    | `iter-5-perf-and-a11y`          | `805953f`  | v2.3: perf + a11y + `node:test` suite.                                                    |
+| 4    | `iter-4-visual-and-demo`        | `ab2b09e`  | v2.2: visual + distribution polish for first impression.                                  |
+| 3    | `iter-3-gameplay-depth`         | `dea4ee8`  | v2.1: gameplay depth — evolutions, waves, achievements, effects.                          |
+| 2    | `iter-2-oss-and-readme`         | `8d5da4e`  | OSS scaffolding, CI, Pages deploy, README rewrite.                                        |
 
 Cumulatively this is the entire jump from a bare modular import (v2.0) to the
 launch-ready v2.8.0 build that lives on `iter-22-smoke-fix`.

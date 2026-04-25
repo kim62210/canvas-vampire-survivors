@@ -7,14 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### v2.8.0-rc (iter-15 + iter-16) — _ready for release pending real-screenshot capture_
-
-> This block is a **release candidate**. The version field in
-> `package.json` is intentionally **not** bumped yet — the only outstanding
-> blocker is recapturing `docs/screenshots/real-*.png` for the tutorial,
-> replay, and tundra screens that landed in iter-14/15. Once those land,
-> `npm run check` and `npm run smoke:live` are both green and v2.8.0 can
-> be tagged from this branch.
+## [2.8.0] - 2026-04-25
 
 Onboarding, replays, deep bug-bash, and a final round of polish. New
 players now get a proper 5-step interactive tutorial; everyone gets a
@@ -602,7 +595,8 @@ full open-source contribution workflow. No runtime dependencies were added.
 - Particle effects and basic wave announcements.
 - Single-file `game.js` implementation (~1400 lines).
 
-[Unreleased]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.7.0...HEAD
+[Unreleased]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.8.0...HEAD
+[2.8.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.7.0...v2.8.0
 [2.7.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.4.0...v2.5.0

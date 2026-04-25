@@ -18,8 +18,13 @@ export { SpatialHash } from './spatial-hash.js';
 export class ShakeCamera {
     constructor() {
         this.intensity = 0;
+        // shake offset
         this.x = 0;
         this.y = 0;
+        // world-space follow target (top-left of the viewport in arena coords).
+        // Set by `Game._updateCamera()` each frame.
+        this.worldX = 0;
+        this.worldY = 0;
     }
     shake(amount) {
         this.intensity = Math.max(this.intensity, amount);

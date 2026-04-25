@@ -47,6 +47,7 @@
     },
     "homepage": "https://github.com/Ricardo-M-L/canvas-vampire-survivors#readme",
     "devDependencies": {
+        "@axe-core/playwright": "^4.11.2",
         "eslint": "^9.0.0",
         "playwright": "^1.59.1",
         "prettier": "^3.2.0"

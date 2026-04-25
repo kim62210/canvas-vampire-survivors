@@ -4,8 +4,11 @@
     --card: rgba(6, 8, 16, 0.92);
     --accent: #ffd24d;
     --accent-strong: #ffb400;
-    --primary: #3388ff;
-    --primary-strong: #55a0ff;
+    /* iter-10 a11y: --primary darkened from #3388ff (3.43:1 vs white) to
+       #1d6fe0 (~4.66:1) so primary buttons clear the WCAG AA 4.5:1 bar
+       at the existing 15px weight 600 on white text. */
+    --primary: #1d6fe0;
+    --primary-strong: #4d92ff;
     --danger: #ff3355;
     --muted: #8a8fa0;
     --text: #e8ebf3;
@@ -176,6 +179,16 @@ canvas {
     right: 10px;
     max-width: 260px;
     justify-content: flex-end;
+    /* iter-10: float HUD chips above the gameplay so the player avatar can
+       never tuck under them when the camera stops at the arena edge. The
+       semi-transparent backdrop on `.chip` keeps things legible without
+       hiding the world behind it. */
+    z-index: 5;
+    pointer-events: none;
+}
+.weapon-icons .chip {
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
 }
 
 .chip {

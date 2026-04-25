@@ -44,15 +44,17 @@ export class Player {
         this.x += v.x * speed * dt;
         this.y += v.y * speed * dt;
 
-        // Clamp to the playable arena. The renderer is fixed to the canvas
-        // world (no scrolling camera), so without this clamp the player
-        // walks off the right/bottom edge into invisible space and the
-        // run becomes unplayable. See docs/RUNTIME_QA_REPORT.md.
+        // Clamp to the playable arena. iter-10 introduced a scrolling camera,
+        // so the bound is now the arena (2400×1600), not the viewport. Without
+        // this clamp the player walks off into invisible space and the run
+        // becomes unplayable. See docs/RUNTIME_QA_REPORT.md.
         const r = this.size;
+        const W = CONFIG.ARENA_WIDTH ?? CONFIG.CANVAS_WIDTH;
+        const H = CONFIG.ARENA_HEIGHT ?? CONFIG.CANVAS_HEIGHT;
         if (this.x < r) this.x = r;
-        else if (this.x > CONFIG.CANVAS_WIDTH - r) this.x = CONFIG.CANVAS_WIDTH - r;
+        else if (this.x > W - r) this.x = W - r;
         if (this.y < r) this.y = r;
-        else if (this.y > CONFIG.CANVAS_HEIGHT - r) this.y = CONFIG.CANVAS_HEIGHT - r;
+        else if (this.y > H - r) this.y = H - r;
 
         // Weapons ----------------------------------------------------------
         for (const w of this.weapons) w.update(dt, this, game);

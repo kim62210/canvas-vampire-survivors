@@ -91,17 +91,17 @@ Screen" gives you an offline-capable icon thanks to a tiny
 
 ## 📸 Screenshots
 
-Top row are **real PNG captures** taken by `node scripts/runtime-smoke.js`
-(headless Chromium + Playwright, dev-only). Bottom row are **SVG mockups** for
-scenes that are awkward to script (boss spawn at 04:00, level-up overlay,
-death screen, achievements grid) — drop a real PNG in
-`docs/screenshots/real-<scene>.png` and the README will prefer it. SVG
-fallbacks live under `docs/screenshots/svg/`.
+Every tile below is a **real PNG capture** taken by
+`node scripts/runtime-smoke.js` (headless Chromium + Playwright, dev-only).
+The smoke harness fast-forwards game time via the `__SURV_DEBUG__` test hooks
+to land on the boss / level-up / death scenes deterministically. SVG mockups
+of the same scenes are archived under
+[`docs/screenshots/svg/`](./docs/screenshots/svg/) for offline reference.
 
-|                                                         |                                                         |                                                          |
-| ------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------- |
-| ![Main menu](./docs/screenshots/real-mainmenu.png)      | ![Early gameplay](./docs/screenshots/real-gameplay.png) | ![Boss fight](./docs/screenshots/svg/boss-fight.svg)     |
-| ![Level-up choices](./docs/screenshots/svg/levelup.svg) | ![Game over](./docs/screenshots/svg/gameover.svg)       | ![Achievements](./docs/screenshots/svg/achievements.svg) |
+|                                                          |                                                         |                                                          |
+| -------------------------------------------------------- | ------------------------------------------------------- | -------------------------------------------------------- |
+| ![Main menu](./docs/screenshots/real-mainmenu.png)       | ![Early gameplay](./docs/screenshots/real-gameplay.png) | ![Boss fight](./docs/screenshots/real-boss-fight.png)    |
+| ![Level-up choices](./docs/screenshots/real-levelup.png) | ![Game over](./docs/screenshots/real-gameover.png)      | ![Achievements](./docs/screenshots/svg/achievements.svg) |
 
 ## Why another Vampire Survivors clone?
 
@@ -172,6 +172,13 @@ flowchart TD
 
 ## 🆕 What's new
 
+- **v2.5.1** — Camera follow + final-mile polish. The arena is now 2400×1600
+  with a viewport-centred camera, every README screenshot is a real PNG
+  captured by the Playwright smoke harness, the main menu passes axe-core
+  with **0 violations** (WCAG AA contrast on primary buttons, mobile zoom
+  re-enabled, ARIA roles on chip rows), and a 5-minute
+  [`docs/CONTRIBUTING_QUICKSTART.md`](./docs/CONTRIBUTING_QUICKSTART.md)
+  walks new contributors from clone to first PR.
 - **v2.5** — Reflection + polish pass. Frost-Nova second pulse now uses the
   effects-layer dt scheduler (pauses correctly with the tab), leaderboard
   Import actually merges into storage, no-hit badge is now an authoritative
@@ -244,8 +251,10 @@ a discussion or drop a comment.
 
 ## 🤝 Contributing
 
-Contributions are very welcome — see [CONTRIBUTING.md](./CONTRIBUTING.md) for
-setup, ground rules, and the PR checklist. By participating you agree to the
+Contributions are very welcome. New here? Start with the **5-minute
+[contributing quickstart](./docs/CONTRIBUTING_QUICKSTART.md)** — clone, run,
+open your first PR. The full rules live in
+[CONTRIBUTING.md](./CONTRIBUTING.md), and by participating you agree to the
 [Code of Conduct](./CODE_OF_CONDUCT.md).
 
 Looking for low-hanging fruit? Try one of:

@@ -1,0 +1,7 @@
+# CODEOWNERS — automatic review requests on PRs.
+# Format docs: https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# A catch-all that routes every change to the maintainer. Add module-specific
+# owners below as the contributor base grows (e.g. `src/i18n.js @translator-x`).
+
+* @Ricardo-M-L

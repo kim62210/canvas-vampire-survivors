@@ -1,8 +1,8 @@
 // Unit tests for the Player entity. The most critical invariant we test
-// here is the arena clamp added in iter-9 (runtime QA): without it the
-// player walks off the right/bottom edge of the canvas and the game becomes
-// unplayable because the renderer is fixed to the canvas world (no scrolling
-// camera).
+// here is the arena clamp: in iter-9 the bound was the canvas (no camera);
+// iter-10 introduced a scrolling camera that follows the player, so the
+// bound moved to the arena (CONFIG.ARENA_*). Either way the player must
+// never escape the playable region.
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -28,18 +28,23 @@ test('Player: starts at the position passed to constructor', () => {
 });
 
 test('Player: stays inside arena when walking right at full speed', () => {
-    // Start near the right edge and push right for 10 simulated seconds.
-    const p = new Player(CONFIG.CANVAS_WIDTH - 50, CONFIG.CANVAS_HEIGHT / 2);
+    // Start near the right arena edge and push right for 30 simulated seconds.
+    // Arena is wider than the canvas viewport, so we need a longer simulation.
+    const W = CONFIG.ARENA_WIDTH ?? CONFIG.CANVAS_WIDTH;
+    const H = CONFIG.ARENA_HEIGHT ?? CONFIG.CANVAS_HEIGHT;
+    const p = new Player(W - 50, H / 2);
     const game = makeGame({ x: 1, y: 0 });
-    for (let i = 0; i < 600; i++) p.update(0.016, game); // ~10 s at 60 fps
-    assert.ok(p.x <= CONFIG.CANVAS_WIDTH - p.size, `player walked past right edge: x=${p.x}`);
+    for (let i = 0; i < 1800; i++) p.update(0.016, game); // ~30 s at 60 fps
+    assert.ok(p.x <= W - p.size, `player walked past right edge: x=${p.x}`);
 });
 
 test('Player: stays inside arena when walking down at full speed', () => {
-    const p = new Player(CONFIG.CANVAS_WIDTH / 2, CONFIG.CANVAS_HEIGHT - 50);
+    const W = CONFIG.ARENA_WIDTH ?? CONFIG.CANVAS_WIDTH;
+    const H = CONFIG.ARENA_HEIGHT ?? CONFIG.CANVAS_HEIGHT;
+    const p = new Player(W / 2, H - 50);
     const game = makeGame({ x: 0, y: 1 });
-    for (let i = 0; i < 600; i++) p.update(0.016, game);
-    assert.ok(p.y <= CONFIG.CANVAS_HEIGHT - p.size, `player walked past bottom edge: y=${p.y}`);
+    for (let i = 0; i < 1800; i++) p.update(0.016, game);
+    assert.ok(p.y <= H - p.size, `player walked past bottom edge: y=${p.y}`);
 });
 
 test('Player: stays inside arena when walking diagonally up-left', () => {

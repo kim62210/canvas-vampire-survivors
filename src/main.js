@@ -305,8 +305,14 @@ export class Game {
         this._runStartWallClock = performance.now();
         this.speedrunSplits = [];
 
-        this.player = new Player(CONFIG.CANVAS_WIDTH / 2, CONFIG.CANVAS_HEIGHT / 2);
+        this.player = new Player(
+            (CONFIG.ARENA_WIDTH ?? CONFIG.CANVAS_WIDTH) / 2,
+            (CONFIG.ARENA_HEIGHT ?? CONFIG.CANVAS_HEIGHT) / 2
+        );
         this.player.weapons.push(new Weapon(WEAPONS.WHIP));
+        // Snap camera to player at run start so the first frame doesn't show
+        // a one-tick lerp from (0,0).
+        this._updateCamera();
 
         this.ui.hideStart();
         this.ui.hideGameOver();
@@ -518,6 +524,30 @@ export class Game {
 
         // Camera
         this.camera.update(dt, this.save.settings.screenShake);
+        this._updateCamera();
+    }
+
+    /**
+     * Position the camera so the player sits in the centre of the viewport,
+     * clamped so the camera never shows arena out-of-bounds. Called every
+     * frame from `update()` and once from `start()` to avoid a first-frame
+     * snap. Stored on `this.camera.worldX/worldY` (top-left of the viewport
+     * in arena coords). Render translates by `-worldX + shake.x` etc.
+     */
+    _updateCamera() {
+        if (!this.player) return;
+        const vw = CONFIG.CANVAS_WIDTH;
+        const vh = CONFIG.CANVAS_HEIGHT;
+        const aw = CONFIG.ARENA_WIDTH ?? vw;
+        const ah = CONFIG.ARENA_HEIGHT ?? vh;
+        let wx = this.player.x - vw / 2;
+        let wy = this.player.y - vh / 2;
+        if (wx < 0) wx = 0;
+        if (wy < 0) wy = 0;
+        if (wx > aw - vw) wx = aw - vw;
+        if (wy > ah - vh) wy = ah - vh;
+        this.camera.worldX = wx;
+        this.camera.worldY = wy;
     }
 
     // --- update() helpers (kept close to the orchestrator for locality) ---
@@ -886,10 +916,16 @@ export class Game {
     // --- Rendering --------------------------------------------------------
     render(_dt) {
         const ctx = this.ctx;
-        ctx.save();
-        ctx.translate(this.camera.x, this.camera.y);
+        // 1) Background fill in screen space (no transform). This guarantees
+        //    the viewport is always cleared even when the camera sits flush
+        //    against an arena edge and a sliver would otherwise be unfilled.
         ctx.fillStyle = '#1a1a2e';
         ctx.fillRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
+
+        // 2) World-space pass: translate by -camera + shake so entity coords
+        //    (which live in arena space) project into the viewport.
+        ctx.save();
+        ctx.translate(-this.camera.worldX + this.camera.x, -this.camera.worldY + this.camera.y);
 
         this._drawGrid();
 
@@ -906,10 +942,11 @@ export class Game {
         for (const p of this.particles) p.render(ctx);
         for (const t of this.floatingTexts) t.render(ctx);
 
-        // Screen-space effects (flash, pulses) on top.
-        this.effects.render(ctx, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
-
         ctx.restore();
+
+        // 3) Screen-space effects (flash, pulses, vignette) on top — these
+        //    render relative to the viewport, not the world.
+        this.effects.render(ctx, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
     }
 
     /**
@@ -943,24 +980,33 @@ export class Game {
         }
     }
 
+    /**
+     * Draws a faint grid in arena/world space. Because we're inside the
+     * world-space transform (-camera + shake) we can just iterate from
+     * the first grid line >= camera.worldX to the last one <= worldX+vw,
+     * which auto-clips to the visible region without any per-frame guess.
+     */
     _drawGrid() {
         const ctx = this.ctx;
         ctx.strokeStyle = 'rgba(255,255,255,0.04)';
         ctx.lineWidth = 1;
         const size = CONFIG.GRID_SIZE;
-        if (!this.player) return;
-        const ox = -this.player.x % size;
-        const oy = -this.player.y % size;
-        for (let x = ox; x < CONFIG.CANVAS_WIDTH; x += size) {
+        const cx = this.camera.worldX;
+        const cy = this.camera.worldY;
+        const vw = CONFIG.CANVAS_WIDTH;
+        const vh = CONFIG.CANVAS_HEIGHT;
+        const startX = Math.floor(cx / size) * size;
+        const startY = Math.floor(cy / size) * size;
+        for (let x = startX; x <= cx + vw; x += size) {
             ctx.beginPath();
-            ctx.moveTo(x, 0);
-            ctx.lineTo(x, CONFIG.CANVAS_HEIGHT);
+            ctx.moveTo(x, cy);
+            ctx.lineTo(x, cy + vh);
             ctx.stroke();
         }
-        for (let y = oy; y < CONFIG.CANVAS_HEIGHT; y += size) {
+        for (let y = startY; y <= cy + vh; y += size) {
             ctx.beginPath();
-            ctx.moveTo(0, y);
-            ctx.lineTo(CONFIG.CANVAS_WIDTH, y);
+            ctx.moveTo(cx, y);
+            ctx.lineTo(cx + vw, y);
             ctx.stroke();
         }
     }
@@ -1011,6 +1057,52 @@ Player.prototype.gainExp = function (amount) {
 export function boot() {
     const g = new Game();
     window.__vsGame = g;
+    // Dev-only debug hooks. Gated on hostname so they never fire on the
+    // GitHub Pages build; the smoke harness loads from localhost so it
+    // does. Used by scripts/runtime-smoke.js to fast-forward to bosses,
+    // force a level-up, and trigger game-over without having to actually
+    // play 5 minutes per scene.
+    const isDev =
+        typeof location !== 'undefined' &&
+        (location.hostname === 'localhost' ||
+            location.hostname === '127.0.0.1' ||
+            location.hostname === '');
+    if (isDev) {
+        window.__SURV_DEBUG__ = {
+            /** Fast-forward simulated game time. Triggers everything that's
+             * gated on `gameTime`: wave director, boss spawns, difficulty
+             * scaling. Spawn accumulator follows along so a chunk of enemies
+             * appears proportionate to the elapsed window. */
+            advance(seconds = 30) {
+                if (!g.player || g.state !== 'playing') return false;
+                g.gameTime += seconds;
+                // Keep the spawn director from emptying its bag in one frame.
+                g._spawnAccumulator = 0;
+                return true;
+            },
+            /** Push enough XP that the next update() flushes one level-up. */
+            grantLevel(n = 1) {
+                if (!g.player) return false;
+                for (let i = 0; i < n; i++) g.player.gainExp(g.player.expToNext + 1);
+                return true;
+            },
+            /** Knock the player to 1 HP so the next enemy hit ends the run. */
+            killPlayer() {
+                if (!g.player) return false;
+                g.player.hp = 0;
+                g.player.dead = true;
+                return true;
+            },
+            /** Spawn the named boss right now (skipping its scheduled time). */
+            spawnBoss(id) {
+                const def = Object.values(BOSSES).find((b) => b.id === id);
+                if (!def) return false;
+                g._spawnBoss(def, 1, 1);
+                g._bossesSpawned.add(def.id);
+                return true;
+            }
+        };
+    }
     return g;
 }
 

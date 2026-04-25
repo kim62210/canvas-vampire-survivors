@@ -2,10 +2,7 @@
 <html lang="en">
     <head>
         <meta charset="UTF-8" />
-        <meta
-            name="viewport"
-            content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover"
-        />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
         <meta name="color-scheme" content="dark" />
         <meta name="theme-color" content="#1b1330" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -83,10 +80,15 @@
                     <div class="hp-bar">
                         <div class="hp-fill" id="hpBar" style="width: 100%"></div>
                     </div>
-                    <div class="chip-row" id="passiveIcons" aria-label="Passives"></div>
+                    <div class="chip-row" id="passiveIcons" role="list" aria-label="Passives"></div>
                 </div>
 
-                <div class="chip-row weapon-icons" id="weaponIcons" aria-label="Weapons"></div>
+                <div
+                    class="chip-row weapon-icons"
+                    id="weaponIcons"
+                    role="list"
+                    aria-label="Weapons"
+                ></div>
 
                 <div id="bossBanner" class="boss-banner" aria-live="polite"></div>
 

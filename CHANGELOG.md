@@ -9,7 +9,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Placeholder for upcoming changes. Contributors, add your entries here.
+- **Camera follow + arena expansion** (iter-10 final-mile). The world is now a
+  2400×1600 arena with a viewport-centred camera that clamps to arena edges.
+  Player clamp moved from canvas bounds (`CONFIG.CANVAS_*`) to arena bounds
+  (`CONFIG.ARENA_*`). The faint background grid finally tiles correctly with
+  the camera (previously dead code with `player.x` only). See
+  `Game._updateCamera()` and `_drawGrid()` in `src/main.js`.
+- `window.__SURV_DEBUG__` — dev-only test hooks (`advance`, `grantLevel`,
+  `killPlayer`, `spawnBoss`) gated to `localhost`, used by the Playwright
+  smoke harness to capture deterministic boss / level-up / game-over
+  screenshots without scripting a 5-minute play session.
+- `scripts/runtime-smoke.js` now captures **5 real PNG scenes** (mainmenu,
+  gameplay, boss-fight, levelup, gameover) and runs `@axe-core/playwright`
+  against the main menu. Results land in `docs/RUNTIME_QA_REPORT.md`.
+- `docs/CONTRIBUTING_QUICKSTART.md` — 5-minute clone-to-first-PR walkthrough.
+- `docs/ISSUE_LABELS.md` — recommended issue/PR label set.
+- `.github/CODEOWNERS` — auto-routes PR reviews to `@Ricardo-M-L`.
+
+### Changed
+
+- README screenshots are now all real PNGs (boss-fight, levelup, gameover
+  replaced their SVG placeholders). SVG fallbacks remain archived under
+  `docs/screenshots/svg/`.
+- `--primary` darkened from `#3388ff` to `#1d6fe0` (~4.66:1 vs white) so
+  primary buttons clear WCAG AA. `aria-label` on `#weaponIcons` and
+  `#passiveIcons` is now valid (added `role="list"`). Mobile pinch-zoom
+  re-enabled (removed `user-scalable=no`).
+- HUD weapon-icons row gets `z-index: 5` + slight backdrop-blur so the
+  player avatar can't tuck under the chips at arena edges.
+
+### Fixed
+
+- `_drawGrid()` no longer calls `player.x` from inside the world transform
+  expecting screen-space coordinates; grid lines now align to arena coords.
 
 ## [2.5.0] - 2026-04-25
 

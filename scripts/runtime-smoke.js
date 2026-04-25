@@ -1,24 +1,31 @@
 #!/usr/bin/env node
 /**
  * @file scripts/runtime-smoke.js
- * @description Real-browser runtime smoke test (Round 9 QA).
+ * @description Real-browser runtime smoke test (Round 9 + 10 QA).
  *
  * What it does:
  *   1. Spawns the dev server (`node server.js`) on a free port.
  *   2. Launches headless Chromium via Playwright.
- *   3. Loads the game, captures the main menu PNG.
- *   4. Clicks "Start Run", lets the game run ~10 seconds, captures gameplay PNG.
+ *   3. Loads the game and captures:
+ *      - real-mainmenu.png      (main menu)
+ *      - real-gameplay.png      (~10 s of combat)
+ *      - real-boss-fight.png    (Round 10: fast-forward to first boss)
+ *      - real-levelup.png       (Round 10: trigger level-up dialog)
+ *      - real-gameover.png      (Round 10: kill player + capture)
+ *   4. Runs `@axe-core/playwright` against the main menu and writes any
+ *      violations into the QA report.
  *   5. Collects every console.error / console.warn / pageerror / failed
  *      network request and prints them to stdout (and to docs/RUNTIME_QA_REPORT.md).
- *   6. Tears everything down with non-zero exit if any error/pageerror.
+ *   6. Exits non-zero if any console.error or pageerror.
  *
  * Usage: `node scripts/runtime-smoke.js`
  *
  * Notes:
- *   - Playwright is a *dev*-only dep (see package.json devDependencies).
- *   - Output PNGs land at docs/screenshots/real-mainmenu.png and
- *     docs/screenshots/real-gameplay.png — these replace the SVG mockups in
- *     README. SVG fallbacks live under docs/screenshots/svg/.
+ *   - Playwright + @axe-core/playwright are *dev*-only deps.
+ *   - Output PNGs land at docs/screenshots/real-*.png — these replace the
+ *     SVG mockups in README. SVG fallbacks live under docs/screenshots/svg/.
+ *   - Round 10 screenshots use `window.__SURV_DEBUG__` test hooks (gated to
+ *     localhost in src/main.js) — they don't ship on GitHub Pages.
  */
 'use strict';
 
@@ -97,11 +104,17 @@ async function main() {
 
     // Lazy-require so that --help / install paths don't fail without playwright.
     const { chromium } = require('playwright');
+    let AxeBuilder = null;
+    try {
+        // Optional: skip a11y if @axe-core/playwright isn't installed.
+        ({ default: AxeBuilder } = await import('@axe-core/playwright'));
+    } catch (_e) {
+        process.stdout.write('[axe] @axe-core/playwright not installed, skipping a11y scan\n');
+    }
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({
         viewport: { width: 1280, height: 900 },
         deviceScaleFactor: 1,
-        // Real-ish user agent so any UA-sniffing branches behave normally.
         userAgent:
             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
     });
@@ -117,7 +130,6 @@ async function main() {
         const text = msg.text();
         if (t === 'error') consoleErrors.push(text);
         else if (t === 'warning') consoleWarns.push(text);
-        // log everything for visibility
         process.stdout.write(`[console.${t}] ${text}\n`);
     });
     page.on('pageerror', (err) => {
@@ -136,18 +148,30 @@ async function main() {
     });
 
     await page.goto(url, { waitUntil: 'load' });
-
-    // Give the boot script a beat to wire up listeners/UI.
     await page.waitForTimeout(1500);
 
-    // Main menu screenshot (real PNG).
+    // --- Scene 1: main menu ------------------------------------------------
     await page.screenshot({
         path: path.join(SHOT_DIR, 'real-mainmenu.png'),
         fullPage: false
     });
     process.stdout.write('[shot] real-mainmenu.png\n');
 
-    // Click Start Run (button id="btnStart").
+    // --- Accessibility scan (axe) on the main menu ------------------------
+    let axeViolations = [];
+    if (AxeBuilder) {
+        try {
+            const results = await new AxeBuilder({ page })
+                .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+                .analyze();
+            axeViolations = results.violations || [];
+            process.stdout.write(`[axe] ${axeViolations.length} violations\n`);
+        } catch (err) {
+            process.stdout.write(`[axe] scan failed: ${err.message}\n`);
+        }
+    }
+
+    // --- Scene 2: early gameplay ------------------------------------------
     const startBtn = await page.$('#btnStart');
     if (!startBtn) {
         pageErrors.push('Could not find #btnStart button on main menu.');
@@ -155,23 +179,16 @@ async function main() {
         await startBtn.click();
         process.stdout.write('[click] #btnStart\n');
     }
-
-    // Focus the canvas so keyboard input is delivered to the game.
     await page.evaluate(() => document.getElementById('gameCanvas')?.focus());
 
-    // Move player around (D held briefly, then S held) so enemies actually
-    // collide with the whip arc and we get a screenshot with combat in it.
     await page.keyboard.down('d');
     await page.waitForTimeout(2500);
     await page.keyboard.up('d');
     await page.keyboard.down('s');
     await page.waitForTimeout(2500);
     await page.keyboard.up('s');
-
-    // Idle the rest of the 10 s window so wave/spawn logic ticks.
     await page.waitForTimeout(5000);
 
-    // Try to surface live state for the report.
     let liveState = null;
     try {
         liveState = await page.evaluate(() => {
@@ -185,6 +202,12 @@ async function main() {
                 playerLevel: g.player ? g.player.level : null,
                 playerXY: g.player
                     ? { x: Math.round(g.player.x), y: Math.round(g.player.y) }
+                    : null,
+                cameraXY: g.camera
+                    ? {
+                          worldX: Math.round(g.camera.worldX || 0),
+                          worldY: Math.round(g.camera.worldY || 0)
+                      }
                     : null,
                 enemies: g.enemies?.length ?? 0,
                 projectiles: g.projectiles?.length ?? 0,
@@ -204,7 +227,7 @@ async function main() {
     });
     process.stdout.write('[shot] real-gameplay.png\n');
 
-    // --- Pause / resume sanity ---
+    // --- Pause / resume sanity --------------------------------------------
     await page.keyboard.press('p');
     await page.waitForTimeout(300);
     const pauseVisible = await page.evaluate(() => {
@@ -217,17 +240,85 @@ async function main() {
     const resumed = await page.evaluate(() => window.__vsGame?.state === 'playing');
     if (!resumed) pageErrors.push('Game did not resume after second P press.');
 
+    // --- Scene 3: boss fight (Round 10) -----------------------------------
+    // Fast-forward 5 minutes via test-only debug hook to trigger boss spawns.
+    const advanced = await page.evaluate(() => window.__SURV_DEBUG__?.advance?.(300) ?? false);
+    if (!advanced) {
+        process.stdout.write('[warn] __SURV_DEBUG__.advance unavailable (non-dev build?)\n');
+    }
+    // Let the spawn director catch up + the boss banner play.
+    await page.waitForTimeout(2000);
+
+    // If no boss is on screen yet, force-spawn one for the screenshot.
+    const hasBoss = await page.evaluate(() => {
+        const g = window.__vsGame;
+        return !!g?.enemies?.some((e) => e.boss);
+    });
+    if (!hasBoss) {
+        await page.evaluate(() => window.__SURV_DEBUG__?.spawnBoss?.('big_bat'));
+        await page.waitForTimeout(1500);
+    }
+    await page.screenshot({
+        path: path.join(SHOT_DIR, 'real-boss-fight.png'),
+        fullPage: false
+    });
+    process.stdout.write('[shot] real-boss-fight.png\n');
+
+    // --- Scene 4: level-up overlay ----------------------------------------
+    await page.evaluate(() => window.__SURV_DEBUG__?.grantLevel?.(1));
+    // The level-up dialog flushes on the next update tick; give the loop a beat.
+    await page.waitForTimeout(700);
+    const levelUpVisible = await page.evaluate(() => {
+        const m = document.getElementById('levelUpMenu');
+        return m && m.style.display !== 'none';
+    });
+    if (!levelUpVisible) {
+        process.stdout.write('[warn] levelUpMenu not visible after grantLevel\n');
+    }
+    await page.screenshot({
+        path: path.join(SHOT_DIR, 'real-levelup.png'),
+        fullPage: false
+    });
+    process.stdout.write('[shot] real-levelup.png\n');
+
+    // Pick the first level-up choice so we can keep playing toward game-over.
+    const firstChoice = await page.$('#upgradeOptions button, #levelUpMenu button');
+    if (firstChoice) {
+        await firstChoice.click();
+        await page.waitForTimeout(400);
+    } else {
+        await page.keyboard.press('Enter');
+        await page.waitForTimeout(400);
+    }
+
+    // --- Scene 5: game over ------------------------------------------------
+    await page.evaluate(() => window.__SURV_DEBUG__?.killPlayer?.());
+    // Player.dead -> next update tick calls gameOver() -> shows screen.
+    await page.waitForTimeout(800);
+    const gameOverVisible = await page.evaluate(() => {
+        const m = document.getElementById('gameOver');
+        return m && m.style.display !== 'none';
+    });
+    if (!gameOverVisible) {
+        process.stdout.write('[warn] gameOver overlay not visible after killPlayer\n');
+    }
+    await page.screenshot({
+        path: path.join(SHOT_DIR, 'real-gameover.png'),
+        fullPage: false
+    });
+    process.stdout.write('[shot] real-gameover.png\n');
+
     await browser.close();
     server.kill('SIGTERM');
 
-    // --- Write report ---
+    // --- Write report -----------------------------------------------------
     const lines = [];
-    lines.push('# Runtime QA Report (Round 9)');
+    lines.push('# Runtime QA Report (Round 10)');
     lines.push('');
     lines.push(`Generated: ${new Date().toISOString()}`);
     lines.push(`Page: ${url}`);
     lines.push('');
-    lines.push('## Live game state after ~10 s');
+    lines.push('## Live game state after ~10 s of play');
     lines.push('```json');
     lines.push(JSON.stringify(liveState, null, 2));
     lines.push('```');
@@ -260,16 +351,47 @@ async function main() {
         lines.push('_None_ ✅');
     }
     lines.push('');
+    lines.push(`## Accessibility (axe-core, main menu) — ${axeViolations.length} violations`);
+    if (!AxeBuilder) {
+        lines.push('_axe-core not installed, scan skipped._');
+    } else if (axeViolations.length === 0) {
+        lines.push('_None_ ✅');
+    } else {
+        for (const v of axeViolations) {
+            lines.push(
+                `- **${v.id}** (${v.impact || 'n/a'}) — ${v.help}. ${v.nodes.length} node(s).`
+            );
+            lines.push(`  - ${v.helpUrl}`);
+            for (const n of v.nodes.slice(0, 3)) {
+                lines.push(`  - target: \`${n.target.join(' ')}\``);
+                if (n.failureSummary) {
+                    lines.push(`    > ${n.failureSummary.replace(/\n+/g, ' ').slice(0, 240)}`);
+                }
+            }
+        }
+    }
+    lines.push('');
     lines.push('## Screenshots');
     lines.push('- `docs/screenshots/real-mainmenu.png`');
     lines.push('- `docs/screenshots/real-gameplay.png`');
+    lines.push('- `docs/screenshots/real-boss-fight.png`');
+    lines.push('- `docs/screenshots/real-levelup.png`');
+    lines.push('- `docs/screenshots/real-gameover.png`');
+    lines.push('');
+    lines.push('## iter-10 notes');
+    lines.push(
+        '- Camera follow active: player kept centred in viewport, clamped to 2400×1600 arena.'
+    );
+    lines.push(
+        '- Test-only `window.__SURV_DEBUG__` hooks (advance / grantLevel / killPlayer / spawnBoss) are gated to localhost.'
+    );
 
     fs.writeFileSync(REPORT, lines.join('\n') + '\n', 'utf8');
     process.stdout.write(`\n[report] ${REPORT}\n`);
 
     const totalErrors = consoleErrors.length + pageErrors.length;
     process.stdout.write(
-        `\nSummary: ${consoleErrors.length} console.error, ${consoleWarns.length} console.warn, ${pageErrors.length} pageerror, ${failedRequests.length} failed-request.\n`
+        `\nSummary: ${consoleErrors.length} console.error, ${consoleWarns.length} console.warn, ${pageErrors.length} pageerror, ${failedRequests.length} failed-request, ${axeViolations.length} a11y.\n`
     );
     process.exit(totalErrors > 0 ? 1 : 0);
 }

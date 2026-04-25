@@ -3,7 +3,7 @@
 ## 1. Do I need to install anything?
 
 No. Open the
-[GitHub Pages URL](https://ricardo-m-l.github.io/canvas-vampire-survivors/)
+[GitHub Pages URL](https://ricardo-foundry.github.io/canvas-vampire-survivors/)
 and the game runs. If you want to self-host, `git clone`, then
 `node server.js` or open `index.html` directly.
 
@@ -68,7 +68,7 @@ easier to hack on.
 ## 10. Something broke / I have feedback
 
 Please open an issue on GitHub
-([bug report template](https://github.com/Ricardo-M-L/canvas-vampire-survivors/issues/new/choose))
+([bug report template](https://github.com/ricardo-foundry/canvas-vampire-survivors/issues/new/choose))
 and include: browser + version, whether you're on mobile, and the URL.
 Console logs are gold. If it's a gameplay balance opinion, please open a
 Discussion instead.

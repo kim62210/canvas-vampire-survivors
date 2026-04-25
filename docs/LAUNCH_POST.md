@@ -42,8 +42,8 @@ prettier + the test suite on every PR. Total runtime dependency count:
 
 ## Try it + read the code
 
-- **Play in browser:** https://ricardo-m-l.github.io/canvas-vampire-survivors/
-- **Source:** https://github.com/Ricardo-M-L/canvas-vampire-survivors
+- **Play in browser:** https://ricardo-foundry.github.io/canvas-vampire-survivors/
+- **Source:** https://github.com/ricardo-foundry/canvas-vampire-survivors
 
 If you've ever wanted a readable, hackable Canvas game to learn from,
 start here. Fork, reskin, bolt on a story, turn it into a game-jam

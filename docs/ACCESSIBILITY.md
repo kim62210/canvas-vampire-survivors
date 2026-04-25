@@ -5,7 +5,7 @@ lists every concrete a11y feature the game ships with today, plus the gaps we
 are deliberately aware of but have not fixed yet.
 
 If you hit a blocker that isn't listed below, please
-[open an issue](https://github.com/Ricardo-M-L/canvas-vampire-survivors/issues/new)
+[open an issue](https://github.com/ricardo-foundry/canvas-vampire-survivors/issues/new)
 — accessibility regressions are treated as bugs, not feature requests.
 
 ## Supported features

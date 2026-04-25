@@ -8,7 +8,7 @@ Five angles. Pick whichever matches the week.
 > and it now holds 60 fps at 500 enemies on a 2019 MacBook Air.
 > Single canvas. Zero deps. `node --test` only.
 >
-> Code: https://github.com/Ricardo-M-L/canvas-vampire-survivors
+> Code: https://github.com/ricardo-foundry/canvas-vampire-survivors
 
 ## 2. Nostalgia (for indie-game folks)
 
@@ -18,7 +18,7 @@ Five angles. Pick whichever matches the week.
 > Here's a Vampire Survivors roguelite. Open the link, play in the
 > browser, fork if you want.
 >
-> https://ricardo-m-l.github.io/canvas-vampire-survivors/
+> https://ricardo-foundry.github.io/canvas-vampire-survivors/
 
 ## 3. Challenge (for speedrunners + completionists)
 
@@ -28,7 +28,7 @@ Five angles. Pick whichever matches the week.
 >
 > Current WR seat is empty. Take it.
 >
-> https://ricardo-m-l.github.io/canvas-vampire-survivors/
+> https://ricardo-foundry.github.io/canvas-vampire-survivors/
 
 ## 4. Tutorial (for learners)
 
@@ -38,7 +38,7 @@ Five angles. Pick whichever matches the week.
 >
 > Read it in a weekend. Fork it the next.
 >
-> https://github.com/Ricardo-M-L/canvas-vampire-survivors
+> https://github.com/ricardo-foundry/canvas-vampire-survivors
 
 ## 5. Social-good / open source
 
@@ -48,4 +48,4 @@ Five angles. Pick whichever matches the week.
 > ARIA live region, full keyboard nav, and a gamepad-optional touch
 > joystick. Zero runtime deps, MIT, open to PRs.
 >
-> https://github.com/Ricardo-M-L/canvas-vampire-survivors
+> https://github.com/ricardo-foundry/canvas-vampire-survivors

@@ -13,9 +13,9 @@ Hey r/WebGames!
 I built a small roguelite in plain JavaScript — no framework, no build
 step, no install — and I'd love your feedback.
 
-**Play:** https://ricardo-m-l.github.io/canvas-vampire-survivors/
+**Play:** https://ricardo-foundry.github.io/canvas-vampire-survivors/
 
-**Source:** https://github.com/Ricardo-M-L/canvas-vampire-survivors
+**Source:** https://github.com/ricardo-foundry/canvas-vampire-survivors
 
 **Controls**
 
@@ -55,8 +55,8 @@ Long-time lurker here. I've been writing a browser roguelite heavily
 inspired by Vampire Survivors, and the new v2.4 build just dropped. Would
 love some playtest feedback, especially on the pacing of the late game.
 
-**Play:** https://ricardo-m-l.github.io/canvas-vampire-survivors/
-**Source:** https://github.com/Ricardo-M-L/canvas-vampire-survivors
+**Play:** https://ricardo-foundry.github.io/canvas-vampire-survivors/
+**Source:** https://github.com/ricardo-foundry/canvas-vampire-survivors
 
 **New in this build**
 

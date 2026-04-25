@@ -57,6 +57,6 @@
         <circle cx="160" cy="640" r="11" fill="#cfeaff"/>
         <circle cx="156" cy="636" r="3" fill="#ffffff"/>
 <text x="40" y="776" font-family="monospace" font-size="14" fill="#506080">v2.5.0 · MIT</text>
-<text x="600" y="776" text-anchor="middle" font-family="monospace" font-size="14" fill="#506080">github.com/Ricardo-M-L/canvas-vampire-survivors</text>
+<text x="600" y="776" text-anchor="middle" font-family="monospace" font-size="14" fill="#506080">github.com/ricardo-foundry/canvas-vampire-survivors</text>
 <text x="1160" y="776" text-anchor="end" font-family="monospace" font-size="14" fill="#506080">⌨ ↑↓ + Enter</text>
 </svg>

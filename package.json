@@ -40,12 +40,12 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/Ricardo-M-L/canvas-vampire-survivors.git"
+        "url": "git+https://github.com/ricardo-foundry/canvas-vampire-survivors.git"
     },
     "bugs": {
-        "url": "https://github.com/Ricardo-M-L/canvas-vampire-survivors/issues"
+        "url": "https://github.com/ricardo-foundry/canvas-vampire-survivors/issues"
     },
-    "homepage": "https://github.com/Ricardo-M-L/canvas-vampire-survivors#readme",
+    "homepage": "https://github.com/ricardo-foundry/canvas-vampire-survivors#readme",
     "devDependencies": {
         "@axe-core/playwright": "^4.11.2",
         "eslint": "^9.0.0",

@@ -9,7 +9,7 @@ read in one sitting.
 
 A Vampire Survivors clone in 2k lines of vanilla JS. No build step.
 No deps. Speedrun mode + 18 achievements + PWA. Play & fork it:
-https://ricardo-m-l.github.io/canvas-vampire-survivors/
+https://ricardo-foundry.github.io/canvas-vampire-survivors/
 
 ## One-minute elevator pitch
 
@@ -45,4 +45,4 @@ entry — this is meant for you.
 | Input        | Keyboard, mouse, gamepad, touch joystick                       |
 | A11y         | Reduced motion, SR live region, forced-colors, keyboard nav    |
 | Test suite   | `node:test`, 95+ cases                                         |
-| Contact      | https://github.com/Ricardo-M-L/canvas-vampire-survivors/issues |
+| Contact      | https://github.com/ricardo-foundry/canvas-vampire-survivors/issues |

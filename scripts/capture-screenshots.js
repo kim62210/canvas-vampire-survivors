@@ -281,7 +281,7 @@ function mainmenu() {
         hero(160, H - 160),
         // Version footer + social hints
         `<text x="40" y="${H - 24}" font-family="monospace" font-size="14" fill="#506080">v2.5.0 · MIT</text>`,
-        `<text x="${W / 2}" y="${H - 24}" text-anchor="middle" font-family="monospace" font-size="14" fill="#506080">github.com/Ricardo-M-L/canvas-vampire-survivors</text>`,
+        `<text x="${W / 2}" y="${H - 24}" text-anchor="middle" font-family="monospace" font-size="14" fill="#506080">github.com/ricardo-foundry/canvas-vampire-survivors</text>`,
         `<text x="${W - 40}" y="${H - 24}" text-anchor="end" font-family="monospace" font-size="14" fill="#506080">⌨ ↑↓ + Enter</text>`,
         '</svg>'
     ].join('\n');

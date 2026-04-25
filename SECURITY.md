@@ -19,7 +19,7 @@ Please **do not** open a public GitHub issue for security problems.
 Preferred channel: use GitHub's private vulnerability reporting form for this
 repository:
 
-- <https://github.com/Ricardo-M-L/canvas-vampire-survivors/security/advisories/new>
+- <https://github.com/ricardo-foundry/canvas-vampire-survivors/security/advisories/new>
 
 If that is not available to you, contact the maintainer listed in
 `package.json` by email, with `[SECURITY]` in the subject.

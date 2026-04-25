@@ -114,7 +114,7 @@ function mainmenu() {
                 <rect x="${W / 2 - 180}" y="${y}" width="360" height="54" rx="10" fill="#1d2a4a" stroke="#3a5dbb"/>
                 <text x="${W / 2}" y="${y + 35}" text-anchor="middle" font-family="sans-serif" font-size="22" fill="#cfeaff">${label}</text>`;
         }),
-        `<text x="${W / 2}" y="${H - 24}" text-anchor="middle" font-family="monospace" font-size="14" fill="#506080">v2.5.0 · MIT · github.com/Ricardo-M-L/canvas-vampire-survivors</text>`,
+        `<text x="${W / 2}" y="${H - 24}" text-anchor="middle" font-family="monospace" font-size="14" fill="#506080">v2.5.0 · MIT · github.com/ricardo-foundry/canvas-vampire-survivors</text>`,
         '</svg>'
     ].join('\n');
 }

@@ -5,7 +5,7 @@ need to be applied by the repository **owner**, not by CI. Run through this
 list once after the v2.5 tag — most boxes ought to be ticked already, but
 they're worth re-checking before a public launch.
 
-> Repo: https://github.com/Ricardo-M-L/canvas-vampire-survivors
+> Repo: https://github.com/ricardo-foundry/canvas-vampire-survivors
 
 ## 1. About panel (right-hand sidebar on the repo home page)
 
@@ -14,7 +14,7 @@ Click the gear icon next to **About** and set:
 - **Description**:
     > Zero-dependency HTML5 Canvas roguelite inspired by Vampire Survivors. Vanilla JS · MIT.
 - **Website**:
-    > https://ricardo-m-l.github.io/canvas-vampire-survivors/
+    > https://ricardo-foundry.github.io/canvas-vampire-survivors/
 - Tick:
     - [x] Use your GitHub Pages website
     - [x] Releases
@@ -99,7 +99,7 @@ re-check this file — currently the repo is sponsorship-free by design
 After applying everything above:
 
 ```bash
-gh repo view Ricardo-M-L/canvas-vampire-survivors --json description,homepageUrl,topics
+gh repo view ricardo-foundry/canvas-vampire-survivors --json description,homepageUrl,topics
 ```
 
 Expected output should match the strings above.

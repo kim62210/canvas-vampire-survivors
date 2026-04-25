@@ -17,7 +17,7 @@ runtime libraries — just ESLint and Prettier as dev tools.
 ## 1. Clone, install, run (≈60 seconds)
 
 ```bash
-git clone https://github.com/Ricardo-M-L/canvas-vampire-survivors.git
+git clone https://github.com/ricardo-foundry/canvas-vampire-survivors.git
 cd canvas-vampire-survivors
 npm install          # ESLint + Prettier + Playwright (dev only)
 npm start            # opens at http://localhost:3000
@@ -31,9 +31,9 @@ browser tab. The game ships as plain ES modules served from disk.
 We tag onboarding-friendly tickets with **`good-first-issue`** and slightly
 chunkier ones with **`help-wanted`**. Filters:
 
-- [Open `good-first-issue`](https://github.com/Ricardo-M-L/canvas-vampire-survivors/issues?q=is%3Aissue+is%3Aopen+label%3Agood-first-issue)
-- [Open `help-wanted`](https://github.com/Ricardo-M-L/canvas-vampire-survivors/issues?q=is%3Aissue+is%3Aopen+label%3Ahelp-wanted)
-- [Open `a11y`](https://github.com/Ricardo-M-L/canvas-vampire-survivors/issues?q=is%3Aissue+is%3Aopen+label%3Aa11y)
+- [Open `good-first-issue`](https://github.com/ricardo-foundry/canvas-vampire-survivors/issues?q=is%3Aissue+is%3Aopen+label%3Agood-first-issue)
+- [Open `help-wanted`](https://github.com/ricardo-foundry/canvas-vampire-survivors/issues?q=is%3Aissue+is%3Aopen+label%3Ahelp-wanted)
+- [Open `a11y`](https://github.com/ricardo-foundry/canvas-vampire-survivors/issues?q=is%3Aissue+is%3Aopen+label%3Aa11y)
 
 If the issue list is empty but you still want to help, check out
 [`docs/GOOD_FIRST_ISSUES.md`](./GOOD_FIRST_ISSUES.md) for evergreen ideas

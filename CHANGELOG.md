@@ -324,10 +324,10 @@ full open-source contribution workflow. No runtime dependencies were added.
 - Particle effects and basic wave announcements.
 - Single-file `game.js` implementation (~1400 lines).
 
-[Unreleased]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.5.0...HEAD
-[2.5.0]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.4.0...v2.5.0
-[2.4.0]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.3.0...v2.4.0
-[2.3.0]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.2.0...v2.3.0
-[2.2.0]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v2.0.0...v2.2.0
-[2.0.0]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/compare/v1.0.0...v2.0.0
-[1.0.0]: https://github.com/Ricardo-M-L/canvas-vampire-survivors/releases/tag/v1.0.0
+[Unreleased]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.4.0...v2.5.0
+[2.4.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.3.0...v2.4.0
+[2.3.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.2.0...v2.3.0
+[2.2.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.0.0...v2.2.0
+[2.0.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v1.0.0...v2.0.0
+[1.0.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/releases/tag/v1.0.0

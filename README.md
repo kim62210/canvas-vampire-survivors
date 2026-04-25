@@ -4,7 +4,7 @@
 -->
 
 <p align="center">
-  <a href="https://ricardo-m-l.github.io/canvas-vampire-survivors/">
+  <a href="https://ricardo-foundry.github.io/canvas-vampire-survivors/">
     <img src="./docs/hero.svg" alt="Survivor — open-source HTML5 Canvas roguelite" width="720" />
   </a>
 </p>
@@ -24,17 +24,17 @@
 
 <p align="center">
   <a href="./LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-yellow.svg"></a>
-  <a href="https://ricardo-m-l.github.io/canvas-vampire-survivors/"><img alt="Live demo" src="https://img.shields.io/badge/▶-Live%20Demo-3388ff.svg"></a>
-  <a href="https://github.com/Ricardo-M-L/canvas-vampire-survivors/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/Ricardo-M-L/canvas-vampire-survivors/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/Ricardo-M-L/canvas-vampire-survivors"><img alt="Top language" src="https://img.shields.io/github/languages/top/Ricardo-M-L/canvas-vampire-survivors.svg"></a>
-  <a href="https://github.com/Ricardo-M-L/canvas-vampire-survivors/commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/Ricardo-M-L/canvas-vampire-survivors.svg"></a>
+  <a href="https://ricardo-foundry.github.io/canvas-vampire-survivors/"><img alt="Live demo" src="https://img.shields.io/badge/▶-Live%20Demo-3388ff.svg"></a>
+  <a href="https://github.com/ricardo-foundry/canvas-vampire-survivors/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/ricardo-foundry/canvas-vampire-survivors/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/ricardo-foundry/canvas-vampire-survivors"><img alt="Top language" src="https://img.shields.io/github/languages/top/ricardo-foundry/canvas-vampire-survivors.svg"></a>
+  <a href="https://github.com/ricardo-foundry/canvas-vampire-survivors/commits"><img alt="Last commit" src="https://img.shields.io/github/last-commit/ricardo-foundry/canvas-vampire-survivors.svg"></a>
   <a href="./CONTRIBUTING.md"><img alt="Issues welcome" src="https://img.shields.io/badge/issues-welcome-brightgreen.svg"></a>
   <a href="./package.json"><img alt="Zero runtime deps" src="https://img.shields.io/badge/runtime%20deps-0-informational.svg"></a>
   <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript"><img alt="Made with Vanilla JS" src="https://img.shields.io/badge/made%20with-vanilla%20JS-f7df1e.svg"></a>
 </p>
 
 <p align="center">
-  <a href="https://ricardo-m-l.github.io/canvas-vampire-survivors/"><strong>▶ &nbsp;Play in your browser</strong></a>
+  <a href="https://ricardo-foundry.github.io/canvas-vampire-survivors/"><strong>▶ &nbsp;Play in your browser</strong></a>
   &nbsp;·&nbsp;
   <a href="#-quickstart">Quickstart</a>
   &nbsp;·&nbsp;
@@ -70,7 +70,7 @@
 ## 🚀 Quickstart
 
 ```bash
-git clone https://github.com/Ricardo-M-L/canvas-vampire-survivors.git
+git clone https://github.com/ricardo-foundry/canvas-vampire-survivors.git
 cd canvas-vampire-survivors
 npm install     # ESLint + Prettier only — zero runtime deps
 npm start       # http://localhost:3000
@@ -83,7 +83,7 @@ serve the folder with `python -m http.server`.
 
 An always-up-to-date build ships from `main` to GitHub Pages:
 
-> **▶ <https://ricardo-m-l.github.io/canvas-vampire-survivors/>**
+> **▶ <https://ricardo-foundry.github.io/canvas-vampire-survivors/>**
 
 The Pages build is also a [PWA](./manifest.json): on mobile, "Add to Home
 Screen" gives you an offline-capable icon thanks to a tiny
@@ -282,7 +282,7 @@ Released under the [MIT License](./LICENSE). Use it, fork it, ship it.
 
 ## ⭐ Stars over time
 
-[![Star History Chart](https://api.star-history.com/svg?repos=Ricardo-M-L/canvas-vampire-survivors&type=Date)](https://star-history.com/#Ricardo-M-L/canvas-vampire-survivors&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=ricardo-foundry/canvas-vampire-survivors&type=Date)](https://star-history.com/#ricardo-foundry/canvas-vampire-survivors&Date)
 
 If you have read this far, please drop a ⭐ — it costs nothing and makes the
 next person who finds the repo trust it more.
@@ -298,7 +298,7 @@ v2.2 版本添加了 PWA 离线支持、成就画廊、社交分享卡，以及�
 Pages 静态入口。
 
 - 🚀 一键启动：`npm install && npm start`，或直接用浏览器打开 `index.html`
-- 🌐 在线试玩：<https://ricardo-m-l.github.io/canvas-vampire-survivors/>
+- 🌐 在线试玩：<https://ricardo-foundry.github.io/canvas-vampire-survivors/>
 - 🤝 欢迎贡献：查看 [CONTRIBUTING.md](./CONTRIBUTING.md)，我们对新手非常友好
 - 📜 协议：MIT，随意 fork 和二次创作
 

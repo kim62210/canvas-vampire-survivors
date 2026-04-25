@@ -121,13 +121,17 @@ function hero(x, y) {
 
 function enemyDot(x, y, r = 11, color = '#ff4444') {
     // Tiny but still readable: body + highlight.
-    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${color}"/>` +
-        `<circle cx="${(x - r * 0.35).toFixed(1)}" cy="${(y - r * 0.35).toFixed(1)}" r="${(r * 0.35).toFixed(1)}" fill="rgba(255,255,255,0.3)"/>`;
+    return (
+        `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r}" fill="${color}"/>` +
+        `<circle cx="${(x - r * 0.35).toFixed(1)}" cy="${(y - r * 0.35).toFixed(1)}" r="${(r * 0.35).toFixed(1)}" fill="rgba(255,255,255,0.3)"/>`
+    );
 }
 
 function expOrb(x, y) {
-    return `<circle cx="${x}" cy="${y}" r="5" fill="#7df4d3"/>` +
-        `<circle cx="${x}" cy="${y}" r="10" fill="#7df4d3" opacity="0.2"/>`;
+    return (
+        `<circle cx="${x}" cy="${y}" r="5" fill="#7df4d3"/>` +
+        `<circle cx="${x}" cy="${y}" r="10" fill="#7df4d3" opacity="0.2"/>`
+    );
 }
 
 function hitSpark(x, y, rng) {
@@ -164,38 +168,75 @@ function boss(x, y) {
 }
 
 // ---- Full HUD chrome (weapon slots, passive slots, timer, level, HP/exp) ---
-function hud({ level = 7, time = '03:42', kills = 412, hp = '59/100', hpFrac = 0.59, expFrac = 0.42, weapons = ['⚔', '✦', '❄', '↺'], passives = ['♥', '⚡', '🧲'] } = {}) {
+function hud({
+    level = 7,
+    time = '03:42',
+    kills = 412,
+    hp = '59/100',
+    hpFrac = 0.59,
+    expFrac = 0.42,
+    weapons = ['⚔', '✦', '❄', '↺'],
+    passives = ['♥', '⚡', '🧲']
+} = {}) {
     const out = [];
     // top bar
     out.push(`<rect x="0" y="0" width="${W}" height="56" fill="rgba(0,0,0,0.6)"/>`);
-    out.push(`<text x="24" y="36" font-family="monospace" font-size="20" fill="#cfeaff">LV ${level}</text>`);
-    out.push(`<text x="110" y="36" font-family="monospace" font-size="20" fill="#cfeaff">⏱ ${time}</text>`);
-    out.push(`<text x="240" y="36" font-family="monospace" font-size="20" fill="#cfeaff">☠ ${kills}</text>`);
+    out.push(
+        `<text x="24" y="36" font-family="monospace" font-size="20" fill="#cfeaff">LV ${level}</text>`
+    );
+    out.push(
+        `<text x="110" y="36" font-family="monospace" font-size="20" fill="#cfeaff">⏱ ${time}</text>`
+    );
+    out.push(
+        `<text x="240" y="36" font-family="monospace" font-size="20" fill="#cfeaff">☠ ${kills}</text>`
+    );
     // HP bar
     out.push(`<rect x="380" y="18" width="220" height="16" rx="4" fill="rgba(255,255,255,0.12)"/>`);
-    out.push(`<rect x="380" y="18" width="${(220 * hpFrac).toFixed(0)}" height="16" rx="4" fill="url(#hpGrad)"/>`);
-    out.push(`<text x="610" y="31" font-family="monospace" font-size="13" fill="#ffe6ec">HP ${hp}</text>`);
+    out.push(
+        `<rect x="380" y="18" width="${(220 * hpFrac).toFixed(0)}" height="16" rx="4" fill="url(#hpGrad)"/>`
+    );
+    out.push(
+        `<text x="610" y="31" font-family="monospace" font-size="13" fill="#ffe6ec">HP ${hp}</text>`
+    );
     // Exp bar
     out.push(`<rect x="380" y="38" width="220" height="8" rx="3" fill="rgba(255,255,255,0.12)"/>`);
-    out.push(`<rect x="380" y="38" width="${(220 * expFrac).toFixed(0)}" height="8" rx="3" fill="url(#expGrad)"/>`);
+    out.push(
+        `<rect x="380" y="38" width="${(220 * expFrac).toFixed(0)}" height="8" rx="3" fill="url(#expGrad)"/>`
+    );
     // FPS chip
-    out.push(`<rect x="${W - 120}" y="14" width="96" height="30" rx="6" fill="rgba(0,0,0,0.5)" stroke="#2a3450"/>`);
-    out.push(`<text x="${W - 72}" y="34" text-anchor="middle" font-family="monospace" font-size="14" fill="#7df4d3">60 fps</text>`);
+    out.push(
+        `<rect x="${W - 120}" y="14" width="96" height="30" rx="6" fill="rgba(0,0,0,0.5)" stroke="#2a3450"/>`
+    );
+    out.push(
+        `<text x="${W - 72}" y="34" text-anchor="middle" font-family="monospace" font-size="14" fill="#7df4d3">60 fps</text>`
+    );
     // Weapon slots (bottom-left)
     weapons.forEach((ic, i) => {
         const x = 20 + i * 54;
-        out.push(`<rect x="${x}" y="${H - 70}" width="48" height="48" rx="8" fill="rgba(10,20,40,0.75)" stroke="#3a5dbb" stroke-width="1.5"/>`);
-        out.push(`<text x="${x + 24}" y="${H - 38}" text-anchor="middle" font-family="sans-serif" font-size="22" fill="#ffe066">${ic}</text>`);
-        out.push(`<rect x="${x + 4}" y="${H - 26}" width="40" height="3" fill="#ffe066" opacity="0.8"/>`);
+        out.push(
+            `<rect x="${x}" y="${H - 70}" width="48" height="48" rx="8" fill="rgba(10,20,40,0.75)" stroke="#3a5dbb" stroke-width="1.5"/>`
+        );
+        out.push(
+            `<text x="${x + 24}" y="${H - 38}" text-anchor="middle" font-family="sans-serif" font-size="22" fill="#ffe066">${ic}</text>`
+        );
+        out.push(
+            `<rect x="${x + 4}" y="${H - 26}" width="40" height="3" fill="#ffe066" opacity="0.8"/>`
+        );
     });
     // Passive slots (bottom-right)
     passives.forEach((ic, i) => {
         const x = W - 70 - i * 54;
-        out.push(`<rect x="${x}" y="${H - 70}" width="48" height="48" rx="8" fill="rgba(10,20,40,0.75)" stroke="#7d9aff" stroke-width="1.5"/>`);
-        out.push(`<text x="${x + 24}" y="${H - 38}" text-anchor="middle" font-family="sans-serif" font-size="22" fill="#9ecaff">${ic}</text>`);
+        out.push(
+            `<rect x="${x}" y="${H - 70}" width="48" height="48" rx="8" fill="rgba(10,20,40,0.75)" stroke="#7d9aff" stroke-width="1.5"/>`
+        );
+        out.push(
+            `<text x="${x + 24}" y="${H - 38}" text-anchor="middle" font-family="sans-serif" font-size="22" fill="#9ecaff">${ic}</text>`
+        );
     });
     // Minimap stub (bottom-centre)
-    out.push(`<rect x="${W / 2 - 72}" y="${H - 70}" width="144" height="48" rx="6" fill="rgba(10,15,30,0.7)" stroke="#2a3450"/>`);
+    out.push(
+        `<rect x="${W / 2 - 72}" y="${H - 70}" width="144" height="48" rx="6" fill="rgba(10,15,30,0.7)" stroke="#2a3450"/>`
+    );
     out.push(`<circle cx="${W / 2}" cy="${H - 46}" r="4" fill="#44aaff"/>`);
     // minimap enemy dots
     for (let i = 0; i < 30; i++) {
@@ -217,7 +258,9 @@ function mainmenu() {
         const x = rng() * W;
         const y = rng() * H;
         const r = 0.4 + rng() * 1.4;
-        sparks.push(`<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(2)}" fill="#cfeaff" opacity="${(0.2 + rng() * 0.5).toFixed(2)}"/>`);
+        sparks.push(
+            `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="${r.toFixed(2)}" fill="#cfeaff" opacity="${(0.2 + rng() * 0.5).toFixed(2)}"/>`
+        );
     }
     return [
         svgOpen(),
@@ -283,9 +326,7 @@ function gameplayEarly() {
         const r = 110 + i * 30;
         const bx = cx + Math.cos(a) * r;
         const by = cy + Math.sin(a) * r;
-        bits.push(
-            `<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="6" fill="#c080ff"/>`
-        );
+        bits.push(`<circle cx="${bx.toFixed(1)}" cy="${by.toFixed(1)}" r="6" fill="#c080ff"/>`);
         // trail
         bits.push(
             `<circle cx="${(bx - Math.cos(a) * 14).toFixed(1)}" cy="${(by - Math.sin(a) * 14).toFixed(1)}" r="3" fill="#c080ff" opacity="0.5"/>`
@@ -297,12 +338,8 @@ function gameplayEarly() {
         const a = (i / 5) * Math.PI * 2 + 0.3;
         const ox = cx + Math.cos(a) * 72;
         const oy = cy + Math.sin(a) * 72;
-        bits.push(
-            `<circle cx="${ox.toFixed(1)}" cy="${oy.toFixed(1)}" r="7" fill="#88ddff"/>`
-        );
-        bits.push(
-            `<circle cx="${ox.toFixed(1)}" cy="${oy.toFixed(1)}" r="3" fill="#ffffff"/>`
-        );
+        bits.push(`<circle cx="${ox.toFixed(1)}" cy="${oy.toFixed(1)}" r="7" fill="#88ddff"/>`);
+        bits.push(`<circle cx="${ox.toFixed(1)}" cy="${oy.toFixed(1)}" r="3" fill="#ffffff"/>`);
     }
 
     // ---- Particle layer: hit sparks on contact + exp orb halos + dust
@@ -392,9 +429,7 @@ function bossFight() {
     bits.push(
         `<path d="M ${cx + 20} ${cy - 20} q 140 -120 260 -10 q 80 40 -40 80" stroke="#ffaa55" stroke-width="3" fill="none" opacity="0.7" stroke-dasharray="4 6"/>`
     );
-    bits.push(
-        `<circle cx="${cx + 220}" cy="${cy - 90}" r="9" fill="#ff9944"/>`
-    );
+    bits.push(`<circle cx="${cx + 220}" cy="${cy - 90}" r="9" fill="#ff9944"/>`);
 
     // Enemy projectiles from boss
     for (let i = 0; i < 10; i++) {
@@ -447,7 +482,16 @@ function bossFight() {
         `<rect x="${W / 2 - 220}" y="${H - 150}" width="440" height="18" rx="4" fill="rgba(0,0,0,0.6)" stroke="#552233"/>`,
         `<rect x="${W / 2 - 218}" y="${H - 148}" width="${(440 * 0.62).toFixed(0)}" height="14" rx="3" fill="url(#hpGrad)"/>`,
         `<text x="${W / 2}" y="${H - 112}" text-anchor="middle" font-family="monospace" font-size="14" fill="#ffcfe0">VOID LORD — 620 / 1000</text>`,
-        hud({ level: 14, time: '05:07', kills: 1284, hp: '42/120', hpFrac: 0.35, expFrac: 0.78, weapons: ['⚔', '✦', '❄', '↺', '⊙'], passives: ['♥', '⚡', '🧲', '🛡'] }),
+        hud({
+            level: 14,
+            time: '05:07',
+            kills: 1284,
+            hp: '42/120',
+            hpFrac: 0.35,
+            expFrac: 0.78,
+            weapons: ['⚔', '✦', '❄', '↺', '⊙'],
+            passives: ['♥', '⚡', '🧲', '🛡']
+        }),
         '</svg>'
     ].join('\n');
 }
@@ -479,8 +523,21 @@ function levelup() {
         `<text x="${W / 2}" y="220" text-anchor="middle" font-family="sans-serif" font-size="20" fill="#cfeaff">Choose an upgrade — ↑↓ / click / tap</text>`,
         ...[
             { name: 'Whip', desc: 'Damage +25%', tier: 'Lv 3 → 4', icon: '⚔', tag: 'weapon' },
-            { name: 'Frost Nova', desc: 'New weapon — AoE + slow', tier: 'NEW', icon: '❄', tag: 'weapon', highlight: true },
-            { name: 'Magnet', desc: 'Pickup range +30%', tier: 'Lv 2 → 3', icon: '🧲', tag: 'passive' }
+            {
+                name: 'Frost Nova',
+                desc: 'New weapon — AoE + slow',
+                tier: 'NEW',
+                icon: '❄',
+                tag: 'weapon',
+                highlight: true
+            },
+            {
+                name: 'Magnet',
+                desc: 'Pickup range +30%',
+                tier: 'Lv 2 → 3',
+                icon: '🧲',
+                tag: 'passive'
+            }
         ].map((c, i) => {
             const x = 170 + i * 300;
             const highlight = c.highlight;
@@ -586,7 +643,7 @@ function achievements() {
         `<text x="${W / 2}" y="88" text-anchor="middle" font-family="Impact, sans-serif" font-size="44" fill="#ffe066" letter-spacing="4">ACHIEVEMENTS · 7 / 12</text>`,
         // Progress bar
         `<rect x="${W / 2 - 200}" y="108" width="400" height="8" rx="3" fill="rgba(255,255,255,0.1)"/>`,
-        `<rect x="${W / 2 - 200}" y="108" width="${(400 * 7 / 12).toFixed(0)}" height="8" rx="3" fill="#ffe066"/>`,
+        `<rect x="${W / 2 - 200}" y="108" width="${((400 * 7) / 12).toFixed(0)}" height="8" rx="3" fill="#ffe066"/>`,
         ...items.map((a, i) => {
             const col = i % 4;
             const row = Math.floor(i / 4);
@@ -623,7 +680,9 @@ for (const [name, body] of Object.entries(SCENES)) {
     fs.writeFileSync(out, body, 'utf8');
     written++;
     // eslint-disable-next-line no-console
-    console.log(`wrote ${path.relative(process.cwd(), out)} (${(body.length / 1024).toFixed(1)} KB)`);
+    console.log(
+        `wrote ${path.relative(process.cwd(), out)} (${(body.length / 1024).toFixed(1)} KB)`
+    );
 }
 // eslint-disable-next-line no-console
 console.log(`\n${written} screenshot mockups generated in ${path.relative(process.cwd(), OUT)}`);

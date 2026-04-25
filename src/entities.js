@@ -44,6 +44,16 @@ export class Player {
         this.x += v.x * speed * dt;
         this.y += v.y * speed * dt;
 
+        // Clamp to the playable arena. The renderer is fixed to the canvas
+        // world (no scrolling camera), so without this clamp the player
+        // walks off the right/bottom edge into invisible space and the
+        // run becomes unplayable. See docs/RUNTIME_QA_REPORT.md.
+        const r = this.size;
+        if (this.x < r) this.x = r;
+        else if (this.x > CONFIG.CANVAS_WIDTH - r) this.x = CONFIG.CANVAS_WIDTH - r;
+        if (this.y < r) this.y = r;
+        else if (this.y > CONFIG.CANVAS_HEIGHT - r) this.y = CONFIG.CANVAS_HEIGHT - r;
+
         // Weapons ----------------------------------------------------------
         for (const w of this.weapons) w.update(dt, this, game);
 

@@ -13,7 +13,8 @@
         "format": "prettier --write \"**/*.{js,html,css,md,json}\"",
         "format:check": "prettier --check \"**/*.{js,html,css,md,json}\"",
         "test": "node --test test/*.test.js",
-        "check": "npm run lint && npm run format:check && npm test"
+        "check": "npm run lint && npm run format:check && npm test",
+        "smoke": "node scripts/runtime-smoke.js"
     },
     "keywords": [
         "game",
@@ -47,6 +48,7 @@
     "homepage": "https://github.com/Ricardo-M-L/canvas-vampire-survivors#readme",
     "devDependencies": {
         "eslint": "^9.0.0",
+        "playwright": "^1.59.1",
         "prettier": "^3.2.0"
     }
 }

@@ -149,6 +149,74 @@ export function _resetDailyForTests() {
     if (usableLS()) window.localStorage.removeItem(DAILY_STORAGE_KEY);
 }
 
+/**
+ * Compute a streak summary for the daily challenge. We treat *any* recorded
+ * day as a played day (regardless of stage), build a sorted unique-date list,
+ * then count the trailing run of consecutive UTC days ending at today as the
+ * "current" streak, and the longest consecutive run anywhere in the window
+ * as the "best" streak. The 14-day calendar list is returned ready-to-render
+ * (newest first) with `played` / `won` flags so the UI is just a `.map`.
+ *
+ * @param {object} [history] loadDailyHistory() output; defaults to live
+ * @param {Date} [now] override for tests
+ * @returns {{ current:number, best:number, days:Array<{date:string, played:boolean, won:boolean, timeSurvived:number, kills:number}> }}
+ */
+export function dailyStreakSummary(history, now = new Date()) {
+    const all = history || loadDailyHistory();
+    // Collapse all entries to one record per date (best timeSurvived wins
+    // when multiple stages share a date) so the streak is "did the player
+    // play that day at all?" rather than per-stage.
+    const byDate = new Map();
+    for (const e of Object.values(all)) {
+        if (!e || !e.date) continue;
+        const prev = byDate.get(e.date);
+        if (!prev || (e.timeSurvived || 0) > (prev.timeSurvived || 0)) {
+            byDate.set(e.date, e);
+        }
+    }
+    // Build the 14-day calendar window ending at `now` (UTC).
+    const days = [];
+    for (let i = 0; i < 14; i++) {
+        const d = new Date(now.getTime() - i * 86400 * 1000);
+        const key = todayKey(d);
+        const entry = byDate.get(key);
+        days.push({
+            date: key,
+            played: !!entry,
+            won: !!entry?.won,
+            timeSurvived: entry?.timeSurvived || 0,
+            kills: entry?.kills || 0
+        });
+    }
+    // Current streak: walk forward from today (i=0) while consecutive days
+    // were played. Stops at the first gap.
+    let current = 0;
+    for (const d of days) {
+        if (d.played) current++;
+        else break;
+    }
+    // Best streak: longest run anywhere in the unique-date set, not just the
+    // 14-day window — guarantees the badge stays correct as days roll out.
+    const sortedKeys = Array.from(byDate.keys()).sort();
+    let best = 0;
+    let run = 0;
+    let prevKey = null;
+    for (const k of sortedKeys) {
+        if (prevKey && nextDayKey(prevKey) === k) run++;
+        else run = 1;
+        if (run > best) best = run;
+        prevKey = k;
+    }
+    return { current, best, days };
+}
+
+/** Add one UTC day to a 'YYYY-MM-DD' string. */
+function nextDayKey(key) {
+    const [y, m, d] = key.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d) + 86400 * 1000);
+    return todayKey(dt);
+}
+
 // ---------------------------------------------------------------------------
 // Wordle-style share. We don't have a public reference cohort to compare
 // against, so the "grid" instead encodes the player's *own* recent days as

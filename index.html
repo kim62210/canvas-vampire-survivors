@@ -149,9 +149,19 @@
                         <button id="btnStart" class="btn primary" data-i18n="start">
                             Start Run
                         </button>
-                        <button id="btnStage" class="btn ghost" data-i18n="stage">Stage</button>
+                        <button
+                            id="btnStage"
+                            class="btn ghost"
+                            data-i18n="stage"
+                            aria-describedby="btnStageChip"
+                        >
+                            Stage <span id="btnStageChip" class="stage-chip">🌲 Whisperwood</span>
+                        </button>
                         <button id="btnDaily" class="btn ghost" data-i18n="dailyChallenge">
                             Daily Challenge
+                        </button>
+                        <button id="btnViewStreak" class="btn ghost" data-i18n="viewStreak">
+                            View Streak
                         </button>
                         <button id="btnSpeedrun" class="btn ghost" data-i18n="speedrun">
                             Speedrun
@@ -165,6 +175,15 @@
                         <button id="btnAchievements" class="btn ghost" data-i18n="viewAchievements">
                             View Achievements
                         </button>
+                        <button id="btnHowTo" class="btn ghost" data-i18n="howToPlayBtn">
+                            How to Play
+                        </button>
+                    </div>
+                    <div class="hotkey-hint" aria-hidden="true">
+                        <span data-i18n="hotkeyHint"
+                            >Tip: <kbd>P</kbd>/<kbd>Esc</kbd> pause · <kbd>M</kbd> mute ·
+                            <kbd>H</kbd> help</span
+                        >
                     </div>
                 </div>
             </div>
@@ -172,6 +191,9 @@
             <div id="achievementsScreen" class="overlay" style="display: none"></div>
             <div id="leaderboardScreen" class="overlay" style="display: none"></div>
             <div id="stagePickerScreen" class="overlay" style="display: none"></div>
+            <div id="streakScreen" class="overlay" style="display: none"></div>
+            <div id="helpScreen" class="overlay" style="display: none"></div>
+            <div id="howToPlayScreen" class="overlay" style="display: none"></div>
 
             <div
                 id="levelUpMenu"

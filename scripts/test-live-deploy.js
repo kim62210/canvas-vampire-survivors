@@ -187,25 +187,54 @@ async function main() {
     else if (liveState.gameTime < 5)
         findings.push(`gameTime only advanced to ${liveState.gameTime.toFixed(2)}s — sim stalled.`);
 
-    // Canvas-pixel sanity check during *gameplay*: with the player and at
-    // least one enemy on screen, a 64×64 sample around the player should
-    // contain multiple distinct colours.
-    const distinctColors = await page.evaluate(() => {
+    // Canvas-pixel sanity check during *gameplay*. Iter-12 scanned a single
+    // 64×64 box at the canvas centre; iter-13 changed that to a multi-sample
+    // sweep across nine evenly-spaced points (3×3 grid) of 32×32 patches.
+    // Rationale: with the camera now following the player, a single centre
+    // sample can land on the bare arena background between spawn waves and
+    // mis-flag a perfectly healthy build as "uniform". Sampling all nine
+    // points and asserting the *union* contains multiple colours is robust
+    // against (a) the player wandering off-centre during the test, (b) the
+    // wave director stalling the spawn for a beat, and (c) low-saturation
+    // stages like Crypt where the centre pixel is often a single hue.
+    const sampleResult = await page.evaluate(() => {
         const c = document.getElementById('gameCanvas');
-        if (!c) return 0;
+        if (!c) return { distinct: 0, points: 0, samples: [] };
         const ctx = c.getContext('2d');
-        const cx = Math.floor(c.width / 2);
-        const cy = Math.floor(c.height / 2);
-        const data = ctx.getImageData(cx - 32, cy - 32, 64, 64).data;
+        const w = c.width;
+        const h = c.height;
+        const patch = 32;
         const seen = new Set();
-        for (let i = 0; i < data.length; i += 4) {
-            seen.add(`${data[i]}|${data[i + 1]}|${data[i + 2]}`);
+        const samples = [];
+        // 3x3 grid centred at (0.25, 0.5, 0.75) of the canvas in each axis.
+        const fracs = [0.25, 0.5, 0.75];
+        for (const fy of fracs) {
+            for (const fx of fracs) {
+                const cx = Math.floor(w * fx);
+                const cy = Math.floor(h * fy);
+                const x0 = Math.max(0, cx - patch / 2);
+                const y0 = Math.max(0, cy - patch / 2);
+                const data = ctx.getImageData(x0, y0, patch, patch).data;
+                const local = new Set();
+                for (let i = 0; i < data.length; i += 4) {
+                    const k = `${data[i]}|${data[i + 1]}|${data[i + 2]}`;
+                    seen.add(k);
+                    local.add(k);
+                }
+                samples.push({ fx, fy, distinct: local.size });
+            }
         }
-        return seen.size;
+        return { distinct: seen.size, points: samples.length, samples };
     });
-    if (distinctColors < 2) {
+    const distinctColors = sampleResult.distinct;
+    // Pass condition: at least three distinct colours across the union of
+    // all nine patches, AND at least one patch on its own contains >=2
+    // distinct colours (rules out a pathological case where every patch is
+    // a different solid background tile).
+    const richestPatch = Math.max(0, ...sampleResult.samples.map((s) => s.distinct));
+    if (distinctColors < 3 || richestPatch < 2) {
         findings.push(
-            `Canvas pixels look uniform during gameplay (only ${distinctColors} distinct colour(s) in centre 64×64).`
+            `Canvas pixels look uniform during gameplay (union ${distinctColors} colours, richest patch ${richestPatch} across ${sampleResult.points} samples).`
         );
     }
 
@@ -218,7 +247,7 @@ async function main() {
 
     // 7) write report
     const lines = [];
-    lines.push('# Live Deploy QA Report (iter-12)');
+    lines.push('# Live Deploy QA Report (iter-13)');
     lines.push('');
     lines.push(`Generated: ${new Date().toISOString()}`);
     lines.push(`URL: <${LIVE_URL}>`);
@@ -228,7 +257,9 @@ async function main() {
     lines.push(`- Title: \`${title}\``);
     lines.push(`- main.js loaded: ${mainJsLoaded ? '✅' : '❌'}`);
     lines.push(`- Game booted: ${booted ? '✅' : '❌'}`);
-    lines.push(`- Canvas distinct colours (gameplay 64×64 centre): ${distinctColors}`);
+    lines.push(
+        `- Canvas distinct colours (gameplay, 9-point 3x3 sweep, 32×32 each): union=${distinctColors}, richest patch=${richestPatch}`
+    );
     lines.push('');
     lines.push('## Live state after ~10s of play');
     lines.push('```json');

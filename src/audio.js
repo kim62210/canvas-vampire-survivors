@@ -58,9 +58,19 @@ export class AudioEngine {
     applyVolumes() {
         if (!this.ctx) return;
         const s = this.settings;
-        this.masterGain.gain.value = s.masterVolume ?? 0.6;
+        // iter-13: a global `muted` flag (toggled by the M hotkey) zeroes the
+        // master gain without overwriting masterVolume so unmute restores
+        // exactly what the player had before.
+        const muteMult = s.muted ? 0 : 1;
+        this.masterGain.gain.value = (s.masterVolume ?? 0.6) * muteMult;
         this.sfxGain.gain.value = s.sfxVolume ?? 0.8;
         this.musicGain.gain.value = (s.musicEnabled === false ? 0 : 1) * (s.musicVolume ?? 0.4);
+    }
+
+    /** Toggle a global mute (zeroes master gain, leaves volumes intact). */
+    setMuted(flag) {
+        this.settings.muted = !!flag;
+        this.applyVolumes();
     }
 
     // Generic tone helper --------------------------------------------------

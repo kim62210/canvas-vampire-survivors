@@ -49,9 +49,14 @@ const DEFAULT_SAVE = {
         musicEnabled: true,
         damageNumbers: true,
         locale: 'en',
-        stage: 'forest'
+        stage: 'forest',
+        // iter-13: global mute toggle, persisted so refresh keeps the choice.
+        muted: false
     },
-    runs: 0
+    runs: 0,
+    // iter-13: one-time flags. `howToSeen` flips on the first dismiss of the
+    // /howtoplay overlay; we only auto-show it for new players.
+    flags: { howToSeen: false }
 };
 
 let memoryFallback = null;

@@ -79,7 +79,31 @@ const STRINGS = {
         shareDaily: 'Share Result',
         copied: 'Copied to clipboard',
         copyManual: 'Select & copy manually',
-        damageNumbers: 'Show damage numbers'
+        damageNumbers: 'Show damage numbers',
+        // iter-13: streak / help / how-to-play / hotkeys
+        viewStreak: 'View Streak',
+        dailyStreak: 'Daily Streak',
+        currentStreak: 'Current streak',
+        bestStreak: 'Best streak',
+        last14Days: 'Last 14 days',
+        noStreakYet: 'No daily runs recorded yet — try today’s challenge!',
+        howToPlayBtn: 'How to Play',
+        helpTitle: 'Keyboard shortcuts',
+        hotkeyHint: 'Tip: P/Esc pause · M mute · H help',
+        helpKeyMove: 'Move',
+        helpKeyPause: 'Pause / resume',
+        helpKeyMute: 'Mute audio',
+        helpKeyHelp: 'Toggle help',
+        helpKeyLanguage: 'Toggle language',
+        helpKeySettings: 'Settings panel',
+        helpKeyConfirm: 'Confirm / fire',
+        howToTitle: 'How to play',
+        howToBody1:
+            'You are auto-attacking. Move with WASD or arrow keys; weapons fire on their own.',
+        howToBody2: 'Pick up green orbs to gain XP. Each level lets you choose one upgrade.',
+        howToBody3: 'Survive long enough and a boss appears every few minutes.',
+        howToBody4: 'Hit P or Esc to pause, M to mute, H to see this list any time.',
+        gotIt: 'Got it'
     },
     zh: {
         title: '幸存者',
@@ -147,7 +171,30 @@ const STRINGS = {
         shareDaily: '分享成绩',
         copied: '已复制到剪贴板',
         copyManual: '请手动复制',
-        damageNumbers: '显示伤害数字'
+        damageNumbers: '显示伤害数字',
+        // iter-13: 连胜/帮助/玩法/快捷键
+        viewStreak: '查看连胜',
+        dailyStreak: '每日挑战连胜',
+        currentStreak: '当前连胜',
+        bestStreak: '最佳连胜',
+        last14Days: '最近 14 天',
+        noStreakYet: '暂无每日挑战记录——来打一局今天的吧！',
+        howToPlayBtn: '玩法说明',
+        helpTitle: '键盘快捷键',
+        hotkeyHint: '提示：P/Esc 暂停 · M 静音 · H 帮助',
+        helpKeyMove: '移动',
+        helpKeyPause: '暂停 / 继续',
+        helpKeyMute: '静音',
+        helpKeyHelp: '显示 / 关闭帮助',
+        helpKeyLanguage: '切换语言',
+        helpKeySettings: '设置面板',
+        helpKeyConfirm: '确认 / 攻击',
+        howToTitle: '玩法说明',
+        howToBody1: '武器会自动攻击。WASD 或方向键移动即可。',
+        howToBody2: '拾取绿色经验球升级，每升一级可以选一个强化。',
+        howToBody3: '活得够久就会出现 BOSS——每隔几分钟一只。',
+        howToBody4: '随时按 P/Esc 暂停、M 静音、H 显示此说明。',
+        gotIt: '知道了'
     }
 };
 

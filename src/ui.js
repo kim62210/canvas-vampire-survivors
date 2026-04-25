@@ -15,8 +15,8 @@
 import { ACHIEVEMENTS, PASSIVES, WEAPONS } from './data.js';
 import { CONFIG } from './config.js';
 import { t, setLocale, availableLocales } from './i18n.js';
-import { listStages } from './stages.js';
-import { buildShareText } from './daily.js';
+import { getStage, listStages } from './stages.js';
+import { buildShareText, dailyStreakSummary, loadDailyHistory } from './daily.js';
 
 export class UI {
     constructor(game) {
@@ -53,7 +53,11 @@ export class UI {
             'waveLabel',
             'achievementsScreen',
             'leaderboardScreen',
-            'stagePickerScreen'
+            'stagePickerScreen',
+            'streakScreen',
+            'helpScreen',
+            'howToPlayScreen',
+            'btnStageChip'
         ];
         for (const id of ids) this.els[id] = document.getElementById(id);
     }
@@ -109,6 +113,146 @@ export class UI {
 
     hideStagePicker() {
         if (this.els.stagePickerScreen) this.els.stagePickerScreen.style.display = 'none';
+    }
+
+    /**
+     * Refresh the stage chip rendered inside the main-menu Stage button so the
+     * player can see at a glance which map a "Start Run" press would launch.
+     * Cheap to call repeatedly — just innerText + className updates.
+     */
+    updateStageChip(stageId) {
+        if (!this.els.btnStageChip) return;
+        const s = getStage(stageId);
+        // The chip carries the stage icon + name; we keep it short so the
+        // button stays one line at the default font size.
+        this.els.btnStageChip.textContent = `${s.icon} ${s.name}`;
+        this.els.btnStageChip.dataset.stage = s.id;
+    }
+
+    /**
+     * Render the daily-streak overlay: a 14-day calendar showing which days
+     * the player has logged a daily run, plus current and best streak chips.
+     * Read-only (no callbacks beyond close); the daily run itself starts via
+     * the regular Daily Challenge button.
+     */
+    showStreak(onClose) {
+        const m = this.els.streakScreen;
+        if (!m) return;
+        const summary = dailyStreakSummary(loadDailyHistory());
+        // Render the 14 cells oldest -> newest so the row reads left-to-right
+        // like a calendar; reverse the summary array (which is newest-first).
+        const cells = summary.days.slice().reverse();
+        const cellHtml = cells
+            .map((d) => {
+                const cls = d.played
+                    ? d.won
+                        ? 'streak-cell won'
+                        : 'streak-cell played'
+                    : 'streak-cell missed';
+                const tip = d.played
+                    ? `${d.date} · ${Math.floor(d.timeSurvived / 60)}:${String(Math.floor(d.timeSurvived % 60)).padStart(2, '0')} · ${d.kills} kills`
+                    : `${d.date} — no run`;
+                const day = d.date.slice(8);
+                return `<div class="${cls}" title="${tip}" aria-label="${tip}">${day}</div>`;
+            })
+            .join('');
+        const empty =
+            summary.current === 0 && summary.best === 0
+                ? `<div class="hs-empty">${t('noStreakYet')}</div>`
+                : '';
+        m.innerHTML = `
+            <div class="overlay-card streak-card">
+                <h2>${t('dailyStreak')}</h2>
+                <div class="streak-stats">
+                    <div class="streak-pill"><span>${t('currentStreak')}</span><strong>${summary.current}</strong></div>
+                    <div class="streak-pill"><span>${t('bestStreak')}</span><strong>${summary.best}</strong></div>
+                </div>
+                <div class="streak-label">${t('last14Days')}</div>
+                <div class="streak-grid" role="list">${cellHtml}</div>
+                ${empty}
+                <div class="btn-row">
+                    <button id="streakClose" class="btn primary">${t('close')}</button>
+                </div>
+            </div>`;
+        m.style.display = 'flex';
+        const close = () => {
+            m.style.display = 'none';
+            onClose && onClose();
+        };
+        m.querySelector('#streakClose')?.addEventListener('click', close);
+    }
+
+    hideStreak() {
+        if (this.els.streakScreen) this.els.streakScreen.style.display = 'none';
+    }
+
+    /** Keyboard-shortcuts help overlay. Mirrors the H hotkey. */
+    showHelp(onClose) {
+        const m = this.els.helpScreen;
+        if (!m) return;
+        const rows = [
+            ['WASD / ←↑↓→', t('helpKeyMove')],
+            ['P / Esc', t('helpKeyPause')],
+            ['M', t('helpKeyMute')],
+            ['H / ?', t('helpKeyHelp')],
+            ['L', t('helpKeyLanguage')],
+            [',', t('helpKeySettings')],
+            ['Enter / Space', t('helpKeyConfirm')]
+        ];
+        m.innerHTML = `
+            <div class="overlay-card help-card">
+                <h2>${t('helpTitle')}</h2>
+                <div class="help-rows">
+                    ${rows
+                        .map(
+                            ([k, v]) =>
+                                `<div class="help-row"><kbd>${k}</kbd><span>${v}</span></div>`
+                        )
+                        .join('')}
+                </div>
+                <div class="btn-row">
+                    <button id="helpClose" class="btn primary">${t('close')}</button>
+                </div>
+            </div>`;
+        m.style.display = 'flex';
+        const close = () => {
+            m.style.display = 'none';
+            onClose && onClose();
+        };
+        m.querySelector('#helpClose')?.addEventListener('click', close);
+    }
+
+    hideHelp() {
+        if (this.els.helpScreen) this.els.helpScreen.style.display = 'none';
+    }
+
+    /** First-launch / on-demand "How to play" overlay. */
+    showHowToPlay(onClose) {
+        const m = this.els.howToPlayScreen;
+        if (!m) return;
+        m.innerHTML = `
+            <div class="overlay-card howto-card">
+                <h2>${t('howToTitle')}</h2>
+                <ol class="howto-list">
+                    <li>${t('howToBody1')}</li>
+                    <li>${t('howToBody2')}</li>
+                    <li>${t('howToBody3')}</li>
+                    <li>${t('howToBody4')}</li>
+                </ol>
+                <div class="btn-row">
+                    <button id="howtoClose" class="btn primary">${t('gotIt')}</button>
+                </div>
+            </div>`;
+        m.style.display = 'flex';
+        const close = () => {
+            m.style.display = 'none';
+            onClose && onClose();
+        };
+        m.querySelector('#howtoClose')?.addEventListener('click', close);
+    }
+
+    hideHowToPlay() {
+        if (this.els.howToPlayScreen) this.els.howToPlayScreen.style.display = 'none';
     }
 
     showLeaderboard(normalScores, speedrunScores, onClose) {

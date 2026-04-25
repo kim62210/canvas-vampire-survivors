@@ -7,41 +7,84 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+_No unreleased changes._
 
-- **Camera follow + arena expansion** (iter-10 final-mile). The world is now a
-  2400×1600 arena with a viewport-centred camera that clamps to arena edges.
-  Player clamp moved from canvas bounds (`CONFIG.CANVAS_*`) to arena bounds
-  (`CONFIG.ARENA_*`). The faint background grid finally tiles correctly with
-  the camera (previously dead code with `player.x` only). See
-  `Game._updateCamera()` and `_drawGrid()` in `src/main.js`.
-- `window.__SURV_DEBUG__` — dev-only test hooks (`advance`, `grantLevel`,
-  `killPlayer`, `spawnBoss`) gated to `localhost`, used by the Playwright
-  smoke harness to capture deterministic boss / level-up / game-over
-  screenshots without scripting a 5-minute play session.
-- `scripts/runtime-smoke.js` now captures **5 real PNG scenes** (mainmenu,
-  gameplay, boss-fight, levelup, gameover) and runs `@axe-core/playwright`
-  against the main menu. Results land in `docs/RUNTIME_QA_REPORT.md`.
-- `docs/CONTRIBUTING_QUICKSTART.md` — 5-minute clone-to-first-PR walkthrough.
-- `docs/ISSUE_LABELS.md` — recommended issue/PR label set.
-- `.github/CODEOWNERS` — auto-routes PR reviews to `@Ricardo-M-L`.
+## [2.6.0] - 2026-04-25
 
-### Changed
+Content + finishing-touches release. The catalogue gains a second stage and a
+daily challenge with a sharable result; iter-13 then closes out the loose
+ends with a streak calendar, on-screen hotkey hints, an onboarding overlay
+and a sturdier live-deploy QA harness. Still zero runtime dependencies.
 
-- README screenshots are now all real PNGs (boss-fight, levelup, gameover
-  replaced their SVG placeholders). SVG fallbacks remain archived under
-  `docs/screenshots/svg/`.
-- `--primary` darkened from `#3388ff` to `#1d6fe0` (~4.66:1 vs white) so
-  primary buttons clear WCAG AA. `aria-label` on `#weaponIcons` and
-  `#passiveIcons` is now valid (added `role="list"`). Mobile pinch-zoom
-  re-enabled (removed `user-scalable=no`).
-- HUD weapon-icons row gets `z-index: 5` + slight backdrop-blur so the
-  player avatar can't tuck under the chips at arena edges.
+### Added (iter-12)
+
+- **Stages / maps** (`src/stages.js`). The wave director is now stage-aware:
+  `getWavesFor(id)` clones the base waves and appends each stage's
+  `extraEnemies`, `getBossesFor(id)` shifts boss timings via per-stage
+  `bossOffsets`, and `pickWeighted` biases random spawns by
+  `poolOverrides`. Two stages ship: **Whisperwood** (default forest) and
+  **Sunken Crypt** (darker palette, ranged-heavy pool, Reaper at 4:00
+  instead of 5:00, Necromancer pulled in 30s).
+- Stage picker overlay (`UI.showStagePicker`) on the main menu.
+- **Daily challenge** (`src/daily.js`). Deterministic per-UTC-day seed via
+  `cyrb53(date) → SeededRng`, pinned stage rotation, boss-offset nudges,
+  Wordle-style ASCII share string driven by the player's own 14-day
+  history. New `vs_daily_history_v1` storage slot, separate from the
+  regular leaderboard.
+- **Per-stage leaderboards** (`src/storage.js#stageHighScores`). Each run's
+  high-score entry now carries a `stage` field and lands in both the
+  global view (back-compat) and a per-stage bucket.
+- `damageNumbers` setting toggle (default on).
+- `scripts/test-live-deploy.js` — Playwright smoke that hits the live
+  GitHub Pages URL, verifies main.js loads, the canvas renders during
+  gameplay, and writes `docs/LIVE_QA_REPORT.md`.
+
+### Added (iter-13)
+
+- **Stage chip on the main menu**: the Stage button now carries a pill with
+  the icon + name of the currently-selected stage so a returning player
+  sees what "Start Run" would launch (`UI.updateStageChip`).
+- **Daily streak overlay** (`UI.showStreak`, `daily.dailyStreakSummary`).
+  A "View Streak" button on the main menu opens a 14-day calendar with
+  played/won/missed cells, current-streak and best-streak pills.
+- **How-to-Play overlay** (`UI.showHowToPlay`) — auto-shows on first
+  launch, dismissable via "Got it"; the persisted `flags.howToSeen`
+  prevents re-prompting. Also reachable from the main-menu "How to Play"
+  button.
+- **Keyboard-shortcuts help overlay** (`UI.showHelp`) — toggled by `H` or
+  `?` from any screen. Lists move / pause / mute / language / settings /
+  confirm bindings.
+- **Global hotkeys**: `M` toggles a global mute that zeroes master gain
+  without overwriting `masterVolume`; `H` toggles the help overlay. Both
+  persist via `save.settings.muted`.
+- A small "Tip: P/Esc pause · M mute · H help" hint under the menu's
+  button row.
+- 10 new unit tests (`test/iter13.test.js`) covering streak summary
+  edge-cases, settings-default shape, and the three new overlays.
+
+### Changed (iter-13)
+
+- `scripts/test-live-deploy.js` no longer relies on a single 64×64 sample
+  at canvas centre — it now sweeps a 3×3 grid of 32×32 patches and
+  passes if the union has ≥3 distinct colours and ≥1 patch has ≥2.
+  Robust against the camera-follow case where the centre pixel sits on
+  bare arena background between waves.
+- `audio.applyVolumes()` honours a new `settings.muted` flag so unmute
+  restores the prior masterVolume exactly.
+- `storage.DEFAULT_SAVE.settings` adds `muted: false`; new `flags`
+  sub-object holds the `howToSeen` one-time marker. `mergeDeep` ensures
+  older saves auto-upgrade without losing any existing fields.
+- `package.json` version bumped to 2.6.0; `CONFIG.VERSION` matches.
+- `index.html` start screen gains the chip, the View Streak / How to Play
+  buttons, and the hotkey-hint row. New `streakScreen`, `helpScreen`,
+  `howToPlayScreen` overlay slots wired through `UI._cache`.
 
 ### Fixed
 
-- `_drawGrid()` no longer calls `player.x` from inside the world transform
-  expecting screen-space coordinates; grid lines now align to arena coords.
+- iter-12 follow-up: daily share grid is now built from an array of tiles
+  rather than slicing a multi-codepoint emoji string (the latter could
+  truncate in the middle of a surrogate pair on stages with sparse
+  history).
 
 ## [2.5.0] - 2026-04-25
 
@@ -324,7 +367,8 @@ full open-source contribution workflow. No runtime dependencies were added.
 - Particle effects and basic wave announcements.
 - Single-file `game.js` implementation (~1400 lines).
 
-[Unreleased]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.5.0...HEAD
+[Unreleased]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.6.0...HEAD
+[2.6.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/ricardo-foundry/canvas-vampire-survivors/compare/v2.2.0...v2.3.0

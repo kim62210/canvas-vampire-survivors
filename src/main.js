@@ -185,9 +185,69 @@ export class Game {
         this._bindInput();
         this._bindDomButtons();
         this._bindLeaderboardImport();
+        this._bindGlobalHotkeys();
+
+        // iter-13: paint the Stage chip on the main menu so a returning
+        // player sees which map their next Start Run would launch.
+        this.ui.updateStageChip(this.stageId);
+
+        // First-launch How-to-Play: show once, persist a flag so we don't
+        // nag returning players. Wrapped in a microtask so DOM is settled.
+        if (!this.save?.flags?.howToSeen) {
+            Promise.resolve().then(() => {
+                this.ui.showHowToPlay(() => {
+                    this.save.flags = this.save.flags || {};
+                    this.save.flags.howToSeen = true;
+                    saveSave(this.save);
+                });
+            });
+        }
+
+        // Apply any persisted mute on boot so a refresh keeps the choice.
+        if (this.save.settings.muted) this.audio.setMuted(true);
 
         window.addEventListener('resize', () => this._resize());
         this._resize();
+    }
+
+    /**
+     * Bind global hotkeys that operate from the main menu *and* during
+     * gameplay: M toggles mute, H (or ?) toggles the help overlay. Pause
+     * already has its own binding via InputManager.onTogglePause.
+     */
+    _bindGlobalHotkeys() {
+        if (typeof window === 'undefined') return;
+        window.addEventListener('keydown', (e) => {
+            // Don't intercept when the user is typing in a textarea (lb import).
+            const tag = (e.target && e.target.tagName) || '';
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+            if (e.key === 'm' || e.key === 'M') {
+                this.toggleMute();
+                e.preventDefault();
+            } else if (e.key === 'h' || e.key === 'H' || e.key === '?') {
+                this.toggleHelp();
+                e.preventDefault();
+            }
+        });
+    }
+
+    /** Toggle a global mute and persist so a refresh keeps the choice. */
+    toggleMute() {
+        const next = !this.save.settings.muted;
+        this.save.settings.muted = next;
+        saveSave(this.save);
+        this.audio.setMuted(next);
+        this._announce(next ? 'Audio muted' : 'Audio unmuted');
+    }
+
+    /** Open the help overlay; close it if it's already open. */
+    toggleHelp() {
+        const el = this.ui.els.helpScreen;
+        if (el && el.style.display === 'flex') {
+            this.ui.hideHelp();
+        } else {
+            this.ui.showHelp();
+        }
     }
 
     /**
@@ -268,6 +328,8 @@ export class Game {
         q('btnLeaderboard')?.addEventListener('click', () => this.openLeaderboard());
         q('btnSettings')?.addEventListener('click', () => this.openSettings());
         q('btnAchievements')?.addEventListener('click', () => this.openAchievements());
+        q('btnViewStreak')?.addEventListener('click', () => this.openStreak());
+        q('btnHowTo')?.addEventListener('click', () => this.openHowToPlay());
         q('btnRetry')?.addEventListener('click', () => {
             this.ui.hideGameOver();
             if (this.dailyMode) this.startDaily();
@@ -410,6 +472,20 @@ export class Game {
         this.ui.showStagePicker(this.stageId, (newStageId) => {
             this.stageId = newStageId;
             this.save.settings.stage = newStageId;
+            saveSave(this.save);
+            // Refresh the chip on the main menu Stage button.
+            this.ui.updateStageChip(newStageId);
+        });
+    }
+
+    openStreak() {
+        this.ui.showStreak();
+    }
+
+    openHowToPlay() {
+        this.ui.showHowToPlay(() => {
+            this.save.flags = this.save.flags || {};
+            this.save.flags.howToSeen = true;
             saveSave(this.save);
         });
     }

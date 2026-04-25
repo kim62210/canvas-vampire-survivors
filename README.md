@@ -66,6 +66,8 @@
 | Cancel / back   | <kbd>Esc</kbd>                                               | Back button           | <kbd>B</kbd> / circle |
 | Toggle settings | <kbd>,</kbd>                                                 | ⚙ icon                | <kbd>Select</kbd>     |
 | Toggle language | <kbd>L</kbd>                                                 | Settings → Lang       | Settings → Lang       |
+| Mute audio      | <kbd>M</kbd>                                                 | Settings → Music      | —                     |
+| Help / hotkeys  | <kbd>H</kbd> / <kbd>?</kbd>                                  | "How to Play" button  | —                     |
 
 ## 🚀 Quickstart
 
@@ -172,6 +174,14 @@ flowchart TD
 
 ## 🆕 What's new
 
+- **v2.6** — Content + finishing-touches release. Two stages now ship
+  (Whisperwood + the new ranged-heavy Sunken Crypt), plus a daily
+  challenge with deterministic per-UTC-day seed and Wordle-style share
+  text. Iter-13 closes the loose ends: stage chip on the menu, 14-day
+  daily-streak calendar (View Streak), one-time How-to-Play overlay,
+  global `M` mute / `H` help hotkeys, and a multi-sample (3×3 patches)
+  pixel sanity check in the live-deploy QA script. 167 unit tests, still
+  zero runtime deps. See [CHANGELOG.md](./CHANGELOG.md#260---2026-04-25).
 - **v2.5.1** — Camera follow + final-mile polish. The arena is now 2400×1600
   with a viewport-centred camera, every README screenshot is a real PNG
   captured by the Playwright smoke harness, the main menu passes axe-core
@@ -239,7 +249,7 @@ Highlights:
 
 ## 🗺️ Roadmap
 
-- [ ] Map variants (ruins, crypt, forest) with distinct enemy pools
+- [x] Map variants (ruins, crypt, forest) with distinct enemy pools — _v2.6_
 - [ ] Weapon evolution combinations (item × passive)
 - [ ] Meta-progression: persistent unlocks between runs
 - [ ] Additional languages (ES, JA, FR — PRs welcome)

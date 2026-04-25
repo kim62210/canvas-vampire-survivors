@@ -507,6 +507,8 @@ export class Game {
         this._spawnAccumulator = 0;
         this._lastAnnouncedWave = null;
         this._nextSplitIdx = 0;
+        // iter-16 bug-bash: clear stale pause-anchor from any prior paused run.
+        this._pauseStartedAt = 0;
 
         // Re-derive the stage snapshot at run start. Daily mode pins the
         // stage from the challenge spec; otherwise we honour the saved
@@ -810,6 +812,12 @@ export class Game {
             this.state = GameState.PAUSED;
             this.ui.showPause();
             this.audio.stopMusic();
+            // iter-16 bug-bash: stamp the pause moment so we can subtract the
+            // paused duration from the speedrun wall-clock when we resume.
+            // Without this, leaderboard timeMs (and split realMs) silently
+            // counted seconds spent in the pause menu — penalising players
+            // who paused to read a level-up dialog or take a breath.
+            this._pauseStartedAt = performance.now();
             // iter-15: tutorial step 5 waits for a pause toggle.
             if (this.tutorial?.active) {
                 this.tutorial.notifyPause();
@@ -820,6 +828,18 @@ export class Game {
             this.ui.hidePause();
             this.audio.startMusic();
             this.lastTime = performance.now();
+            // iter-16 bug-bash: shift the speedrun + run-start anchors forward
+            // by however long we were paused so wall-clock readings exclude
+            // pause time. Both anchors are floats, so a simple addition keeps
+            // the existing `performance.now() - anchor` math correct.
+            if (this._pauseStartedAt) {
+                const paused = performance.now() - this._pauseStartedAt;
+                if (paused > 0 && Number.isFinite(paused)) {
+                    if (this.speedrunStart) this.speedrunStart += paused;
+                    if (this._runStartWallClock) this._runStartWallClock += paused;
+                }
+                this._pauseStartedAt = 0;
+            }
             this._scheduleFrame();
         }
     }
@@ -943,6 +963,10 @@ export class Game {
                 this.state = GameState.PAUSED;
                 this.ui.showPause();
                 this.audio.stopMusic();
+                // iter-16 bug-bash: track tab-hidden start so when the player
+                // hits Resume the speedrun anchor shifts past the hidden
+                // window. Mirrors togglePause()'s logic.
+                this._pauseStartedAt = performance.now();
             }
         } else if (this._hiddenPaused && this.state === GameState.PAUSED) {
             // Don't auto-resume: leave the pause menu up so the player

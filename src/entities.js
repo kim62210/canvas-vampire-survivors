@@ -648,7 +648,13 @@ export class Projectile {
     _onEnd(game) {
         if (this.explode) {
             game.audio.explosion();
-            for (const enemy of game.enemies) {
+            // iter-16 perf: probe the spatial hash for the blast cells. The
+            // explodeRadius is bounded (config BOMBER_DEFAULT_RADIUS = 120),
+            // so only a handful of cells are visited even on very dense waves.
+            const cands = game?.spatial
+                ? game.spatial.queryRect(this.x, this.y, this.explodeRadius)
+                : game.enemies;
+            for (const enemy of cands) {
                 const d = Math.hypot(enemy.x - this.x, enemy.y - this.y);
                 if (d < this.explodeRadius) enemy.takeDamage(this.damage * 0.6);
             }
@@ -785,7 +791,14 @@ export class Mine {
     update(dt, game) {
         this.fuse -= dt;
         if (this.fuse <= 0) {
-            for (const enemy of game.enemies) {
+            // iter-16 perf: spatial probe instead of game.enemies walk.
+            // A radius mine fired in a tundra cluster used to hypot()-test
+            // every enemy alive — now we only test the cells overlapping
+            // the blast radius.
+            const cands = game?.spatial
+                ? game.spatial.queryRect(this.x, this.y, this.radius)
+                : game.enemies;
+            for (const enemy of cands) {
                 const d = Math.hypot(enemy.x - this.x, enemy.y - this.y);
                 if (d < this.radius) {
                     enemy.takeDamage(this.damage);

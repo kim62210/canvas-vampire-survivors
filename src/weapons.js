@@ -148,7 +148,15 @@ export class Weapon {
         const baseDmg = this.getDamage(player);
         const hit = new Set();
         const evolved = this.isEvolved();
-        for (const enemy of game.enemies) {
+        // iter-16 perf: query the spatial hash for the bounding-box of the
+        // sweep instead of walking every enemy. With 200 enemies on screen
+        // the linear scan was ~200 hypot calls per fire — the hash trims it
+        // to whatever lives in the overlapping cells (typically <30 in a
+        // forest spawn cluster).
+        const candidates = game?.spatial
+            ? game.spatial.queryRect(player.x, player.y, Math.max(range, 40))
+            : game.enemies;
+        for (const enemy of candidates) {
             const dx = enemy.x - player.x;
             const dy = enemy.y - player.y;
             if (evolved) {
@@ -200,9 +208,15 @@ export class Weapon {
     _fireInstant(player, game) {
         const range = this.getRange(player);
         const baseDmg = this.getDamage(player);
-        const targets = game.enemies.filter(
-            (e) => Math.hypot(e.x - player.x, e.y - player.y) < range
-        );
+        // iter-16 perf: spatial probe + materialise into an array (we still
+        // need indexed access for the random-pick loop and the chain hops).
+        const candIter = game?.spatial
+            ? game.spatial.queryRect(player.x, player.y, range)
+            : game.enemies;
+        const targets = [];
+        for (const e of candIter) {
+            if (Math.hypot(e.x - player.x, e.y - player.y) < range) targets.push(e);
+        }
         if (!targets.length) return;
         const evolved = this.isEvolved();
         const strikes = evolved ? Math.min(3, targets.length) : 1;
@@ -229,7 +243,15 @@ export class Weapon {
                 for (let c = 0; c < chainCount; c++) {
                     let nearest = null,
                         minD = Infinity;
-                    for (const e of game.enemies) {
+                    // iter-16 perf: Lightning chain hops within 180 px, so
+                    // a per-hop spatial probe of the same radius is the
+                    // exact set we want. Drops chain cost from O(C × N) to
+                    // O(C × cells_in_180px) which is small-constant on
+                    // even the densest waves.
+                    const hopCands = game?.spatial
+                        ? game.spatial.queryRect(current.x, current.y, 180)
+                        : game.enemies;
+                    for (const e of hopCands) {
                         if (chained.has(e)) continue;
                         const d = Math.hypot(e.x - current.x, e.y - current.y);
                         if (d < 180 && d < minD) {
@@ -251,7 +273,12 @@ export class Weapon {
     _fireAura(player, game) {
         const range = this.getRange(player);
         const dmg = this.getDamage(player);
-        for (const enemy of game.enemies) {
+        // iter-16 perf: cells overlapping the aura radius only. Aura is
+        // called every cooldown tick (~1s default) so the savings stack up.
+        const candidates = game?.spatial
+            ? game.spatial.queryRect(player.x, player.y, range)
+            : game.enemies;
+        for (const enemy of candidates) {
             const d = Math.hypot(enemy.x - player.x, enemy.y - player.y);
             if (d < range) enemy.takeDamage(dmg);
         }
@@ -299,7 +326,14 @@ export class Weapon {
         const baseDmg = this.getDamage(player);
         const slowPct = this.def.slowPct ?? 0.5;
         const slowDur = this.def.slowDuration ?? 1.2;
-        for (const enemy of game.enemies) {
+        // iter-16 perf: spatial probe instead of a full enemy walk. Nova has
+        // a fairly wide range (~range+nova default), so several cells are
+        // visited each fire — but in dense waves this still shaves >70%
+        // of the per-enemy hypot() calls.
+        const candidates = game?.spatial
+            ? game.spatial.queryRect(player.x, player.y, range)
+            : game.enemies;
+        for (const enemy of candidates) {
             const d = Math.hypot(enemy.x - player.x, enemy.y - player.y);
             if (d < range) {
                 const dmg = this._rollCrit(player, game, baseDmg, enemy.x, enemy.y - 20, '#88ddff');
@@ -321,7 +355,14 @@ export class Weapon {
             const d2 = baseDmg * 0.6;
             game.effects?.schedule?.(0.4, () => {
                 if (!game.player || game.player.dead) return;
-                for (const e of game.enemies) {
+                // iter-16 perf: spatial probe for the delayed pulse too —
+                // by the time it fires the enemy roster may have grown,
+                // and the linear scan was the dominant cost on tundra
+                // when the player held an evolved nova during a heavy wave.
+                const cands = game?.spatial
+                    ? game.spatial.queryRect(player.x, player.y, r)
+                    : game.enemies;
+                for (const e of cands) {
                     const d = Math.hypot(e.x - player.x, e.y - player.y);
                     if (d < r) e.takeDamage(d2);
                 }

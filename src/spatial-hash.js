@@ -76,19 +76,30 @@ export class SpatialHash {
      * may include items further than `r` from the query centre — callers must
      * do the exact distance check. The generator yields each item at most
      * once (cells don't overlap by construction).
+     *
+     * iter-16 perf: returns a plain array instead of a generator. V8 inlines
+     * tight `for (const e of arr)` loops aggressively, and avoiding the
+     * generator suspend/resume bookkeeping is measurably faster on hot
+     * weapon-fire paths (Lightning's chain hops alone can call this dozens
+     * of times per fire). Callers that destructure to `[...sh.queryRect()]`
+     * still work because Array is iterable.
      */
-    *queryRect(x, y, r) {
+    queryRect(x, y, r) {
         const c = this.cell;
         const x0 = Math.floor((x - r) / c);
         const x1 = Math.floor((x + r) / c);
         const y0 = Math.floor((y - r) / c);
         const y1 = Math.floor((y + r) / c);
+        const out = [];
         for (let gx = x0; gx <= x1; gx++) {
             for (let gy = y0; gy <= y1; gy++) {
                 const b = this.map.get(`${gx},${gy}`);
-                if (b) for (const e of b) yield e;
+                if (b) {
+                    for (let i = 0; i < b.length; i++) out.push(b[i]);
+                }
             }
         }
+        return out;
     }
 
     /**

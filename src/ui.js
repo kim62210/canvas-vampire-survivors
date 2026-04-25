@@ -631,10 +631,39 @@ export class UI {
         }, 2500);
     }
 
-    /** Re-translate any sticky DOM text that does not flow through updateHud. */
+    /**
+     * Re-translate any sticky DOM text that does not flow through updateHud.
+     * iter-16 bug-bash: previously this only refreshed the boss banner, so
+     * every static menu/HUD label tagged with `data-i18n` was stuck on the
+     * locale that was active at boot. Now we walk the document once and
+     * write the new translation into every tagged node — cheap (one query
+     * per locale change, never per frame) and works for the whole DOM
+     * regardless of whether a particular overlay is visible at the time.
+     */
     onLocaleChanged() {
         if (this._activeBannerKey && this.els.bossBanner) {
             this.els.bossBanner.textContent = t(this._activeBannerKey);
+        }
+        if (typeof document === 'undefined') return;
+        const nodes = document.querySelectorAll('[data-i18n]');
+        for (const el of nodes) {
+            const key = el.getAttribute('data-i18n');
+            if (!key) continue;
+            // Preserve any non-text children (e.g. the stage chip <span> nested
+            // inside the Stage button) by only rewriting the leading text node.
+            const firstText = Array.from(el.childNodes).find((n) => n.nodeType === 3 /* Text */);
+            const translated = t(key);
+            if (firstText) {
+                firstText.nodeValue = translated;
+            } else {
+                el.textContent = translated;
+            }
+        }
+        // Stage chip is composed dynamically from the active stage id, not a
+        // raw i18n key — refresh it explicitly so the icon + name swap with
+        // the locale (e.g. "Whisperwood" → "低语森林").
+        if (this.game?.stageId && typeof this.updateStageChip === 'function') {
+            this.updateStageChip(this.game.stageId);
         }
     }
 

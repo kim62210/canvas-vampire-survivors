@@ -258,6 +258,46 @@ Highlights:
 - Mobile: iOS Safari 100vh fixed via `svh` / `dvh`, no pull-to-refresh,
   no pinch-zoom inside the game.
 
+## ⚠️ Known limitations
+
+Honest list of small issues we have caught but not fixed yet. None block
+gameplay; we keep them here so contributors know where the seams are and so
+players don't think a wobble is something they did.
+
+- **No service-worker on GitHub Pages cold loads.** `/service-worker.js`
+  occasionally returns 404 when the Pages CDN is warming a new commit. The
+  registration call demotes the failure to a console warning and the game
+  still boots — offline-mode just doesn't kick in until the next hard
+  refresh after deploy. The live-deploy smoke (`npm run smoke:live`) treats
+  this as a benign warning, not a failure.
+- **Replay diverges from non-deterministic runs.** Outside Speedrun and
+  Daily, the spawn RNG falls back to `Math.random`, so a saved replay
+  reproduces inputs faithfully but spawn positions can drift. Speedrun /
+  Daily replays are bit-exact thanks to `SeededRng`. Documented inline in
+  `src/main.js`'s `start()` near the recorder construction.
+- **Speedrun timer paused/visibility shifts.** Pausing or hiding the tab
+  during a Speedrun run is reconciled at resume time (iter-16), so wall-clock
+  time excludes paused windows on the leaderboard. If you Alt+Tab for less
+  than one frame the visibilitychange event may not fire and a few ms slip
+  through; competitive runs should keep the tab focused throughout.
+- **localStorage at quota.** Once the browser slot fills up (Safari private
+  mode caps at ~5 MB, embedded iframes can be tighter), saves demote to an
+  in-memory fallback that survives within the tab session but is lost on
+  refresh. A single console warning fires the first time this happens; we
+  don't surface a player-visible toast yet.
+- **Mid-run locale flip refreshes static labels only.** Switching language
+  while playing now retranslates every `data-i18n` element (iter-16), but
+  ephemeral runtime strings already rendered as floating text or
+  achievement toasts stay in the old locale until they age out — they're
+  built once and not retained for re-rendering.
+- **Sprite cache grows unbounded.** Pre-rasterised enemy bitmaps live in a
+  module-level `Map` keyed by `${id}@${size}`. The set is finite (~100
+  entries) so memory growth is capped, but we never evict on stage swap.
+  Not a bug, just a thing to know if you instrument the heap.
+
+If you reproduce something that is not on this list, please open an issue
+with the steps and (ideally) a recording.
+
 ## 🗺️ Roadmap
 
 - [x] Map variants (forest, crypt, tundra) with distinct enemy pools — _v2.7_

@@ -103,17 +103,40 @@ export function loadSave() {
 }
 
 export function saveSave(data) {
+    let serialised;
     try {
-        const serialised = JSON.stringify(data);
-        if (usableLS()) {
-            window.localStorage.setItem(STORAGE_KEY, serialised);
-        } else {
-            memoryFallback = serialised;
-        }
+        serialised = JSON.stringify(data);
     } catch (err) {
-        console.warn('[storage] Failed to write save.', err);
+        console.warn('[storage] Failed to serialise save.', err);
+        return false;
     }
+    if (usableLS()) {
+        try {
+            window.localStorage.setItem(STORAGE_KEY, serialised);
+            return true;
+        } catch (err) {
+            // iter-16 bug-bash: when localStorage runs out of room (Safari
+            // private mode caps at ~5 MB; iframes can be tighter still),
+            // demote to the in-memory fallback for the rest of the session.
+            // Previously we just warned and lost every subsequent write —
+            // the player would see their progress vanish on refresh with no
+            // explanation. Now subsequent saves at least survive a tab
+            // refresh-within-tab via the JS-side fallback, and the warning
+            // only fires once per session instead of per save.
+            if (!_quotaWarned) {
+                console.warn('[storage] localStorage write failed, switching to memory.', err);
+                _quotaWarned = true;
+            }
+            _usable = false;
+            memoryFallback = serialised;
+            return false;
+        }
+    }
+    memoryFallback = serialised;
+    return true;
 }
+
+let _quotaWarned = false;
 
 export function resetSave() {
     if (usableLS()) {
@@ -127,6 +150,7 @@ export function resetSave() {
 export function _resetStorageForTests() {
     memoryFallback = null;
     _usable = null;
+    _quotaWarned = false;
 }
 
 // ---------------------------------------------------------------------------

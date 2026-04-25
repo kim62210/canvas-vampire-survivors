@@ -5,12 +5,17 @@ how to report a vulnerability and what you can expect from us in return.
 
 ## Supported versions
 
-Only the latest minor release line receives security fixes.
+Security fixes are backported to the **two most recent minor releases**
+on the active major line. Anything older receives advisory-only
+treatment — we'll document the issue, but the fix has to come via an
+upgrade.
 
-| Version | Supported |
-| ------- | --------- |
-| 2.x     | Yes       |
-| 1.x     | No        |
+| Version          | Supported     |
+| ---------------- | ------------- |
+| 2.7.x (current)  | Yes           |
+| 2.6.x (previous) | Yes           |
+| 2.5.x and older  | Advisory only |
+| 1.x              | No            |
 
 ## Reporting a vulnerability
 

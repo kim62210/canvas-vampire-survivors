@@ -1,6 +1,6 @@
 # Live Deploy QA Report (iter-13)
 
-Generated: 2026-04-25T08:09:56.320Z
+Generated: 2026-04-25T08:21:46.396Z
 URL: <https://ricardo-foundry.github.io/canvas-vampire-survivors/>
 
 ## HTTP / load
@@ -9,18 +9,18 @@ URL: <https://ricardo-foundry.github.io/canvas-vampire-survivors/>
 - Title: `Survivor — Open Source Roguelite`
 - main.js loaded: ✅
 - Game booted: ✅
-- Canvas distinct colours (gameplay, 9-point 3x3 sweep, 32×32 each): union=123, richest patch=120
+- Canvas distinct colours (gameplay, 9-point 3x3 sweep, 32×32 each): union=190, richest patch=97
 
 ## Live state after ~10s of play
 
 ```json
 {
     "state": "playing",
-    "gameTime": 10.837899999997031,
-    "kills": 0,
-    "playerHp": 100,
+    "gameTime": 10.840000000000007,
+    "kills": 1,
+    "playerHp": 70,
     "playerLevel": 1,
-    "enemies": 9,
+    "enemies": 8,
     "projectiles": 0,
     "stageId": null
 }

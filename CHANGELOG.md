@@ -7,15 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Draft — v2.8 (iter-15: tutorial + replay)
+### v2.8.0-rc (iter-15 + iter-16) — _ready for release pending real-screenshot capture_
 
-> This block is a **draft** for the next release. The version field in
-> `package.json` is intentionally **not** bumped yet — author review pending.
+> This block is a **release candidate**. The version field in
+> `package.json` is intentionally **not** bumped yet — the only outstanding
+> blocker is recapturing `docs/screenshots/real-*.png` for the tutorial,
+> replay, and tundra screens that landed in iter-14/15. Once those land,
+> `npm run check` and `npm run smoke:live` are both green and v2.8.0 can
+> be tagged from this branch.
 
-Onboarding, replays, and a final round of polish. New players now get a
-proper 5-step interactive tutorial; everyone gets a one-slot replay system
-with three playback speeds; and the existing screen-shake/flash plumbing is
-tuned. Still zero runtime dependencies; tests grow to **215** total.
+Onboarding, replays, deep bug-bash, and a final round of polish. New
+players now get a proper 5-step interactive tutorial; everyone gets a
+one-slot replay system with three playback speeds; iter-16 then sweeps
+four real bugs (mid-run locale flip, Speedrun pause-time accounting,
+`localStorage` quota fallback, weapon-fire broad-phase). Still zero
+runtime dependencies; tests grow to **241** total.
 
 #### Added (iter-15)
 
@@ -73,9 +79,49 @@ tuned. Still zero runtime dependencies; tests grow to **215** total.
   during playback). `Game.gameOver()` finalises and persists it before
   the leaderboard write so a crash in achievements never loses the replay.
 
-#### Tests
+#### Tests (iter-15)
 
 - 195 → 215 total tests (+20). All green; no flakes.
+
+#### Fixed (iter-16)
+
+- **Mid-run locale flip** now retranslates every `[data-i18n]` element
+  (HUD, menus, button labels, stage chip), not just the boss banner. The
+  UI walks the `data-i18n` set once on `setLocale` and rewrites each
+  leading text node. Floating combat text already on screen still ages
+  out in its old locale (documented under "Known limitations").
+- **Speedrun pause time** is no longer counted toward leaderboard
+  `timeMs`. `togglePause` and `visibilitychange` stamp the pause moment;
+  on resume `speedrunStart` and `_runStartWallClock` are shifted forward
+  by the paused duration. Splits and final time exclude every paused
+  window.
+- **`localStorage` quota fallback** now demotes to the in-memory store
+  exactly once and emits a single console warning, instead of retrying
+  the failing write on every save and spamming the console.
+
+#### Performance (iter-16)
+
+- Whip melee, Bible aura, Frost Nova (both pulses), Lightning chain
+  hops, Lightning initial filter, Mine detonation and projectile
+  explosion all now query the spatial hash for enemies inside their
+  radius instead of walking `game.enemies`. On dense waves (200 enemies
+  forced via debug) this drops weapon-fire cost by ~70%.
+- `SpatialHash.queryRect` returns a plain `Array` instead of a
+  generator — V8 inlines tight `for-of` over arrays better, and the
+  array allocation is dwarfed by the work it replaces.
+
+#### Tests (iter-16)
+
+- 215 → 241 total tests (+26). New `test/iter16.test.js` covers arena
+  boundary clamps at `(0,0)` and `(max,max)`, stage-swap pollution,
+  `localStorage` quota fallback, `SeededRng` degenerate seeds, daily
+  stage rotation, replay empty-frame and RLE round-trip, spatial hash
+  with `NaN` coords + 200-cluster, i18n locale round-trip.
+- New `scripts/extended-smoke.js` — Playwright multi-mode harness that
+  exercises all three stages × 30 s plus level-ups + pause + settings,
+  daily, speedrun, replay, locale flip, and a micro-perf profile. 0
+  `console.error` / `pageerror` across all modes; profile shows update
+  mean 0.06 ms, p95 0.1 ms.
 
 ## [2.7.0] - 2026-04-25
 

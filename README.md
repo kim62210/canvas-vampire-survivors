@@ -31,6 +31,10 @@
   <a href="./CONTRIBUTING.md"><img alt="Issues welcome" src="https://img.shields.io/badge/issues-welcome-brightgreen.svg"></a>
   <a href="./package.json"><img alt="Zero runtime deps" src="https://img.shields.io/badge/runtime%20deps-0-informational.svg"></a>
   <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript"><img alt="Made with Vanilla JS" src="https://img.shields.io/badge/made%20with-vanilla%20JS-f7df1e.svg"></a>
+  <a href="./test"><img alt="Tests: 241+" src="https://img.shields.io/badge/tests-241%2B-success.svg"></a>
+  <a href="./src/stages.js"><img alt="Stages: 3" src="https://img.shields.io/badge/stages-3-blueviolet.svg"></a>
+  <a href="./src/data.js"><img alt="Weapons: 10" src="https://img.shields.io/badge/weapons-10-orange.svg"></a>
+  <a href="./docs/JOURNEY.md"><img alt="Journey: 16 iterations" src="https://img.shields.io/badge/journey-16%20iters-lightgrey.svg"></a>
 </p>
 
 <p align="center">

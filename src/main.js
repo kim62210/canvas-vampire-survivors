@@ -28,6 +28,8 @@ import {
 import { Weapon } from './weapons.js';
 import { AudioEngine } from './audio.js';
 import { InputManager } from './input.js';
+import { HapticEngine } from './haptics.js';
+import { loadKeymap, saveKeymap } from './keymap.js';
 import { UI } from './ui.js';
 import { FpsMeter, ShakeCamera } from './systems.js';
 import { SpatialHash } from './spatial-hash.js';
@@ -150,6 +152,14 @@ export class Game {
         // Audio + input + UI
         this.audio = new AudioEngine(this.save.settings);
         this.input = new InputManager();
+        // iter-19: haptic feedback engine. Reads the live save.settings ref
+        // so toggling the Settings checkbox takes effect on the next event.
+        this.haptics = new HapticEngine(this.save.settings);
+        // iter-19: load custom keymap (or fall back to default WASD + arrows
+        // + Esc/P + H/? + M) and hand it to the input manager. Persisted
+        // changes from previous sessions are picked up here.
+        this.keymap = loadKeymap();
+        this.input.setKeymap(this.keymap);
         this.ui = new UI(this);
 
         // Achievements tracker persists the lifetime record.
@@ -251,19 +261,24 @@ export class Game {
      * already has its own binding via InputManager.onTogglePause.
      */
     _bindGlobalHotkeys() {
+        // iter-19: M (mute) and H/? (help) are now dispatched by the input
+        // layer through the customisable keymap. We keep the per-frame
+        // suppression for INPUT/TEXTAREA targets as a capture-phase guard so
+        // typing into the leaderboard import textarea doesn't pause/help.
         if (typeof window === 'undefined') return;
-        window.addEventListener('keydown', (e) => {
-            // Don't intercept when the user is typing in a textarea (lb import).
-            const tag = (e.target && e.target.tagName) || '';
-            if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-            if (e.key === 'm' || e.key === 'M') {
-                this.toggleMute();
-                e.preventDefault();
-            } else if (e.key === 'h' || e.key === 'H' || e.key === '?') {
-                this.toggleHelp();
-                e.preventDefault();
-            }
-        });
+        window.addEventListener(
+            'keydown',
+            (e) => {
+                const tag = (e.target && e.target.tagName) || '';
+                if (tag === 'INPUT' || tag === 'TEXTAREA') {
+                    // Stop the input-manager's default handler from firing
+                    // for typed text. We do this rather than gating inside
+                    // input.js so keymap remapping stays tiny.
+                    e.stopPropagation();
+                }
+            },
+            true
+        );
     }
 
     /** Toggle a global mute and persist so a refresh keeps the choice. */
@@ -337,6 +352,11 @@ export class Game {
     _bindInput() {
         this.input.attach(window);
         this.input.onTogglePause = () => this.togglePause();
+        // iter-19: help/mute actions are routed through the keymap rather
+        // than the legacy global keydown listener. Both still default to
+        // H/M but a remap takes effect immediately.
+        this.input.onActionHelp = () => this.toggleHelp();
+        this.input.onActionMute = () => this.toggleMute();
         // Virtual joystick
         const joy = document.getElementById('joystickBase');
         const knob = document.getElementById('joystickKnob');
@@ -849,6 +869,9 @@ export class Game {
         cancelAnimationFrame(this.raf);
         this.audio.stopMusic();
         this.audio.death();
+        // iter-19: long death-knell pattern. Fired once at the moment of
+        // game over, before any leaderboard / replay finalisation work.
+        this.haptics?.gameOver();
         // iter-15: snapshot + persist the recorded replay (single slot).
         // We do this before any of the leaderboard / achievement logic so a
         // crash inside those paths never loses the replay. Skipped during
@@ -1313,6 +1336,10 @@ export class Game {
             this.state = GameState.LEVEL_UP;
             this.audio.levelUp();
             this.effects.levelUp(this.player.x, this.player.y);
+            // iter-19: ascending-ramp vibration. Distinct shape from the
+            // hurt single-pulse and the boss triple so the player can
+            // tell what just happened from the haptic alone.
+            this.haptics?.levelUp();
             this._announce(`Level ${this.player.level}! Choose an upgrade.`);
             // iter-15: notify the tutorial state machine — its "level up"
             // step waits for exactly this event.
@@ -1473,6 +1500,9 @@ export class Game {
         // The reduced-motion gate inside `shake()` still applies so
         // accessibility users are unaffected.
         this.shake(1.2);
+        // iter-19: triple-pulse vibration so the player feels the warning
+        // even with audio off / sleeve-pocket play.
+        this.haptics?.bossSpawn();
         this._announce(`Boss incoming: ${bossDef.name || bossDef.id}`);
     }
 
@@ -1525,6 +1555,9 @@ export class Game {
     onPlayerHurt(_amount) {
         this.audio.damage();
         this.shake(0.25);
+        // iter-19: short single-pulse vibration. No-ops on platforms without
+        // navigator.vibrate or when the user has switched it off.
+        this.haptics?.hurt();
     }
 
     onBossAbility(boss) {
@@ -1679,6 +1712,33 @@ export class Game {
                 this.run = this.achievements.run;
                 this.audio.applyVolumes();
                 this.ui.hideSettings();
+            },
+            {
+                // iter-19: only render the vibration row when the host
+                // actually has the API; the UI hides it otherwise so it
+                // isn't a dead control.
+                vibrationSupported: this.haptics?.isSupported() ?? false,
+                onRemap: () => this.openRemap()
+            }
+        );
+    }
+
+    // --- Keymap remap -----------------------------------------------------
+    /**
+     * iter-19: open the Customize Controls dialog. Saves the new keymap to
+     * localStorage and re-arms the input manager so the rebind takes effect
+     * on the next keystroke.
+     */
+    openRemap() {
+        this.ui.showRemap(
+            this.keymap,
+            (next) => {
+                this.keymap = next;
+                this.input.setKeymap(next);
+                saveKeymap(next);
+            },
+            () => {
+                /* closed; settings panel stays open behind */
             }
         );
     }

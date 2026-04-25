@@ -26,6 +26,8 @@
  *   - applyGamepadDeadzone(value, dz?)
  */
 
+import { DEFAULT_KEYMAP, cloneKeymap } from './keymap.js';
+
 const JOYSTICK_DEADZONE = 0.15;
 const DOUBLE_TAP_WINDOW_MS = 260;
 const GAMEPAD_AXIS_DEADZONE = 0.18;
@@ -89,15 +91,51 @@ export class InputManager {
         this._prevButtons = [];
         // Bookkeeping for the special-skill button on touch (iter-14).
         this.onTouchSpecial = () => {};
+        // iter-19: customisable keymap. Kept on the InputManager so a remap
+        // UI can call `setKeymap` with the persisted blob and the next
+        // `getMoveVector` / `attach` keydown both pick it up. Also hold a
+        // dedicated callback for "non-movement" actions (help/mute) so the
+        // host can wire them without re-implementing key matching in
+        // main.js. Pause stays on `onTogglePause` for backwards compat.
+        this.keymap = cloneKeymap(DEFAULT_KEYMAP);
+        this.onActionHelp = () => {};
+        this.onActionMute = () => {};
+    }
+
+    /**
+     * Replace the active keymap. Validates lightly — anything missing falls
+     * back to the default for that action. Safe to call mid-run; the next
+     * keydown sees the new bindings immediately.
+     */
+    setKeymap(nextMap) {
+        this.keymap = cloneKeymap(nextMap || DEFAULT_KEYMAP);
+    }
+
+    /** True iff `keyLower` is currently bound to `action`. */
+    _matches(action, keyLower) {
+        const list = this.keymap?.[action];
+        return Array.isArray(list) && list.includes(keyLower);
     }
 
     attach(target = window) {
         const kd = (e) => {
             const key = e.key.toLowerCase();
             this.keys[key] = true;
-            if (key === 'escape' || key === 'p') {
+            // iter-19: action dispatch flows through the customisable keymap
+            // rather than hard-coded literals. Pause is here (always was);
+            // help and mute moved off the legacy global hotkey listener so
+            // remapping reaches them too. We swallow preventDefault for
+            // bound action keys so `H` doesn't open the browser's history
+            // pane on Firefox, etc.
+            if (this._matches('pause', key)) {
                 e.preventDefault();
                 this.onTogglePause();
+            } else if (this._matches('help', key)) {
+                e.preventDefault();
+                this.onActionHelp();
+            } else if (this._matches('mute', key)) {
+                e.preventDefault();
+                this.onActionMute();
             }
         };
         const ku = (e) => {
@@ -230,10 +268,18 @@ export class InputManager {
         let x = 0,
             y = 0;
         const k = this.keys;
-        if (k['w'] || k['arrowup']) y -= 1;
-        if (k['s'] || k['arrowdown']) y += 1;
-        if (k['a'] || k['arrowleft']) x -= 1;
-        if (k['d'] || k['arrowright']) x += 1;
+        // iter-19: every direction key consults the live keymap so
+        // remapping (WASD → IJKL, etc) takes effect on the next frame.
+        const anyDown = (action) => {
+            const list = this.keymap?.[action];
+            if (!Array.isArray(list)) return false;
+            for (const key of list) if (k[key]) return true;
+            return false;
+        };
+        if (anyDown('up')) y -= 1;
+        if (anyDown('down')) y += 1;
+        if (anyDown('left')) x -= 1;
+        if (anyDown('right')) x += 1;
         // Resolve in priority order: keyboard > gamepad > touch joystick. We
         // already normalise touch and gamepad to magnitude ≤ 1, so the final
         // hypot clamp below is mostly a no-op except when keyboard supplies

@@ -115,7 +115,23 @@ const STRINGS = {
         noReplay: 'No replay saved yet — finish a run first.',
         replaySpeed: 'Speed',
         replayPlaying: 'Replay (input disabled)',
-        criticalFlash: 'Critical-hit screen flash'
+        criticalFlash: 'Critical-hit screen flash',
+        // iter-19: haptic feedback + remap UI strings.
+        vibration: 'Vibration (mobile)',
+        customizeControls: 'Customize controls',
+        remapHint: 'Click a row, then press a key to bind it.',
+        pressAnyKey: 'Press any key…',
+        keymapConflict: 'Conflicting bindings',
+        resetDefaults: 'Reset to defaults',
+        cancel: 'Cancel',
+        save: 'Save',
+        remap_up: 'Move up',
+        remap_down: 'Move down',
+        remap_left: 'Move left',
+        remap_right: 'Move right',
+        remap_pause: 'Pause / resume',
+        remap_help: 'Toggle help',
+        remap_mute: 'Mute audio'
     },
     zh: {
         title: '幸存者',
@@ -218,7 +234,23 @@ const STRINGS = {
         noReplay: '还没有可重播的对局——先打完一把吧。',
         replaySpeed: '速度',
         replayPlaying: '重播中（输入已禁用）',
-        criticalFlash: '暴击屏幕闪光'
+        criticalFlash: '暴击屏幕闪光',
+        // iter-19
+        vibration: '振动反馈（移动端）',
+        customizeControls: '自定义按键',
+        remapHint: '点击一项，然后按下任意键完成绑定。',
+        pressAnyKey: '请按任意键…',
+        keymapConflict: '存在按键冲突',
+        resetDefaults: '恢复默认',
+        cancel: '取消',
+        save: '保存',
+        remap_up: '向上移动',
+        remap_down: '向下移动',
+        remap_left: '向左移动',
+        remap_right: '向右移动',
+        remap_pause: '暂停 / 继续',
+        remap_help: '显示 / 关闭帮助',
+        remap_mute: '静音'
     }
 };
 

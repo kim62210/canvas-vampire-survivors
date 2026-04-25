@@ -59,7 +59,13 @@ const DEFAULT_SAVE = {
         touchButtonScale: 1,
         // iter-15: optional red flash on critical hits. Defaults to on; the
         // user can toggle off in Settings if they find it disruptive.
-        criticalFlash: true
+        criticalFlash: true,
+        // iter-19: mobile haptic feedback toggle. Defaults to on; the
+        // engine silently no-ops on platforms without `navigator.vibrate`
+        // (Safari iOS, desktop Firefox), so leaving this on costs nothing
+        // for non-mobile players. The Settings UI hides the row entirely
+        // when the API is missing so the toggle isn't dead-end on desktop.
+        vibration: true
     },
     runs: 0,
     // iter-13: one-time flags. `howToSeen` flips on the first dismiss of the

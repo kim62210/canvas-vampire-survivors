@@ -123,6 +123,54 @@ runtime dependencies; tests grow to **241** total.
   `console.error` / `pageerror` across all modes; profile shows update
   mean 0.06 ms, p95 0.1 ms.
 
+#### Added (iter-19)
+
+- **Mobile haptic feedback** (`src/haptics.js`, `HapticEngine`,
+  `VIBRATION_PATTERNS`). Wraps `navigator.vibrate` with four distinct
+  patterns so the player can tell, eyes-closed, what just happened:
+  player damage = 30 ms tap; boss spawn = 80-50-80 ms triple-pulse;
+  level up = 20-40-60 ms ascending ramp; game over = 200-100-200 ms
+  long double. Wired in `Game.onPlayerHurt`, `_spawnBoss`,
+  `_maybeTriggerLevelUp`, and `gameOver()`. Silent no-op on platforms
+  without the API (Safari iOS, desktop Firefox) — never throws. Fully
+  user-toggleable via Settings → "Vibration (mobile)"; the row is
+  hidden entirely when the device lacks the API so it isn't a dead
+  control.
+- **Keyboard remap** (`src/keymap.js`). Seven canonical actions —
+  `up`/`down`/`left`/`right`/`pause`/`help`/`mute` — each backed by a
+  list of bound keys. Defaults match the historic hard-coded set: WASD
+  + arrow keys for movement, Esc/P for pause, H/? for help, M for
+  mute. The remap dialog opens from Settings → "Customize controls":
+  click a row to enter capture mode, press any key to bind. Conflict
+  detection is automatic (the same key can't be bound to two actions),
+  with a "Reset to defaults" escape hatch. Persisted under a dedicated
+  `vs_keymap_v1` localStorage slot — hand-edited junk is sanitised on
+  load, never crashes the game.
+- `src/input.js` now consults the live keymap on every keydown and
+  movement read, rather than referring to string literals.
+  `InputManager` gains `setKeymap(map)`, `onActionHelp`,
+  `onActionMute`. The legacy global keydown listener in `main.js` was
+  reduced to an INPUT/TEXTAREA suppression guard so typing into the
+  leaderboard import doesn't pause/help.
+- `save.settings` gains `vibration` (default `true`).
+
+#### Tests (iter-19)
+
+- 241 → 255 total tests (+14). New `test/iter19.test.js` covers:
+    - vibrate mock fires the correct pattern per event;
+    - `vibration: false` suppresses the host call live;
+    - missing `navigator.vibrate` is a clean `false`-return;
+    - throwing `vibrate` is swallowed (never crashes the game);
+    - all four patterns are unique;
+    - keymap defaults match WASD + arrows + Esc + H + M;
+    - `normaliseKey` / `keyLabel` formatting;
+    - `bindKey` strips conflicts on rebind and restores defaults for
+      any action that would end up empty;
+    - `detectConflicts` surfaces double-bound keys with action lists;
+    - `actionForKey` reverse lookup;
+    - save/load roundtrip through a localStorage shim;
+    - `sanitiseKeymap` rejects bad payloads and falls back to default.
+
 ## [2.7.0] - 2026-04-25
 
 Stage 3, gamepad support, deeper mobile polish. Survivor's third map

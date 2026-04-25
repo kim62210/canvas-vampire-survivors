@@ -17,6 +17,15 @@ import { CONFIG } from './config.js';
 import { t, setLocale, availableLocales } from './i18n.js';
 import { getStage, listStages } from './stages.js';
 import { buildShareText, dailyStreakSummary, loadDailyHistory } from './daily.js';
+import {
+    DEFAULT_KEYMAP,
+    KEYMAP_ACTIONS,
+    bindKey,
+    cloneKeymap,
+    detectConflicts,
+    keyLabel,
+    normaliseKey
+} from './keymap.js';
 
 export class UI {
     constructor(game) {
@@ -695,8 +704,21 @@ export class UI {
         }, 3500);
     }
 
-    showSettings(settings, onChange, onClose, onReset) {
+    showSettings(settings, onChange, onClose, onReset, opts = {}) {
         const m = this.els.settingsMenu;
+        // iter-19: vibration row is only useful on devices with the
+        // navigator.vibrate API. We hide the row entirely when
+        // `opts.vibrationSupported` is false so desktop players don't see
+        // a control they can't act on. The Customize controls button is
+        // unconditional — keyboard remap applies everywhere.
+        const vibrationRow =
+            opts.vibrationSupported !== false
+                ? checkboxRow('vibration', settings.vibration !== false)
+                : '';
+        const remapRow = opts.onRemap
+            ? `<div class="settings-row"><span>${t('customizeControls')}</span>` +
+              `<button data-action="remap">${t('customizeControls')}</button></div>`
+            : '';
         m.innerHTML = `
             <div class="settings-card">
                 <h2>${t('settings')}</h2>
@@ -711,8 +733,10 @@ export class UI {
                 ${checkboxRow('colorblind', !!settings.colorblind)}
                 ${checkboxRow('damageNumbers', settings.damageNumbers !== false)}
                 ${checkboxRow('criticalFlash', settings.criticalFlash !== false)}
+                ${vibrationRow}
                 ${selectRow('locale', settings.locale, availableLocales())}
                 ${selectRow('touchButtonScale', String(settings.touchButtonScale ?? 1), ['0.8', '1', '1.2'])}
+                ${remapRow}
                 <div class="settings-buttons">
                     <button class="danger" data-action="reset">${t('resetData')}</button>
                     <button data-action="close">${t('close')}</button>
@@ -760,12 +784,139 @@ export class UI {
                 onClose();
             } else if (a === 'reset') {
                 if (confirm(t('confirmReset'))) onReset();
+            } else if (a === 'remap' && typeof opts.onRemap === 'function') {
+                // iter-19: Customize controls. Settings panel stays open
+                // behind the dialog so the user can return without
+                // re-navigating.
+                opts.onRemap();
             }
         }
     }
 
     hideSettings() {
         this.els.settingsMenu.style.display = 'none';
+    }
+
+    /**
+     * iter-19: Customize controls dialog. Mounts on top of the settings
+     * panel so closing the dialog returns to settings. Each row shows the
+     * action label and the currently-bound key(s); the user clicks the row
+     * (or focuses + presses Enter) to enter capture mode, then presses any
+     * key to bind it. Captured keys are normalised through the `keymap`
+     * module so the conflict-detect path matches what InputManager reads.
+     *
+     * Captures Esc as a binding when the user is in capture mode (so they
+     * can rebind pause to a different key). Outside capture mode Esc
+     * closes the dialog like the rest of the overlays.
+     *
+     * @param {object} keymap   the active keymap (caller owns persistence)
+     * @param {(next:object)=>void} onSave
+     * @param {()=>void} onClose
+     */
+    showRemap(keymap, onSave, onClose) {
+        // Reuse the settings menu container as a host so we layer above any
+        // open settings panel without spawning a new top-level overlay; the
+        // settings panel itself stays mounted underneath.
+        let host = document.getElementById('remapDialog');
+        if (!host) {
+            host = document.createElement('div');
+            host.id = 'remapDialog';
+            host.className = 'menu-screen';
+            document.body.appendChild(host);
+        }
+        let working = cloneKeymap(keymap || DEFAULT_KEYMAP);
+        let capturingAction = null;
+
+        const render = () => {
+            const conflicts = detectConflicts(working);
+            const conflictKeys = new Set(conflicts.map((c) => c.key));
+            const rows = KEYMAP_ACTIONS.map((action) => {
+                const keys = working[action] || [];
+                const isCapturing = capturingAction === action;
+                const labels = keys.map((k) => keyLabel(k)).join(' / ') || '—';
+                const row =
+                    `<div class="remap-row${isCapturing ? ' capturing' : ''}" data-action="${action}" tabindex="0">` +
+                    `<span class="remap-label">${t('remap_' + action) || action}</span>` +
+                    `<span class="remap-keys${conflictKeys.has(keys[0]) ? ' conflict' : ''}">${
+                        isCapturing ? t('pressAnyKey') : labels
+                    }</span>` +
+                    '</div>';
+                return row;
+            }).join('');
+            const conflictMsg = conflicts.length
+                ? `<div class="remap-conflicts">${t('keymapConflict')}: ${conflicts
+                      .map((c) => `${keyLabel(c.key)} → ${c.actions.join(' / ')}`)
+                      .join(', ')}</div>`
+                : '';
+            host.innerHTML = `
+                <div class="settings-card remap-card">
+                    <h2>${t('customizeControls')}</h2>
+                    <div class="remap-hint">${t('remapHint')}</div>
+                    ${rows}
+                    ${conflictMsg}
+                    <div class="settings-buttons">
+                        <button data-action="reset-defaults">${t('resetDefaults')}</button>
+                        <button data-action="cancel">${t('cancel')}</button>
+                        <button data-action="save">${t('save')}</button>
+                    </div>
+                </div>`;
+            host.style.display = 'flex';
+        };
+
+        const onClick = (e) => {
+            const row = e.target.closest('.remap-row');
+            if (row) {
+                capturingAction = row.dataset.action;
+                render();
+                return;
+            }
+            const a = e.target.dataset?.action;
+            if (a === 'cancel') {
+                cleanup();
+                onClose?.();
+            } else if (a === 'save') {
+                onSave?.(working);
+                cleanup();
+                onClose?.();
+            } else if (a === 'reset-defaults') {
+                working = cloneKeymap(DEFAULT_KEYMAP);
+                capturingAction = null;
+                render();
+            }
+        };
+
+        const onKey = (e) => {
+            if (!capturingAction) return;
+            // Block the captured key from reaching gameplay handlers — we're
+            // remapping, not playing.
+            e.preventDefault();
+            e.stopPropagation();
+            const k = normaliseKey(e.key);
+            if (!k) return;
+            // Tab is reserved for focus navigation; refusing it lets the
+            // user back out of capture mode without binding it.
+            if (k === 'tab') {
+                capturingAction = null;
+                render();
+                return;
+            }
+            working = bindKey(working, capturingAction, k, { replace: true });
+            capturingAction = null;
+            render();
+        };
+
+        const cleanup = () => {
+            host.style.display = 'none';
+            host.innerHTML = '';
+            host.removeEventListener('click', onClick);
+            window.removeEventListener('keydown', onKey, true);
+        };
+
+        host.addEventListener('click', onClick);
+        // Capture phase so we receive the keydown before InputManager and
+        // can swallow the binding press.
+        window.addEventListener('keydown', onKey, true);
+        render();
     }
 
     showGameOver(game) {

@@ -150,6 +150,29 @@ async function main() {
     await page.goto(url, { waitUntil: 'load' });
     await page.waitForTimeout(1500);
 
+    // iter-22: on a clean Chromium profile the iter-13 first-run How-to-Play
+    // overlay (and the iter-15 tutorial-offer + iter-14 PWA prompt) sit on
+    // top of the main menu and intercept clicks on `#btnStart`. Set the
+    // one-time flags in localStorage and reload so the boot constructor
+    // never opens those overlays in the first place. Save key matches
+    // STORAGE_KEY in src/config.js (`vs_clone_save_v2`).
+    await page.evaluate(() => {
+        try {
+            const KEY = 'vs_clone_save_v2';
+            const raw = localStorage.getItem(KEY);
+            const obj = raw ? JSON.parse(raw) : {};
+            obj.flags = obj.flags || {};
+            obj.flags.howToSeen = true;
+            obj.flags.tutorialDone = true;
+            obj.flags.pwaPromptSeen = true;
+            localStorage.setItem(KEY, JSON.stringify(obj));
+        } catch (_) {
+            /* ignore — sandboxed contexts already fall back to in-memory save */
+        }
+    });
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForTimeout(1500);
+
     // --- Scene 1: main menu ------------------------------------------------
     await page.screenshot({
         path: path.join(SHOT_DIR, 'real-mainmenu.png'),

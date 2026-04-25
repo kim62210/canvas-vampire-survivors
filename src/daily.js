@@ -188,8 +188,12 @@ export function buildShareText(entry, history) {
     const recent = sameStage
         .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
         .slice(-7);
-    const grid = recent.map((e) => tileFor(e.timeSurvived || 0, median)).join('');
-    const padded = (grid + '⬛⬛⬛⬛⬛⬛⬛').slice(0, 7);
+    // Each tile is a multi-code-unit emoji; slice/substring would truncate
+    // mid-surrogate-pair. Use Array.from + array slice to operate on user-
+    // perceived characters and rejoin afterwards.
+    const tiles = recent.map((e) => tileFor(e.timeSurvived || 0, median));
+    while (tiles.length < 7) tiles.push('⬛');
+    const padded = tiles.slice(0, 7).join('');
 
     const mm = Math.floor((entry.timeSurvived || 0) / 60)
         .toString()

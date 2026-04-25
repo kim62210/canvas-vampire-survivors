@@ -342,6 +342,22 @@ open a public issue.
 - Every contributor who has filed an issue, sent a PR, or translated a
   string. You are why this repo exists.
 
+## 🌌 Sister projects
+
+Three small, independent, MIT-licensed repos under the same org. If you
+liked this one, the other two are built with the same iterate-in-public,
+near-zero-dep philosophy:
+
+- **[openhand](https://github.com/ricardo-foundry/openhand)** — LLM-agnostic,
+  plugin-first agent framework. TypeScript strict, sandboxed tools, Docker-ready.
+- **[terminal-quest-cli](https://github.com/ricardo-foundry/terminal-quest-cli)**
+  — Bilingual terminal RPG with 11 quests and 11 minigames. `npx terminal-quest-cli`
+  to play, zero runtime deps.
+
+Each project keeps a `docs/JOURNEY.md` with per-iteration notes — the
+"build log" of how it got to its current shape. See [`docs/CROSSPROMO.md`](./docs/CROSSPROMO.md)
+for the rationale and the symmetric block on the other two repos.
+
 ## 📜 License
 
 Released under the [MIT License](./LICENSE). Use it, fork it, ship it.

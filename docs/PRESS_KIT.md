@@ -35,14 +35,14 @@ entry — this is meant for you.
 
 ## Fact sheet
 
-| Field        | Value                                                          |
-| ------------ | -------------------------------------------------------------- |
-| Engine       | Vanilla JavaScript, HTML5 Canvas                               |
-| Runtime deps | 0                                                              |
-| Source lines | ~2,000                                                         |
-| Platforms    | Any browser (desktop + mobile) + PWA                           |
-| License      | MIT                                                            |
-| Input        | Keyboard, mouse, gamepad, touch joystick                       |
-| A11y         | Reduced motion, SR live region, forced-colors, keyboard nav    |
-| Test suite   | `node:test`, 95+ cases                                         |
+| Field        | Value                                                              |
+| ------------ | ------------------------------------------------------------------ |
+| Engine       | Vanilla JavaScript, HTML5 Canvas                                   |
+| Runtime deps | 0                                                                  |
+| Source lines | ~2,000                                                             |
+| Platforms    | Any browser (desktop + mobile) + PWA                               |
+| License      | MIT                                                                |
+| Input        | Keyboard, mouse, gamepad, touch joystick                           |
+| A11y         | Reduced motion, SR live region, forced-colors, keyboard nav        |
+| Test suite   | `node:test`, 95+ cases                                             |
 | Contact      | https://github.com/ricardo-foundry/canvas-vampire-survivors/issues |

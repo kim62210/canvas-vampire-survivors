@@ -828,3 +828,64 @@ body.cb-mode .exp-fill {
         font-size: 28px;
     }
 }
+
+/* iter-12: stage picker + daily share ------------------------------- */
+.stage-picker-card {
+    max-width: 720px;
+}
+.stage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 12px;
+    margin: 16px 0;
+}
+.stage-card {
+    background: rgba(255, 255, 255, 0.04);
+    border: 2px solid rgba(255, 255, 255, 0.12);
+    border-radius: 10px;
+    padding: 14px;
+    color: var(--fg, #eee);
+    text-align: left;
+    cursor: pointer;
+    transition:
+        border-color 0.15s,
+        transform 0.1s;
+}
+.stage-card:hover,
+.stage-card:focus-visible {
+    border-color: var(--accent, #ffcc66);
+    transform: translateY(-1px);
+}
+.stage-card.active {
+    border-color: var(--accent, #ffcc66);
+    background: rgba(255, 204, 102, 0.08);
+}
+.stage-icon {
+    font-size: 32px;
+    line-height: 1;
+    margin-bottom: 6px;
+}
+.stage-name {
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+.stage-desc {
+    font-size: 13px;
+    opacity: 0.78;
+}
+.daily-share-row {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    margin: 10px 0 4px;
+}
+.share-preview {
+    background: rgba(0, 0, 0, 0.35);
+    color: #ddd;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    white-space: pre-wrap;
+    margin: 0;
+}

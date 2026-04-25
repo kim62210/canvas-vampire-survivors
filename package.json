@@ -14,7 +14,8 @@
         "format:check": "prettier --check \"**/*.{js,html,css,md,json}\"",
         "test": "node --test test/*.test.js",
         "check": "npm run lint && npm run format:check && npm test",
-        "smoke": "node scripts/runtime-smoke.js"
+        "smoke": "node scripts/runtime-smoke.js",
+        "smoke:live": "node scripts/test-live-deploy.js"
     },
     "keywords": [
         "game",

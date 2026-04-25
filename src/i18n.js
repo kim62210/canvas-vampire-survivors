@@ -70,7 +70,16 @@ const STRINGS = {
         noHit: 'No-Hit',
         weapons: 'Weapons',
         speedrunMode: 'Speedrun Mode',
-        newPb: 'New personal best!'
+        newPb: 'New personal best!',
+        // iter-12: stages, daily, share
+        stage: 'Stage',
+        chooseStage: 'Choose a Stage',
+        dailyChallenge: 'Daily Challenge',
+        dailyToday: "Today's Challenge",
+        shareDaily: 'Share Result',
+        copied: 'Copied to clipboard',
+        copyManual: 'Select & copy manually',
+        damageNumbers: 'Show damage numbers'
     },
     zh: {
         title: '幸存者',
@@ -129,7 +138,16 @@ const STRINGS = {
         noHit: '无伤',
         weapons: '武器',
         speedrunMode: '速通模式',
-        newPb: '个人最佳！'
+        newPb: '个人最佳！',
+        // iter-12: 关卡、每日挑战、分享
+        stage: '关卡',
+        chooseStage: '选择关卡',
+        dailyChallenge: '今日挑战',
+        dailyToday: '今日挑战',
+        shareDaily: '分享成绩',
+        copied: '已复制到剪贴板',
+        copyManual: '请手动复制',
+        damageNumbers: '显示伤害数字'
     }
 };
 

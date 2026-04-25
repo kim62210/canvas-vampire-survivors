@@ -45,6 +45,14 @@ import {
     saveSave
 } from './storage.js';
 import { setLocale } from './i18n.js';
+import {
+    DEFAULT_STAGE_ID,
+    getBackgroundFor,
+    getBossesFor,
+    getWavesFor,
+    pickWeighted
+} from './stages.js';
+import { dailyChallenge, saveDailyResult } from './daily.js';
 
 registerWeaponClass(Weapon);
 
@@ -148,7 +156,14 @@ export class Game {
         this._bossWarnedAt = new Set();
         this._lastAnnouncedWave = null;
 
-        this.currentWave = WAVES[0];
+        // Active stage descriptor + per-stage waves/bosses snapshot. Keyed off
+        // the persisted setting so a returning player resumes on whatever map
+        // they last picked. Re-derived in start() so a stage swap mid-session
+        // takes effect on the next run.
+        this.stageId = this.save?.settings?.stage || DEFAULT_STAGE_ID;
+        this.stageWaves = getWavesFor(this.stageId);
+        this.stageBosses = getBossesFor(this.stageId);
+        this.currentWave = this.stageWaves[0] || WAVES[0];
 
         // Speedrun bookkeeping. When `speedrunMode` is truthy, spawn picks
         // are deterministic, real-time splits are tracked and the result
@@ -158,6 +173,11 @@ export class Game {
         this.speedrunStart = 0;
         this.speedrunSplits = [];
         this._nextSplitIdx = 0;
+
+        // Daily-challenge bookkeeping. When `dailyMode` is true the seed +
+        // stage + boss schedule are pinned by `daily.dailyChallenge(...)`.
+        this.dailyMode = false;
+        this.dailyChallenge = null;
 
         // Per-run bookkeeping used by achievements.
         this.run = this.achievements.run;
@@ -233,18 +253,25 @@ export class Game {
         q('btnStart')?.addEventListener('click', () => {
             this.audio.unlock();
             this.speedrunMode = false;
+            this.dailyMode = false;
             this.start();
         });
         q('btnSpeedrun')?.addEventListener('click', () => {
             this.audio.unlock();
             this.startSpeedrun();
         });
+        q('btnStage')?.addEventListener('click', () => this.openStagePicker());
+        q('btnDaily')?.addEventListener('click', () => {
+            this.audio.unlock();
+            this.startDaily();
+        });
         q('btnLeaderboard')?.addEventListener('click', () => this.openLeaderboard());
         q('btnSettings')?.addEventListener('click', () => this.openSettings());
         q('btnAchievements')?.addEventListener('click', () => this.openAchievements());
         q('btnRetry')?.addEventListener('click', () => {
             this.ui.hideGameOver();
-            if (this.speedrunMode) this.startSpeedrun();
+            if (this.dailyMode) this.startDaily();
+            else if (this.speedrunMode) this.startSpeedrun();
             else this.start();
         });
         q('btnMenu')?.addEventListener('click', () => {
@@ -289,6 +316,16 @@ export class Game {
         this._spawnAccumulator = 0;
         this._lastAnnouncedWave = null;
         this._nextSplitIdx = 0;
+
+        // Re-derive the stage snapshot at run start. Daily mode pins the
+        // stage from the challenge spec; otherwise we honour the saved
+        // setting so a stage-picker change between runs takes effect here.
+        const stageOverride =
+            this.dailyMode && this.dailyChallenge ? this.dailyChallenge.stage : null;
+        this.stageId = stageOverride || this.save?.settings?.stage || DEFAULT_STAGE_ID;
+        this.stageWaves = getWavesFor(this.stageId);
+        this.stageBosses = this._applyDailyBossOffset(getBossesFor(this.stageId));
+        this.currentWave = this.stageWaves[0];
 
         // Reset per-run achievement state.
         this.achievements.resetRun();
@@ -337,10 +374,44 @@ export class Game {
      */
     startSpeedrun() {
         this.speedrunMode = true;
+        this.dailyMode = false;
         this.speedrunRng = new SeededRng(CONFIG.SPEEDRUN_SEED);
         this.speedrunStart = performance.now();
         this.start();
         this._announce('Speedrun started — deterministic seed.');
+    }
+
+    /**
+     * Daily challenge: deterministic seed pinned to the UTC date, stage is
+     * also pinned (rotates daily), and boss timings are nudged by a per-day
+     * offset. Final entry lands in `daily-{date}-{stage}` rather than the
+     * regular leaderboard so the global ranks aren't polluted.
+     */
+    startDaily() {
+        this.dailyMode = true;
+        this.speedrunMode = false;
+        this.dailyChallenge = dailyChallenge();
+        // Re-use SeededRng for spawn determinism — same plumbing as speedrun.
+        this.speedrunRng = new SeededRng(this.dailyChallenge.seed);
+        this.speedrunStart = performance.now();
+        this.start();
+        this._announce(`Daily Challenge ${this.dailyChallenge.date} — ${this.stageId}.`);
+    }
+
+    /** Apply the daily challenge's bossOffset to a `getBossesFor` result. */
+    _applyDailyBossOffset(bosses) {
+        if (!this.dailyMode || !this.dailyChallenge?.bossOffset) return bosses;
+        const off = this.dailyChallenge.bossOffset;
+        return bosses.map((b) => ({ ...b, spawnAt: Math.max(30, b.spawnAt + off) }));
+    }
+
+    /** Show the stage picker overlay; persists the choice via `save.settings.stage`. */
+    openStagePicker() {
+        this.ui.showStagePicker(this.stageId, (newStageId) => {
+            this.stageId = newStageId;
+            this.save.settings.stage = newStageId;
+            saveSave(this.save);
+        });
     }
 
     togglePause() {
@@ -394,12 +465,25 @@ export class Game {
             level: this.player.level,
             date: Date.now(),
             weapons: weaponIds,
+            // v2.6: stage tag so per-stage leaderboards split correctly.
+            stage: this.stageId,
             // Authoritative: was the player hit even once across the whole
             // run? Falls back to the unhit-timer proxy for backwards compat
             // if a custom path bypassed Player.takeDamage.
             noHit: !this.run.tookAnyDamage
         };
-        recordHighScore(this.save, entry);
+        // Daily-mode runs go to the per-day slot rather than the global
+        // leaderboard so they don't pollute the speedrun/normal pools.
+        if (this.dailyMode && this.dailyChallenge) {
+            saveDailyResult({
+                ...entry,
+                date: this.dailyChallenge.date,
+                seed: this.dailyChallenge.seed,
+                won: !!this.run.bossesDefeated?.void_lord
+            });
+        } else {
+            recordHighScore(this.save, entry);
+        }
         accumulateTotals(this.save, {
             kills: this.kills,
             gameTime: this.gameTime,
@@ -781,8 +865,9 @@ export class Game {
 
     _selectWave() {
         const t = this.gameTime;
-        let match = WAVES[WAVES.length - 1];
-        for (const w of WAVES) {
+        const list = this.stageWaves && this.stageWaves.length ? this.stageWaves : WAVES;
+        let match = list[list.length - 1];
+        for (const w of list) {
             if (t >= w.from && t < w.to) {
                 match = w;
                 break;
@@ -806,8 +891,11 @@ export class Game {
             this._spawnOne(wave.pool, hpMult, dmgMult);
         }
 
-        // Boss triggers (warning 5s before).
-        for (const boss of Object.values(BOSSES)) {
+        // Boss triggers (warning 5s before). Use the per-stage boss list so
+        // stage-specific timing overrides (e.g. crypt's earlier Reaper) fire.
+        const bossList =
+            this.stageBosses && this.stageBosses.length ? this.stageBosses : Object.values(BOSSES);
+        for (const boss of bossList) {
             const warnAt = boss.spawnAt - 5;
             if (this.gameTime >= warnAt && !this._bossWarnedAt.has(boss.id)) {
                 this._bossWarnedAt.add(boss.id);
@@ -821,9 +909,14 @@ export class Game {
     }
 
     _spawnOne(pool, hpMult, dmgMult) {
-        const rng = this.speedrunMode && this.speedrunRng ? this.speedrunRng : null;
+        // Speedrun + Daily both want determinism; either uses speedrunRng.
+        const rng =
+            (this.speedrunMode || this.dailyMode) && this.speedrunRng ? this.speedrunRng : null;
         const frnd = rng ? () => rng.nextFloat() : Math.random;
-        const pick = pool[Math.floor(frnd() * pool.length)];
+        // pickWeighted honours the active stage's poolOverrides; with default
+        // stage (forest) all weights are 1 so it degrades to a uniform pick.
+        const pick =
+            pickWeighted(pool, this.stageId, frnd) || pool[Math.floor(frnd() * pool.length)];
         const type = findEnemyDef(pick) || ENEMIES.BAT;
         const angle = frnd() * Math.PI * 2;
         const dist = CONFIG.SPAWN_RADIUS + frnd() * 120;
@@ -874,6 +967,10 @@ export class Game {
     }
     createFloatingText(text, x, y, color, opts) {
         if (this.save.settings.reducedMotion) return;
+        // damageNumbers toggle (default on). Backwards-compatible: an older
+        // save without the field still gets numbers because we treat
+        // `undefined` as on.
+        if (this.save.settings.damageNumbers === false) return;
         this.floatingTexts.push(this.pools.floatingText.acquire(text, x, y, color, opts || {}));
     }
     shake(amount) {
@@ -919,7 +1016,8 @@ export class Game {
         // 1) Background fill in screen space (no transform). This guarantees
         //    the viewport is always cleared even when the camera sits flush
         //    against an arena edge and a sliver would otherwise be unfilled.
-        ctx.fillStyle = '#1a1a2e';
+        const bg = getBackgroundFor(this.stageId);
+        ctx.fillStyle = bg.fill;
         ctx.fillRect(0, 0, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
 
         // 2) World-space pass: translate by -camera + shake so entity coords
@@ -988,7 +1086,8 @@ export class Game {
      */
     _drawGrid() {
         const ctx = this.ctx;
-        ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+        const alpha = (getBackgroundFor(this.stageId).gridAlpha ?? 0.04).toFixed(3);
+        ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
         ctx.lineWidth = 1;
         const size = CONFIG.GRID_SIZE;
         const cx = this.camera.worldX;

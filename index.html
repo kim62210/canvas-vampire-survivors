@@ -28,7 +28,10 @@
         <meta property="og:image" content="./docs/og-card.svg" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
-        <meta property="og:url" content="https://ricardo-foundry.github.io/canvas-vampire-survivors/" />
+        <meta
+            property="og:url"
+            content="https://ricardo-foundry.github.io/canvas-vampire-survivors/"
+        />
 
         <!-- Twitter card -->
         <meta name="twitter:card" content="summary_large_image" />
@@ -146,6 +149,10 @@
                         <button id="btnStart" class="btn primary" data-i18n="start">
                             Start Run
                         </button>
+                        <button id="btnStage" class="btn ghost" data-i18n="stage">Stage</button>
+                        <button id="btnDaily" class="btn ghost" data-i18n="dailyChallenge">
+                            Daily Challenge
+                        </button>
                         <button id="btnSpeedrun" class="btn ghost" data-i18n="speedrun">
                             Speedrun
                         </button>
@@ -164,6 +171,7 @@
 
             <div id="achievementsScreen" class="overlay" style="display: none"></div>
             <div id="leaderboardScreen" class="overlay" style="display: none"></div>
+            <div id="stagePickerScreen" class="overlay" style="display: none"></div>
 
             <div
                 id="levelUpMenu"

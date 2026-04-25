@@ -32,6 +32,11 @@ const DEFAULT_SAVE = {
         bossKills: 0
     },
     achievements: {},
+    // v2.6 (iter-12): per-stage leaderboards. Each key is a stage id; the
+    // value is a top-N array shaped like `highScores`. The legacy global
+    // `highScores` field is retained as the union-of-all-stages view so old
+    // UI paths keep working.
+    stageHighScores: {},
     settings: {
         masterVolume: 0.6,
         sfxVolume: 0.8,
@@ -42,7 +47,9 @@ const DEFAULT_SAVE = {
         reducedMotion: false,
         colorblind: false,
         musicEnabled: true,
-        locale: 'en'
+        damageNumbers: true,
+        locale: 'en',
+        stage: 'forest'
     },
     runs: 0
 };
@@ -125,6 +132,23 @@ export function recordHighScore(save, entry) {
     const top = withNew.slice(0, CONFIG.HIGHSCORE_SLOTS);
     save.highScores = top;
     const rank = top.indexOf(entry) + 1;
+
+    // v2.6: per-stage leaderboard slot. Default to 'forest' so old runs
+    // without a stage field still land in the canonical bucket.
+    if (entry && typeof entry === 'object') {
+        const stageId = entry.stage || 'forest';
+        save.stageHighScores ??= {};
+        const sList = Array.isArray(save.stageHighScores[stageId])
+            ? save.stageHighScores[stageId]
+            : [];
+        const withNewStage = sList.concat([entry]);
+        withNewStage.sort((a, b) => {
+            if (b.timeSurvived !== a.timeSurvived) return b.timeSurvived - a.timeSurvived;
+            return (b.kills || 0) - (a.kills || 0);
+        });
+        save.stageHighScores[stageId] = withNewStage.slice(0, CONFIG.HIGHSCORE_SLOTS);
+    }
+
     // Also update legacy best-of for backwards compat.
     if (entry.timeSurvived > (save.highScore?.timeSurvived || 0)) {
         save.highScore.timeSurvived = entry.timeSurvived;
@@ -132,6 +156,12 @@ export function recordHighScore(save, entry) {
     if (entry.kills > (save.highScore?.kills || 0)) save.highScore.kills = entry.kills;
     if (entry.level > (save.highScore?.level || 0)) save.highScore.level = entry.level;
     return rank;
+}
+
+/** Stage-scoped leaderboard read; falls back to [] for unknown stages. */
+export function getStageHighScores(save, stageId) {
+    if (!save || !save.stageHighScores) return [];
+    return Array.isArray(save.stageHighScores[stageId]) ? save.stageHighScores[stageId] : [];
 }
 
 export function accumulateTotals(save, run) {

@@ -15,6 +15,8 @@
 import { ACHIEVEMENTS, PASSIVES, WEAPONS } from './data.js';
 import { CONFIG } from './config.js';
 import { t, setLocale, availableLocales } from './i18n.js';
+import { listStages } from './stages.js';
+import { buildShareText } from './daily.js';
 
 export class UI {
     constructor(game) {
@@ -50,7 +52,8 @@ export class UI {
             'highScoreList',
             'waveLabel',
             'achievementsScreen',
-            'leaderboardScreen'
+            'leaderboardScreen',
+            'stagePickerScreen'
         ];
         for (const id of ids) this.els[id] = document.getElementById(id);
     }
@@ -61,6 +64,53 @@ export class UI {
      * the main-menu entry point; the game-over summary still shows a compact
      * top-10 list inside the run recap.
      */
+    /**
+     * Render the stage picker overlay. Each stage card shows the icon, name
+     * and tagline; the active one gets the `active` class so users see what
+     * they've selected. Selecting a card persists via the supplied callback
+     * and closes the dialog.
+     */
+    showStagePicker(currentId, onPick) {
+        const m = this.els.stagePickerScreen;
+        if (!m) return;
+        const stages = listStages();
+        m.innerHTML = `
+            <div class="overlay-card stage-picker-card">
+                <h2>${t('chooseStage')}</h2>
+                <div class="stage-grid">
+                    ${stages
+                        .map(
+                            (s) => `
+                            <button class="stage-card ${s.id === currentId ? 'active' : ''}" data-stage="${s.id}">
+                                <div class="stage-icon">${s.icon}</div>
+                                <div class="stage-name">${s.name}</div>
+                                <div class="stage-desc">${s.description}</div>
+                            </button>`
+                        )
+                        .join('')}
+                </div>
+                <div class="btn-row">
+                    <button id="stageClose" class="btn primary">${t('close')}</button>
+                </div>
+            </div>`;
+        m.style.display = 'flex';
+        const close = () => {
+            m.style.display = 'none';
+        };
+        m.querySelector('#stageClose')?.addEventListener('click', close);
+        m.querySelectorAll('.stage-card').forEach((btn) =>
+            btn.addEventListener('click', () => {
+                const id = btn.dataset.stage;
+                onPick && onPick(id);
+                close();
+            })
+        );
+    }
+
+    hideStagePicker() {
+        if (this.els.stagePickerScreen) this.els.stagePickerScreen.style.display = 'none';
+    }
+
     showLeaderboard(normalScores, speedrunScores, onClose) {
         const m = this.els.leaderboardScreen;
         if (!m) return;
@@ -418,6 +468,7 @@ export class UI {
                 ${checkboxRow('screenShake', settings.screenShake)}
                 ${checkboxRow('reducedMotion', settings.reducedMotion)}
                 ${checkboxRow('colorblind', !!settings.colorblind)}
+                ${checkboxRow('damageNumbers', settings.damageNumbers !== false)}
                 ${selectRow('locale', settings.locale, availableLocales())}
                 <div class="settings-buttons">
                     <button class="danger" data-action="reset">${t('resetData')}</button>
@@ -520,6 +571,53 @@ export class UI {
                         })
                         .join('');
             }
+        }
+
+        // Daily mode: render a "Share" button that copies a Wordle-style
+        // result string to the clipboard. Inserted inline above the regular
+        // retry/menu row so the share is the first call to action.
+        if (game.dailyMode && game.dailyChallenge) {
+            const card = this.els.gameOver.querySelector('.gameover');
+            if (card && !card.querySelector('.daily-share-row')) {
+                const wrap = document.createElement('div');
+                wrap.className = 'daily-share-row';
+                wrap.innerHTML = `<button id="btnShareDaily" class="btn ghost">${t('shareDaily')}</button><pre id="dailyShareText" class="share-preview" hidden></pre>`;
+                // Insert before the .btn-row.
+                const before = card.querySelector('.btn-row');
+                if (before) card.insertBefore(wrap, before);
+                else card.appendChild(wrap);
+            }
+            const btn = this.els.gameOver.querySelector('#btnShareDaily');
+            const pre = this.els.gameOver.querySelector('#dailyShareText');
+            const entry = {
+                date: game.dailyChallenge.date,
+                stage: game.stageId,
+                timeSurvived: game.gameTime,
+                kills: game.kills,
+                level: game.player?.level || 1,
+                won: !!game.run?.bossesDefeated?.void_lord
+            };
+            btn?.addEventListener('click', async () => {
+                const text = buildShareText(entry);
+                if (pre) {
+                    pre.textContent = text;
+                    pre.hidden = false;
+                }
+                try {
+                    await navigator.clipboard?.writeText?.(text);
+                    btn.textContent = t('copied');
+                    setTimeout(() => (btn.textContent = t('shareDaily')), 2000);
+                } catch {
+                    // Fall back to selecting the preview text so the user can
+                    // copy manually; clipboard write is blocked in some
+                    // sandboxed iframe environments.
+                    btn.textContent = t('copyManual');
+                }
+            });
+        } else {
+            // Non-daily run: strip a stale share row if any.
+            const stale = this.els.gameOver.querySelector('.daily-share-row');
+            stale?.remove();
         }
 
         this.els.gameOver.style.display = 'flex';

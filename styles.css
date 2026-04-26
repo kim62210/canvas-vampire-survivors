@@ -51,13 +51,22 @@ body {
 
 #gameContainer {
     position: relative;
-    box-shadow: 0 0 60px rgba(120, 60, 220, 0.35);
-    border-radius: 6px;
     overflow: hidden;
+    /* iter-27: fill the viewport on every device. The previous letterboxed
+       1200×800 frame left huge black bars on portrait phones; the canvas now
+       resizes to live viewport via main.js _resize() so background, camera
+       and HUD all stretch edge-to-edge. */
+    width: 100vw;
+    width: 100svw;
+    width: 100dvw;
+    height: 100vh;
+    height: 100svh;
+    height: 100dvh;
     max-width: 100vw;
     max-height: 100vh;
     max-height: 100svh;
     max-height: 100dvh;
+    background: #0a0a12;
 }
 
 /*
@@ -95,10 +104,10 @@ body {
 
 canvas {
     display: block;
-    border: 1px solid #222;
     background: #1a1a2e;
     width: 100%;
     height: 100%;
+    /* No outline/border: letterbox is gone, the canvas is the entire frame. */
     image-rendering: crisp-edges;
 }
 
@@ -547,7 +556,11 @@ canvas {
     border-radius: 50%;
     background: rgba(255, 255, 255, 0.05);
     border: 2px solid rgba(255, 255, 255, 0.08);
-    display: none;
+    /* iter-27: visible by default on every device. Some Android browsers do
+       not match `(hover: none) and (pointer: coarse)` reliably (e.g. when a
+       USB keyboard is attached), and the joystick is the only ergonomic
+       move control on phones — better to always show than to hide-by-mistake. */
+    display: block;
     pointer-events: auto;
     touch-action: none;
 }
@@ -563,31 +576,15 @@ canvas {
     transform: translate(-50%, -50%);
 }
 
-/* Special-skill button — mirrors the joystick on the bottom-right. */
+/* iter-27: special-skill button retired. It overlapped the top-right
+   pause button and never carried a real per-build skill, so the markup
+   stays for backwards compatibility but the styling forces it hidden. */
 .special-skill-btn {
-    position: absolute;
-    bottom: 100px;
-    right: 30px;
-    width: var(--touch-special-size);
-    height: var(--touch-special-size);
-    border-radius: 50%;
-    background: rgba(120, 80, 200, 0.25);
-    color: #fff;
-    border: 2px solid rgba(180, 140, 255, 0.55);
-    font-size: 36px;
-    line-height: 1;
-    display: none;
-    pointer-events: auto;
-    touch-action: none;
-    cursor: pointer;
-}
-.special-skill-btn:active {
-    background: rgba(160, 110, 240, 0.4);
+    display: none !important;
 }
 
 @media (hover: none) and (pointer: coarse) {
-    .joystick,
-    .special-skill-btn {
+    .joystick {
         display: block;
     }
 }
@@ -595,9 +592,8 @@ canvas {
 /* iter-14: PWA install prompt slot. */
 .pwa-install-prompt {
     position: fixed;
-    bottom: 12px;
-    left: 50%;
-    transform: translateX(-50%);
+    top: 8px;
+    right: 8px;
     background: rgba(0, 0, 0, 0.85);
     border: 1px solid rgba(255, 255, 255, 0.15);
     color: #fff;
@@ -608,6 +604,39 @@ canvas {
     align-items: center;
     z-index: 9999;
     font-size: 14px;
+    max-width: calc(100vw - 16px);
+}
+.pwa-install-prompt .pwa-text {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+.pwa-install-prompt .pwa-close {
+    appearance: none;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px 6px;
+    cursor: pointer;
+    margin-left: 4px;
+}
+.pwa-install-prompt .pwa-close:hover,
+.pwa-install-prompt .pwa-close:focus-visible {
+    color: #fff;
+}
+@media (max-width: 768px) {
+    /* On phones the prompt collapses into a single-line dismissable banner so
+       the menu/canvas underneath stays usable. */
+    .pwa-install-prompt {
+        font-size: 12px;
+        padding: 8px 10px;
+        gap: 6px;
+    }
+    .pwa-install-prompt .btn {
+        padding: 6px 10px;
+        font-size: 12px;
+    }
 }
 
 /* Accessibility ------------------------------------------------------ */
@@ -852,11 +881,21 @@ body.cb-mode .exp-fill {
 
 /* Phones ------------------------------------------------------------- */
 @media (max-width: 768px) {
+    /* Overlay cards: near-full-screen with safe scroll on tall content. */
     .overlay-card,
     .overlay-card.levelup,
     .settings-card {
-        min-width: 260px;
-        padding: 18px;
+        min-width: unset;
+        width: calc(100vw - 24px);
+        max-width: 480px;
+        max-height: calc(100vh - 32px);
+        max-height: calc(100dvh - 32px);
+        padding: 18px 16px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .overlay {
+        padding: 8px;
     }
     .hud {
         font-size: 12px;
@@ -876,6 +915,44 @@ body.cb-mode .exp-fill {
     }
     .boss-banner {
         font-size: 28px;
+    }
+    /* Touch-friendly button targets (≥44px). */
+    .overlay-card .btn,
+    .settings-card .btn,
+    .btn-row .btn {
+        min-height: 48px;
+        font-size: 15px;
+    }
+    /* Settings rows stack vertically on narrow screens for finger-friendly
+       hit targets and to give selects/sliders more room. */
+    .settings-row {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+    }
+    .settings-row > input[type='range'],
+    .settings-row > select {
+        width: 100%;
+    }
+    /* Keyboard-only affordances are hidden on touch builds — players can't
+       press them and the rows just clutter the help/settings panels. */
+    .keyboard-only,
+    .helpkey-row,
+    .remap-card,
+    [data-key='hotkeyHint'] {
+        display: none !important;
+    }
+}
+
+/* Touch-only devices (phones / tablets without a hover-capable pointer)
+   hide the same keyboard-shortcut UI even on landscape tablets where the
+   raw width may exceed 768px. */
+@media (hover: none) and (pointer: coarse) {
+    .keyboard-only,
+    .helpkey-row,
+    .remap-card,
+    [data-key='hotkeyHint'] {
+        display: none !important;
     }
 }
 

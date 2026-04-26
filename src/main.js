@@ -544,13 +544,24 @@ export class Game {
     }
 
     _resize() {
+        // iter-27: canvas adapts to the live viewport instead of pinning to
+        // the legacy 1200×800 letterboxed frame, and renders at 2× the CSS
+        // viewport so players see 2× more of the arena (the camera zooms
+        // out without changing entity world sizes). CONFIG.CANVAS_WIDTH and
+        // CANVAS_HEIGHT are the single source of truth for camera math,
+        // grid drawing, background fill and screen-space effects, so
+        // updating both here propagates everywhere automatically.
         const container = document.getElementById('gameContainer');
-        if (!container) return;
-        const w = Math.min(window.innerWidth - 16, CONFIG.CANVAS_WIDTH);
-        const h = Math.min(window.innerHeight - 16, CONFIG.CANVAS_HEIGHT);
-        const scale = Math.min(w / CONFIG.CANVAS_WIDTH, h / CONFIG.CANVAS_HEIGHT);
-        container.style.width = `${CONFIG.CANVAS_WIDTH * scale}px`;
-        container.style.height = `${CONFIG.CANVAS_HEIGHT * scale}px`;
+        if (!container || !this.canvas) return;
+        const w = Math.max(320, window.innerWidth);
+        const h = Math.max(480, window.innerHeight);
+        const ZOOM = 2;
+        CONFIG.CANVAS_WIDTH = w * ZOOM;
+        CONFIG.CANVAS_HEIGHT = h * ZOOM;
+        container.style.width = `${w}px`;
+        container.style.height = `${h}px`;
+        this.canvas.width = w * ZOOM;
+        this.canvas.height = h * ZOOM;
     }
 
     start() {

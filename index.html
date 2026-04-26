@@ -123,14 +123,15 @@
                 <div id="joystickKnob" class="joystick-knob"></div>
             </div>
 
-            <!-- iter-14: special-skill button (touch only). Bottom-right counterpart
-                 to the joystick on mobile. Opens the pause menu by default until
-                 per-build skills are wired in. -->
+            <!-- iter-27: special-skill button retired. Hidden in CSS for
+                 backwards compatibility with code that still queries the id;
+                 the actual ⏸ pause control lives in the top-right HUD. -->
             <button
                 id="specialSkillBtn"
                 class="special-skill-btn"
                 aria-label="Special skill"
                 aria-hidden="true"
+                hidden
             >
                 ✦
             </button>
@@ -145,9 +146,14 @@
                 aria-live="polite"
                 style="display: none"
             >
-                <span>Install Survivor as an app for full-screen play.</span>
-                <button id="pwaInstallBtn" class="btn primary">Install</button>
-                <button id="pwaInstallDismiss" class="btn">Not now</button>
+                <span class="pwa-text" data-i18n="pwaInstallText"
+                    >서바이버를 앱으로 설치하면 전체화면으로 즐길 수 있어요.</span
+                >
+                <button id="pwaInstallBtn" class="btn primary" data-i18n="pwaInstall">설치</button>
+                <button id="pwaInstallDismiss" class="btn" data-i18n="pwaNotNow">나중에</button>
+                <button id="pwaInstallClose" class="pwa-close" aria-label="닫기" title="닫기">
+                    ✕
+                </button>
             </div>
 
             <!-- Menus -->
@@ -169,7 +175,7 @@
                         <div>
                             • <span data-i18n="autoAttack">Weapons auto-attack nearby foes</span>
                         </div>
-                        <div>• Esc / P to pause</div>
+                        <div class="keyboard-only">• Esc / P 키로 일시정지</div>
                         <div>• <span data-i18n="survive">Survive as long as you can!</span></div>
                     </div>
                     <div class="btn-row">
@@ -212,7 +218,7 @@
                             Replay Last Run
                         </button>
                     </div>
-                    <div class="hotkey-hint" aria-hidden="true">
+                    <div class="hotkey-hint keyboard-only" aria-hidden="true">
                         <span data-i18n="hotkeyHint"
                             >Tip: <kbd>P</kbd>/<kbd>Esc</kbd> pause · <kbd>M</kbd> mute ·
                             <kbd>H</kbd> help</span

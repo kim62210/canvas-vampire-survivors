@@ -763,6 +763,51 @@ canvas {
     font-weight: 700;
 }
 
+/* iter-27: lobby — direct-code join row sits alongside the live list. */
+.mp-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 18px 0 10px;
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.mp-divider::before,
+.mp-divider::after {
+    content: '';
+    flex: 1 1 auto;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.12);
+}
+.mp-join-row {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+}
+.mp-join-row input {
+    flex: 1 1 auto;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 16px;
+    letter-spacing: 0.18em;
+    text-align: center;
+    text-transform: uppercase;
+    min-width: 0;
+}
+.mp-join-row input:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+}
+.mp-join-row .btn {
+    flex: 0 0 auto;
+}
+
 /* iter-14: PWA install prompt slot. */
 .pwa-install-prompt {
     position: fixed;

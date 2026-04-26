@@ -159,7 +159,10 @@ const STRINGS = {
         mpRoomList: '활성 방 목록',
         mpRoomListEmpty: '아직 만들어진 방이 없어요. 위 버튼으로 방을 만들어보세요!',
         mpRoomFullBadge: '가득 참',
-        leaveRoom: '방 나가기'
+        leaveRoom: '방 나가기',
+        // iter-27: 자동 방 목록과 함께 직접 코드로 입장하는 보조 경로의 라벨.
+        mpJoinByCodeOr: '또는 방 코드로 직접 참가',
+        mpRoomCodePlaceholder: '예: ABC12'
     }
 };
 

@@ -246,6 +246,19 @@ export class UI {
                 <ul id="mpRoomsList" class="mp-rooms" role="list" aria-live="polite">
                     <li class="mp-rooms-empty">${t('mpRoomListEmpty')}</li>
                 </ul>
+                <div class="mp-divider"><span>${t('mpJoinByCodeOr')}</span></div>
+                <div class="mp-join-row">
+                    <input
+                        id="mpRoomCodeInput"
+                        type="text"
+                        maxlength="5"
+                        autocomplete="off"
+                        autocapitalize="characters"
+                        spellcheck="false"
+                        placeholder="${escapeAttr(t('mpRoomCodePlaceholder'))}"
+                        aria-label="${escapeAttr(t('mpRoomCode'))}" />
+                    <button id="mpJoinBtn" class="btn">${t('mpJoinRoom')}</button>
+                </div>
                 <div class="mp-status" id="mpStatus" aria-live="polite"></div>
             </div>`;
         m.style.display = 'flex';
@@ -267,6 +280,30 @@ export class UI {
             const nickname = m.querySelector('#mpNickname')?.value?.trim() || 'Player';
             setStatus(t('mpConnecting'), false);
             onCreate?.(nickname, setStatus);
+        });
+        // Direct-code join path (kept alongside the live room list so a
+        // friend can share their code in private without waiting for the
+        // list broadcast to surface it).
+        const codeInput = m.querySelector('#mpRoomCodeInput');
+        // Force uppercase so a typed lowercase 'a' matches the server's
+        // uppercase room ids.
+        codeInput?.addEventListener('input', () => {
+            const upper = codeInput.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+            if (upper !== codeInput.value) codeInput.value = upper;
+        });
+        const submitJoin = () => {
+            const roomId = codeInput?.value?.trim().toUpperCase() || '';
+            if (!roomId) {
+                setStatus(t('mpInvalidCode'), true);
+                return;
+            }
+            const nickname = m.querySelector('#mpNickname')?.value?.trim() || 'Player';
+            setStatus(t('mpConnecting'), false);
+            onJoin?.(roomId, nickname, setStatus);
+        };
+        m.querySelector('#mpJoinBtn')?.addEventListener('click', submitJoin);
+        codeInput?.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') submitJoin();
         });
         // Returned helpers let main.js refresh the list whenever
         // `rooms:list` arrives without re-rendering the whole overlay.

@@ -17,6 +17,7 @@
 
 import { CONFIG } from './config.js';
 import { ENEMIES } from './data.js';
+import { drawSprite } from './assets.js';
 
 export class Player {
     constructor(x, y) {
@@ -220,29 +221,49 @@ export class Player {
                 ? 0.4
                 : 1
             : 1;
-        ctx.save();
-        ctx.globalAlpha = strobe;
 
-        const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2.2);
-        grad.addColorStop(0, 'rgba(100,200,255,0.35)');
-        grad.addColorStop(1, 'rgba(100,200,255,0)');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size * 2.2, 0, Math.PI * 2);
-        ctx.fill();
+        // Sprite path: registered image asset replaces the procedural body.
+        // Aura/garlic effects are still drawn on top regardless.
+        const drewSprite = drawSprite(ctx, 'player', this.x, this.y, {
+            size: this.size,
+            alpha: strobe
+        });
 
-        ctx.fillStyle = '#44aaff';
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#cfeaff';
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size * 0.55, 0, Math.PI * 2);
-        ctx.fill();
+        if (!drewSprite) {
+            ctx.save();
+            ctx.globalAlpha = strobe;
 
-        // Garlic aura ring
+            const grad = ctx.createRadialGradient(
+                this.x,
+                this.y,
+                0,
+                this.x,
+                this.y,
+                this.size * 2.2
+            );
+            grad.addColorStop(0, 'rgba(100,200,255,0.35)');
+            grad.addColorStop(1, 'rgba(100,200,255,0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size * 2.2, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#44aaff';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#cfeaff';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size * 0.55, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // Garlic aura ring (weapon overlay, drawn over either path).
         const garlic = this.weapons.find((w) => w.id === 'garlic');
         if (garlic) {
+            ctx.save();
+            ctx.globalAlpha = strobe;
             const range = garlic.getRange(this);
             const t = performance.now() / 400;
             ctx.strokeStyle = `rgba(160,255,160,${0.25 + Math.sin(t) * 0.08})`;
@@ -250,8 +271,8 @@ export class Player {
             ctx.beginPath();
             ctx.arc(this.x, this.y, range, 0, Math.PI * 2);
             ctx.stroke();
+            ctx.restore();
         }
-        ctx.restore();
     }
 }
 
@@ -456,29 +477,48 @@ export class Enemy {
     }
 
     render(ctx) {
-        ctx.save();
-        // Slowed foes get a cold cast.
-        if (this.flashTimer > 0) {
-            ctx.fillStyle = '#ffffff';
-        } else if (this.slowTimer > 0) {
-            ctx.fillStyle = '#88ccff';
-        } else if (this.bomber && this.fuseArmed) {
-            // Blink red while the fuse is burning.
+        // Tint reflects combat state when a sprite is in use; otherwise we
+        // bake the colour into the procedural fill below.
+        let tint = null;
+        if (this.flashTimer > 0) tint = '#ffffff';
+        else if (this.slowTimer > 0) tint = '#88ccff';
+        else if (this.bomber && this.fuseArmed) {
             const blink = Math.floor(performance.now() / 120) % 2 === 0;
-            ctx.fillStyle = blink ? '#ffffff' : this.color;
-        } else {
-            ctx.fillStyle = this.color;
+            if (blink) tint = '#ffffff';
         }
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
 
-        ctx.fillStyle = 'rgba(255,255,255,0.25)';
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size * 0.5, 0, Math.PI * 2);
-        ctx.fill();
+        const drewSprite = drawSprite(ctx, `enemy:${this.id}`, this.x, this.y, {
+            size: this.size,
+            tint
+        });
 
-        // Shield ring
+        if (!drewSprite) {
+            ctx.save();
+            // Slowed foes get a cold cast.
+            if (this.flashTimer > 0) {
+                ctx.fillStyle = '#ffffff';
+            } else if (this.slowTimer > 0) {
+                ctx.fillStyle = '#88ccff';
+            } else if (this.bomber && this.fuseArmed) {
+                // Blink red while the fuse is burning.
+                const blink = Math.floor(performance.now() / 120) % 2 === 0;
+                ctx.fillStyle = blink ? '#ffffff' : this.color;
+            } else {
+                ctx.fillStyle = this.color;
+            }
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // Overlays drawn on top of either path: shield ring, HP bar, boss crown.
+        ctx.save();
         if (this.shielded && this.shieldHp > 0) {
             ctx.strokeStyle = 'rgba(160,200,255,0.6)';
             ctx.lineWidth = 2;
@@ -555,6 +595,7 @@ export class EnemyProjectile {
         }
     }
     render(ctx) {
+        if (drawSprite(ctx, 'enemyProjectile', this.x, this.y, { size: this.size })) return;
         ctx.save();
         ctx.fillStyle = '#ff44aa';
         ctx.beginPath();
@@ -664,6 +705,14 @@ export class Projectile {
     }
 
     render(ctx) {
+        if (
+            drawSprite(ctx, `projectile:${this.id}`, this.x, this.y, {
+                size: this.size,
+                angle: this.angle
+            })
+        ) {
+            return;
+        }
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
@@ -760,6 +809,7 @@ export class OrbitShard {
         }
     }
     render(ctx) {
+        if (drawSprite(ctx, 'orbitShard', this.x, this.y, { size: 8 })) return;
         ctx.save();
         const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, 14);
         g.addColorStop(0, 'rgba(255,240,180,0.85)');
@@ -819,11 +869,18 @@ export class Mine {
     render(ctx) {
         const armed = this.fuse < this.maxFuse * 0.5;
         const pulse = armed ? 0.5 + Math.sin(performance.now() / 60) * 0.5 : 0.3;
+
+        // Blast radius is rendered as a procedural overlay even when a sprite
+        // is registered — players need that visual cue regardless of skin.
         ctx.save();
         ctx.fillStyle = `rgba(255,80,80,${0.25 + pulse * 0.35})`;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
+
+        if (drawSprite(ctx, 'mine', this.x, this.y, { size: 12, alpha: armed ? 1 : 0.7 })) return;
+        ctx.save();
         ctx.fillStyle = armed ? '#ff4444' : '#aa4444';
         ctx.beginPath();
         ctx.arc(this.x, this.y, 10, 0, Math.PI * 2);
@@ -878,6 +935,7 @@ export class ExpOrb {
 
     render(ctx) {
         const a = this.life < 2 ? Math.max(0, this.life / 2) : 1;
+        if (drawSprite(ctx, 'expOrb', this.x, this.y, { size: this.size, alpha: a })) return;
         ctx.save();
         ctx.globalAlpha = a;
         const g = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2.2);

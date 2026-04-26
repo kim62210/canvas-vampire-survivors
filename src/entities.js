@@ -334,6 +334,30 @@ export function registerWeaponClass(_cls) {
 }
 
 /**
+ * iter-27: pick the nearest *alive* player to a world-space point. Used by
+ * enemy AI and enemy projectiles so they pursue / hit the closest peer
+ * instead of always locking onto the host. Falls back to `game.player`
+ * when nobody else is alive (e.g. host is the lone survivor).
+ */
+export function nearestPlayer(game, x, y) {
+    let best = null;
+    let bestD = Infinity;
+    const consider = (p) => {
+        if (!p || p.dead) return;
+        const d = Math.hypot(p.x - x, p.y - y);
+        if (d < bestD) {
+            bestD = d;
+            best = p;
+        }
+    };
+    consider(game.player);
+    if (game.remotePlayers) {
+        for (const rp of game.remotePlayers.values()) consider(rp);
+    }
+    return best || game.player;
+}
+
+/**
  * iter-27: lightweight peer-player avatar used by both host and guest in
  * coop multiplayer. The host owns one of these per remote guest in
  * `Game.remotePlayers`, drives `x/y` from received `guest:input` vectors,
@@ -538,8 +562,12 @@ export class Enemy {
     }
 
     update(dt, game) {
-        const dx = game.player.x - this.x;
-        const dy = game.player.y - this.y;
+        // iter-27: chase the nearest *alive* player so coop peers split the
+        // aggro instead of every enemy funneling toward the host. Solo runs
+        // degrade to game.player automatically.
+        const target = nearestPlayer(game, this.x, this.y);
+        const dx = target.x - this.x;
+        const dy = target.y - this.y;
         const d = Math.hypot(dx, dy);
         let vx = 0,
             vy = 0;
@@ -561,16 +589,24 @@ export class Enemy {
                 if (this.fuseTimer >= (this.type.fuseTime || 1.4)) {
                     const br = this.type.blastRadius || 120;
                     const bd = (this.type.blastDamage || 40) * (game.enemyDmgMult || 1);
-                    // Damage player if in range.
-                    const pd = Math.hypot(game.player.x - this.x, game.player.y - this.y);
-                    if (pd < br && !game.player.invincible) {
-                        game.player.takeDamage(bd, game);
-                        game.createFloatingText(
-                            Math.round(bd),
-                            game.player.x,
-                            game.player.y - 28,
-                            '#ff4433'
-                        );
+                    // AoE: damage every alive player inside the blast radius
+                    // (not just the chase target — explosions don't care).
+                    const allPlayers = [game.player];
+                    if (game.remotePlayers) {
+                        for (const rp of game.remotePlayers.values()) allPlayers.push(rp);
+                    }
+                    for (const p of allPlayers) {
+                        if (!p || p.dead || p.invincible) continue;
+                        const pd = Math.hypot(p.x - this.x, p.y - this.y);
+                        if (pd < br) {
+                            p.takeDamage(bd, game);
+                            game.createFloatingText(
+                                Math.round(bd),
+                                p.x,
+                                p.y - 28,
+                                '#ff4433'
+                            );
+                        }
                     }
                     game.createParticles(this.x, this.y, '#ff8833', 24);
                     game.shake?.(0.25);
@@ -793,14 +829,29 @@ export class EnemyProjectile {
             this.shouldRemove = true;
             return;
         }
-        const p = game.player;
-        const d = Math.hypot(this.x - p.x, this.y - p.y);
-        if (d < p.size + this.size) {
-            if (!p.invincible) {
-                p.takeDamage(this.damage, game);
-                game.createFloatingText(Math.round(this.damage), p.x, p.y - 30, '#ff6644');
+        // iter-27: hit-test against every alive player so a guest standing
+        // in front of an arrow eats it instead of waiting for the host to
+        // walk through. First hit consumes the projectile.
+        const candidates = [game.player];
+        if (game.remotePlayers) {
+            for (const rp of game.remotePlayers.values()) candidates.push(rp);
+        }
+        for (const p of candidates) {
+            if (!p || p.dead) continue;
+            const d = Math.hypot(this.x - p.x, this.y - p.y);
+            if (d < p.size + this.size) {
+                if (!p.invincible) {
+                    p.takeDamage(this.damage, game);
+                    game.createFloatingText(
+                        Math.round(this.damage),
+                        p.x,
+                        p.y - 30,
+                        '#ff6644'
+                    );
+                }
+                this.shouldRemove = true;
+                return;
             }
-            this.shouldRemove = true;
         }
     }
     render(ctx) {
@@ -847,6 +898,10 @@ export class Projectile {
         this.travelDist = 0;
         this.maxDist = (def.baseRange || 300) * (player ? player.getAreaMult() : 1);
         this.id = def.id;
+        // iter-27: keep a weak reference to the firing player so AI features
+        // (boomerang return, future homing) can target the owner instead of
+        // hardcoding game.player.
+        this.owner = player || null;
     }
 
     update(dt, game) {
@@ -867,10 +922,14 @@ export class Projectile {
             this.vy += 420 * dt; // gravity
         }
 
+        // iter-27: boomerang returns to its *owner* (could be a peer in coop),
+        // not always the host. Falls back to game.player when the owner ref
+        // is missing (legacy code path).
+        const ownerRef = this.owner || game.player;
         if (this.boomerang) {
             const d = Math.hypot(this.x - this.startX, this.y - this.startY);
             if (d > this.maxDist * 0.5) {
-                const ra = Math.atan2(game.player.y - this.y, game.player.x - this.x);
+                const ra = Math.atan2(ownerRef.y - this.y, ownerRef.x - this.x);
                 this.vx = Math.cos(ra) * this.speed;
                 this.vy = Math.sin(ra) * this.speed;
             }
@@ -887,7 +946,7 @@ export class Projectile {
         }
 
         if (this.boomerang) {
-            const dp = Math.hypot(this.x - game.player.x, this.y - game.player.y);
+            const dp = Math.hypot(this.x - ownerRef.x, this.y - ownerRef.y);
             if (dp < 24 && this.travelDist > 60) {
                 this._onEnd(game);
                 this.shouldRemove = true;

@@ -304,6 +304,65 @@ export const PASSIVES = {
         icon: '🛡️',
         description: '받는 피해 -8%',
         effect: { damageReduction: 0.08 }
+    },
+    // --- iter-27 카드 8종 추가 ------------------------------------------
+    // 합성 패시브 6 (기존 effect 키 재활용 → 코드 변경 없이 즉시 동작)
+    GREED: {
+        id: 'greed',
+        name: '재화',
+        icon: '💰',
+        description: '경험치 +12%, 자석 +15%',
+        effect: { expMult: 0.12, magnetMult: 0.15 }
+    },
+    WARLORD: {
+        id: 'warlord',
+        name: '전쟁군주',
+        icon: '🗡️',
+        description: '피해 +12%, 사거리 +8%',
+        effect: { damageMult: 0.12, areaMult: 0.08 }
+    },
+    VANGUARD: {
+        id: 'vanguard',
+        name: '선봉',
+        icon: '⚔️',
+        description: '받는 피해 -1, 이동 속도 +6%',
+        effect: { armor: 1, speedMult: 0.06 }
+    },
+    MYSTIC: {
+        id: 'mystic',
+        name: '신비',
+        icon: '✨',
+        description: '공격 속도 +6%, 사거리 +5%',
+        effect: { cooldownMult: -0.06, areaMult: 0.05 }
+    },
+    HEALER: {
+        id: 'healer',
+        name: '치유사',
+        icon: '🌿',
+        description: '체력 재생 +0.6/초, 최대 체력 +10%',
+        effect: { hpRegen: 0.6, maxHpMult: 0.1 }
+    },
+    TRICKSTER: {
+        id: 'trickster',
+        name: '재간둥이',
+        icon: '🃏',
+        description: '회피 +4%, 치명타 +4%',
+        effect: { dodgeChance: 0.04, critChance: 0.04 }
+    },
+    // 새 메커니즘 2 — main.js에서 hook 처리
+    VAMPIRE: {
+        id: 'vampire',
+        name: '흡혈',
+        icon: '🩸',
+        description: '적 처치 시 체력 +1',
+        effect: { lifestealOnKill: 1 }
+    },
+    THORNS: {
+        id: 'thorns',
+        name: '가시 갑옷',
+        icon: '🌵',
+        description: '닿은 적에게 피해 5 반사',
+        effect: { thornsDamage: 5 }
     }
 };
 

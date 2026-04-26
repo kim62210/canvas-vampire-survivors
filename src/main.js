@@ -1844,6 +1844,9 @@ export class Game {
                     this.player.y - 30,
                     '#ff3333'
                 );
+                // iter-27 / THORNS passive: bounce part of the hit back.
+                const thorns = this.player._passiveSum?.('thornsDamage') || 0;
+                if (thorns > 0) e.takeDamage(thorns);
             }
 
             // Phase 1.4: remote players take damage on contact too. We don't
@@ -1863,6 +1866,8 @@ export class Game {
                             rp.y - 30,
                             '#ff8866'
                         );
+                        const thorns = rp._passiveSum?.('thornsDamage') || 0;
+                        if (thorns > 0) e.takeDamage(thorns);
                     }
                 }
             }
@@ -1884,6 +1889,18 @@ export class Game {
         this.createParticles(e.x, e.y, e.color, e.boss ? 40 : 8);
         this.effects.hit(e.x, e.y, this._rgbFromHex(e.color));
         this.dropExp(e.x, e.y, e.expValue);
+        // iter-27 / VAMPIRE passive: anyone alive with the talent recovers a
+        // bit of HP each kill. Coop spirit — the kill belonged to the team
+        // even if a single weapon dealt the killing blow.
+        const allPlayers = [this.player];
+        if (this.remotePlayers) {
+            for (const rp of this.remotePlayers.values()) allPlayers.push(rp);
+        }
+        for (const p of allPlayers) {
+            if (!p || p.dead) continue;
+            const heal = p._passiveSum?.('lifestealOnKill') || 0;
+            if (heal > 0) p.heal(heal);
+        }
         if (e.boss) {
             this.shake(0.5);
             this.audio.explosion();

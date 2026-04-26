@@ -281,6 +281,106 @@ export function registerWeaponClass(_cls) {
     /* noop */
 }
 
+/**
+ * iter-27: lightweight peer-player avatar used by both host and guest in
+ * coop multiplayer. The host owns one of these per remote guest in
+ * `Game.remotePlayers`, drives `x/y` from received `guest:input` vectors,
+ * and runs collision against them just like the local `Player`. The guest
+ * uses the same shape on the receiving side: each entry in `host:tick.pl`
+ * (other than its own sid) becomes a RemotePlayer that just renders.
+ *
+ * Intentionally does NOT carry weapons / passives / EXP — the host runs
+ * the simulation for everyone. Each remote keeps its own HP and i-frames
+ * so multiple players can take damage independently.
+ */
+export class RemotePlayer {
+    constructor({ sid, nickname, color, x, y }) {
+        this.sid = sid;
+        this.nickname = nickname || 'Player';
+        this.color = color || '#ff7766';
+        this.x = x;
+        this.y = y;
+        this.vx = 0;
+        this.vy = 0;
+        this.size = CONFIG.PLAYER_SIZE;
+        this.maxHp = 100;
+        this.hp = 100;
+        this.level = 1;
+        this.invincible = false;
+        this.invincibleTimer = 0;
+        this.dead = false;
+    }
+
+    /** Apply current input vector with player speed; clamp to arena. */
+    tick(dt, game) {
+        if (this.dead) return;
+        const stageSpeedMult = game?.stageMods?.playerSpeedMult ?? 1;
+        const speed = CONFIG.PLAYER_SPEED * stageSpeedMult;
+        this.x += this.vx * speed * dt;
+        this.y += this.vy * speed * dt;
+        const r = this.size;
+        const W = CONFIG.ARENA_WIDTH ?? CONFIG.CANVAS_WIDTH;
+        const H = CONFIG.ARENA_HEIGHT ?? CONFIG.CANVAS_HEIGHT;
+        if (this.x < r) this.x = r;
+        else if (this.x > W - r) this.x = W - r;
+        if (this.y < r) this.y = r;
+        else if (this.y > H - r) this.y = H - r;
+        if (this.invincible) {
+            this.invincibleTimer -= dt;
+            if (this.invincibleTimer <= 0) this.invincible = false;
+        }
+    }
+
+    takeDamage(amount) {
+        if (this.dead || this.invincible) return;
+        this.hp -= amount;
+        this.invincible = true;
+        this.invincibleTimer = 0.3;
+        if (this.hp <= 0) {
+            this.hp = 0;
+            this.dead = true;
+        }
+    }
+
+    render(ctx) {
+        const strobe = this.invincible
+            ? Math.floor(performance.now() / 60) % 2 === 0
+                ? 0.4
+                : 1
+            : 1;
+        // Try the registered player sprite with a tint hint via overlay,
+        // otherwise fall back to a coloured orb so each peer is distinct.
+        const drewSprite = drawSprite(ctx, 'player', this.x, this.y, {
+            size: this.size,
+            alpha: strobe
+        });
+        if (drewSprite) {
+            // Draw a coloured outline ring so each peer is visually distinct
+            // even when all share the same player sprite.
+            ctx.save();
+            ctx.globalAlpha = strobe;
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size + 3, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.restore();
+        } else {
+            ctx.save();
+            ctx.globalAlpha = strobe;
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'rgba(255,255,255,0.7)';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.size * 0.45, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Enemy
 // ---------------------------------------------------------------------------

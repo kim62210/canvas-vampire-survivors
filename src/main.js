@@ -22,6 +22,7 @@ import {
     FloatingText,
     Particle,
     Player,
+    RemotePlayer,
     findEnemyDef,
     registerWeaponClass
 } from './entities.js';
@@ -71,6 +72,17 @@ registerWeaponClass(Weapon);
 // gradient/fill path every draw call. Cache key = `${id}-${size}`.
 // ---------------------------------------------------------------------------
 const SPRITE_CACHE = new Map();
+
+// iter-27: distinct outline tint per peer slot so each player avatar reads
+// at a glance. Up to 4 since the room cap is 4.
+const PEER_COLORS = ['#ffd166', '#06d6a0', '#118ab2', '#ef476f'];
+
+function clampUnit(v) {
+    if (typeof v !== 'number' || Number.isNaN(v)) return 0;
+    if (v > 1) return 1;
+    if (v < -1) return -1;
+    return v;
+}
 
 function spriteKey(id, size) {
     return `${id}@${size}`;
@@ -232,6 +244,29 @@ export class Game {
         // arrives in `host:tick`.
         this.mp = new MultiplayerClient();
         this.mpMode = false; // toggled true when a multiplayer game is active
+        this.mpRole = null; // 'host' | 'guest' once a coop run starts
+        // Host-only: per-guest authoritative state. Map<sid, RemotePlayer>.
+        // Guest-only: same shape, populated from each `host:tick.pl` so we
+        // can render every other peer (including the host's avatar) using a
+        // single render path.
+        this.remotePlayers = new Map();
+        // Host-only: latest input vector per guest sid, last applied during
+        // the next `_updateRemotePlayers` tick. Cleared when a guest leaves.
+        this.guestInputs = new Map();
+        // Guest-only: latest snapshot from `host:tick`. Render() reads this
+        // instead of the local sim because the local sim is paused on guests.
+        this._mpState = null;
+        // Throttle the host → guest broadcast at 30 Hz regardless of frame
+        // rate to keep payload size bounded on slower devices.
+        this._mpHostTickAccum = 0;
+        this._mpHostTickInterval = 1 / 30;
+        // Throttle guest → host input updates similarly. We only push when
+        // the vector actually changes OR every ~33 ms as a heartbeat.
+        this._mpGuestInputAccum = 0;
+        this._mpLastSentInput = { vx: 0, vy: 0 };
+        // Roster captured when the run starts so guest joins after that
+        // moment do not affect our authoritative spawn list mid-run.
+        this._mpRoster = [];
         // Per-frame snapshot of move vector for the recorder (kept on the
         // game so other systems can also peek at the most recent input).
         this._lastMoveVec = { x: 0, y: 0 };
@@ -619,20 +654,51 @@ export class Game {
         // Wire socket-side listeners only once per Game lifetime.
         if (!this._mpListenersBound) {
             this._mpListenersBound = true;
-            this.mp.onRoomState((snap) => this._enterMultiplayerWaitingRoom(snap));
+            this.mp.onRoomState((snap) => {
+                // Cache the latest roster so when the host fires gameStart
+                // we know who to seed RemotePlayer entries for.
+                this._mpRoster = Array.isArray(snap?.members) ? snap.members.slice() : [];
+                this._enterMultiplayerWaitingRoom(snap);
+            });
             this.mp.onRoomClosed(() => {
                 this.mp.disconnect();
                 this.ui.hideMultiplayer();
                 this._announce(_t('mpRoomClosed'));
+                // Reset coop sim flags so the player can immediately start a
+                // single-player run after the host bailed.
+                this.mpMode = false;
+                this.mpRole = null;
+                this.remotePlayers.clear();
+                this.guestInputs.clear();
+                this._mpState = null;
                 this.ui.showStart();
             });
             this.mp.onHostEvent((evt) => {
                 if (evt?.type === 'gameStart') {
-                    // Phase 1.4 plug-in point: guests will mirror seed/stage.
+                    // Phase 1.4: capture authoritative role + roster snapshot
+                    // sent by the host so guests render every peer.
+                    this.mpMode = true;
+                    this.mpRole = this.mp.isHost ? 'host' : 'guest';
+                    if (Array.isArray(evt.members)) {
+                        this._mpRoster = evt.members.slice();
+                    }
                     this.ui.hideMultiplayer();
                     this.audio.unlock();
                     this.start();
                 }
+            });
+            // Phase 1.4: guest-side state mirror. Each tick is the host's
+            // authoritative view; we copy it into local fields so the HUD
+            // and render path keep working unchanged.
+            this.mp.onHostTick((state) => this._applyHostTick(state));
+            // Phase 1.4: host-side input sink. Stores the latest move vector
+            // per guest sid; applied during `_updateRemotePlayers`.
+            this.mp.onGuestInput((input) => {
+                if (!input || !input.sid) return;
+                this.guestInputs.set(input.sid, {
+                    vx: clampUnit(input.vx),
+                    vy: clampUnit(input.vy)
+                });
             });
             // iter-27: live lobby list — render whenever the namespace
             // pushes an updated rooms snapshot.
@@ -658,7 +724,19 @@ export class Game {
             selfSid: this.mp.sid,
             onStart: () => {
                 if (!this.mp.isHost) return;
-                this.mp.sendHostEvent({ type: 'gameStart', roomId: snap.roomId });
+                // Phase 1.4: ship the roster + chosen stage with gameStart
+                // so guests can pre-create RemotePlayer entries and we all
+                // render the same backdrop. Stage is host-authoritative.
+                const members = Array.isArray(snap.members) ? snap.members : this._mpRoster;
+                this.mp.sendHostEvent({
+                    type: 'gameStart',
+                    roomId: snap.roomId,
+                    members,
+                    stageId: this.save?.settings?.stage || null
+                });
+                this.mpMode = true;
+                this.mpRole = 'host';
+                this._mpRoster = Array.isArray(members) ? members.slice() : [];
                 this.ui.hideMultiplayer();
                 this.audio.unlock();
                 this.start();
@@ -667,6 +745,11 @@ export class Game {
                 this.mp.leaveRoom();
                 this.mp.disconnect();
                 this.ui.hideMultiplayer();
+                this.mpMode = false;
+                this.mpRole = null;
+                this.remotePlayers.clear();
+                this.guestInputs.clear();
+                this._mpState = null;
                 this.ui.showStart();
             }
         });
@@ -711,6 +794,14 @@ export class Game {
         this._nextSplitIdx = 0;
         // iter-16 bug-bash: clear stale pause-anchor from any prior paused run.
         this._pauseStartedAt = 0;
+        // Phase 1.4: reset coop-side bookkeeping so a fresh run starts clean
+        // even if the previous coop session left stale entries.
+        this.remotePlayers.clear();
+        this.guestInputs.clear();
+        this._mpHostTickAccum = 0;
+        this._mpGuestInputAccum = 0;
+        this._mpLastSentInput = { vx: 0, vy: 0 };
+        this._mpState = null;
 
         // Re-derive the stage snapshot at run start. Daily mode pins the
         // stage from the challenge spec; otherwise we honour the saved
@@ -747,6 +838,31 @@ export class Game {
             (CONFIG.ARENA_HEIGHT ?? CONFIG.CANVAS_HEIGHT) / 2
         );
         this.player.weapons.push(new Weapon(WEAPONS.WHIP));
+
+        // Phase 1.4: in coop mode, seed a RemotePlayer for every other
+        // member of the room. The host runs their movement/HP from
+        // received inputs; guests overwrite this map every host:tick so
+        // the seed here is just a pre-render placeholder.
+        if (this.mpMode && Array.isArray(this._mpRoster) && this._mpRoster.length) {
+            const cx = (CONFIG.ARENA_WIDTH ?? CONFIG.CANVAS_WIDTH) / 2;
+            const cy = (CONFIG.ARENA_HEIGHT ?? CONFIG.CANVAS_HEIGHT) / 2;
+            const selfSid = this.mp?.sid;
+            let slot = 0;
+            for (const m of this._mpRoster) {
+                if (!m?.sid || m.sid === selfSid) continue;
+                const angle = (slot / Math.max(1, this._mpRoster.length - 1)) * Math.PI * 2;
+                const rp = new RemotePlayer({
+                    sid: m.sid,
+                    nickname: m.nickname || 'Player',
+                    color: PEER_COLORS[(slot + 1) % PEER_COLORS.length],
+                    x: cx + Math.cos(angle) * 60,
+                    y: cy + Math.sin(angle) * 60
+                });
+                this.remotePlayers.set(m.sid, rp);
+                slot++;
+            }
+        }
+
         // Snap camera to player at run start so the first frame doesn't show
         // a one-tick lerp from (0,0).
         this._updateCamera();
@@ -1257,6 +1373,28 @@ export class Game {
     }
 
     update(dt) {
+        // Phase 1.4: guests run a thin update — capture local input, push it
+        // to the host, and let `_applyHostTick` drive everything else.
+        if (this.mpMode && this.mpRole === 'guest') {
+            const v = this.input.getMoveVector();
+            this._lastMoveVec = { x: v.x, y: v.y };
+            this._maybeSendGuestInput(dt, v);
+            // Refresh the camera off the puppet `this.player` (its position
+            // gets copied from `host:tick` in `_applyHostTick`).
+            this.camera.update(dt, this.save.settings.screenShake);
+            this._updateCamera();
+            // HUD still reflects the mirrored player fields for parity with
+            // single-player.
+            this.ui.updateHud(this);
+            // If the host marked us dead in the latest tick, transition to
+            // game over once. Phase 1.5 swaps this for a global game-over
+            // event broadcast by the host so all guests end the run together.
+            if (this.player?.dead && this.state === GameState.PLAYING) {
+                this.gameOver();
+            }
+            return;
+        }
+
         this.gameTime += dt;
 
         const { hpMult, dmgMult, diff } = this._computeDifficultyMults();
@@ -1317,6 +1455,11 @@ export class Game {
         // Spatial hash rebuild BEFORE anyone queries it.
         this.spatial.insertAll(this.enemies);
 
+        // Phase 1.4: tick remote players from buffered guest inputs before
+        // enemy collision so movement+collision stays in the same frame.
+        if (this.mpMode && this.mpRole === 'host') {
+            this._updateRemotePlayers(dt);
+        }
         this._updateEnemies(dt, hpMult, dmgMult);
         this._updateProjectiles(dt);
         this._updateEnemyProjectiles(dt);
@@ -1326,6 +1469,15 @@ export class Game {
         this._updateParticlesAndText(dt);
 
         this._spawnLogic(dt, hpMult, dmgMult, diff.spawnMult);
+
+        // Phase 1.4: throttled state broadcast to all guests at ~30 Hz.
+        if (this.mpMode && this.mpRole === 'host') {
+            this._mpHostTickAccum += dt;
+            if (this._mpHostTickAccum >= this._mpHostTickInterval) {
+                this._mpHostTickAccum = 0;
+                this._sendHostTick();
+            }
+        }
 
         // Speedrun splits: push once per threshold as gameTime crosses them.
         if (this.speedrunMode) {
@@ -1437,6 +1589,27 @@ export class Game {
                     this.player.y - 30,
                     '#ff3333'
                 );
+            }
+
+            // Phase 1.4: remote players take damage on contact too. We don't
+            // route through Player.takeDamage (no shake/haptics for peers)
+            // so the host UX isn't muddied by peer hits.
+            if (this.mpMode && this.mpRole === 'host') {
+                for (const rp of this.remotePlayers.values()) {
+                    if (rp.dead) continue;
+                    const rdx = e.x - rp.x;
+                    const rdy = e.y - rp.y;
+                    const rd = Math.hypot(rdx, rdy);
+                    if (rd < e.size + rp.size && !rp.invincible) {
+                        rp.takeDamage(e.damage);
+                        this.createFloatingText(
+                            Math.round(e.damage),
+                            rp.x,
+                            rp.y - 30,
+                            '#ff8866'
+                        );
+                    }
+                }
             }
 
             if (e.hp <= 0) {
@@ -1637,6 +1810,155 @@ export class Game {
         Promise.resolve().then(() => {
             el.textContent = msg;
         });
+    }
+
+    // ---------- Phase 1.4: host-authoritative coop sync ------------------
+    /** Host: drive each RemotePlayer with its latest buffered guest input. */
+    _updateRemotePlayers(dt) {
+        for (const rp of this.remotePlayers.values()) {
+            const inp = this.guestInputs.get(rp.sid);
+            if (inp) {
+                rp.vx = inp.vx;
+                rp.vy = inp.vy;
+            }
+            rp.tick(dt, this);
+        }
+    }
+
+    /**
+     * Host: build the canonical state snapshot and broadcast it. Payload is
+     * intentionally compact (short keys, only the fields renderers need) so
+     * the wire stays light at 30 Hz × 4 peers.
+     */
+    _sendHostTick() {
+        if (!this.mp || !this.player) return;
+        const players = [];
+        // Host's own avatar (sid = host's socket id).
+        players.push({
+            sid: this.mp.sid,
+            x: this.player.x,
+            y: this.player.y,
+            hp: this.player.hp,
+            mhp: this.player.maxHp,
+            lvl: this.player.level,
+            inv: !!this.player.invincible,
+            dead: !!this.player.dead
+        });
+        for (const rp of this.remotePlayers.values()) {
+            players.push({
+                sid: rp.sid,
+                x: rp.x,
+                y: rp.y,
+                hp: rp.hp,
+                mhp: rp.maxHp,
+                lvl: rp.level,
+                inv: !!rp.invincible,
+                dead: !!rp.dead
+            });
+        }
+        const enemies = new Array(this.enemies.length);
+        for (let i = 0; i < this.enemies.length; i++) {
+            const e = this.enemies[i];
+            enemies[i] = {
+                id: e.id,
+                x: e.x,
+                y: e.y,
+                hp: e.hp,
+                mhp: e.maxHp,
+                sz: e.size,
+                b: e.boss ? 1 : 0
+            };
+        }
+        const orbs = new Array(this.expOrbs.length);
+        for (let i = 0; i < this.expOrbs.length; i++) {
+            const o = this.expOrbs[i];
+            orbs[i] = { x: o.x, y: o.y, sz: o.size };
+        }
+        this.mp.sendHostTick({
+            t: this.gameTime,
+            k: this.kills,
+            wave: this.currentWave?.label || '',
+            players,
+            enemies,
+            orbs
+        });
+    }
+
+    /**
+     * Guest: take a host snapshot and shape it into renderable form. We
+     * reuse `Enemy`/`ExpOrb` shapes loosely — the renderer just reads
+     * `x/y/size` etc, so plain objects with the same fields work.
+     */
+    _applyHostTick(state) {
+        if (!state) return;
+        this._mpState = state;
+        this.gameTime = state.t || 0;
+        this.kills = state.k || 0;
+        // UI reads .label, so wrap the host's flat label string accordingly.
+        if (typeof state.wave === 'string') {
+            this.currentWave = { label: state.wave };
+        }
+        // Mirror the local player off the host's authoritative state so HUD
+        // (HP bar, level badge) reflects what the host sees.
+        const selfSid = this.mp?.sid;
+        const me = state.players?.find?.((p) => p.sid === selfSid);
+        if (me && this.player) {
+            this.player.x = me.x;
+            this.player.y = me.y;
+            this.player.hp = me.hp;
+            this.player.maxHp = me.mhp;
+            this.player.level = me.lvl || 1;
+            this.player.invincible = !!me.inv;
+            this.player.dead = !!me.dead;
+        }
+        // Rebuild remotePlayers from the snapshot so newly joined peers
+        // appear automatically and dropped peers disappear.
+        const seen = new Set();
+        let slot = 0;
+        for (const p of state.players || []) {
+            if (!p.sid || p.sid === selfSid) continue;
+            seen.add(p.sid);
+            let rp = this.remotePlayers.get(p.sid);
+            if (!rp) {
+                rp = new RemotePlayer({
+                    sid: p.sid,
+                    nickname: p.sid,
+                    color: PEER_COLORS[(slot + 1) % PEER_COLORS.length],
+                    x: p.x,
+                    y: p.y
+                });
+                this.remotePlayers.set(p.sid, rp);
+            }
+            rp.x = p.x;
+            rp.y = p.y;
+            rp.hp = p.hp;
+            rp.maxHp = p.mhp;
+            rp.level = p.lvl || 1;
+            rp.invincible = !!p.inv;
+            rp.dead = !!p.dead;
+            slot++;
+        }
+        for (const sid of [...this.remotePlayers.keys()]) {
+            if (!seen.has(sid)) this.remotePlayers.delete(sid);
+        }
+    }
+
+    /**
+     * Guest: push our latest move vector to the host. Only emit when it
+     * changes meaningfully OR on a heartbeat (~30 Hz) so a held key still
+     * survives a packet loss.
+     */
+    _maybeSendGuestInput(dt, v) {
+        if (!this.mp || !this.mp.isGuest) return;
+        this._mpGuestInputAccum += dt;
+        const cx = clampUnit(v.x);
+        const cy = clampUnit(v.y);
+        const last = this._mpLastSentInput;
+        const changed = Math.abs(cx - last.vx) > 0.05 || Math.abs(cy - last.vy) > 0.05;
+        if (!changed && this._mpGuestInputAccum < this._mpHostTickInterval) return;
+        this._mpGuestInputAccum = 0;
+        this._mpLastSentInput = { vx: cx, vy: cy };
+        this.mp.sendGuestInput({ vx: cx, vy: cy });
     }
 
     _applyUpgrade(choice) {
@@ -1867,24 +2189,89 @@ export class Game {
 
         this._drawGrid();
 
-        for (const o of this.expOrbs) o.render(ctx);
-        for (const m of this.mines) m.render(ctx);
-        this._renderEnemies(ctx);
-        if (this.player) {
-            this.player.render(ctx);
-            // Orbit shards live on the weapon, so render per-weapon extras here.
-            for (const w of this.player.weapons) w.renderExtras?.(ctx);
+        if (this.mpMode && this.mpRole === 'guest') {
+            // Phase 1.4: render whatever the host most recently sent. We
+            // intentionally skip projectiles/particles/effects — those are
+            // tightly coupled to host-side weapons and not part of the
+            // 1.4 wire format. Phase 1.5 expands the snapshot.
+            this._renderGuestState(ctx);
+        } else {
+            for (const o of this.expOrbs) o.render(ctx);
+            for (const m of this.mines) m.render(ctx);
+            this._renderEnemies(ctx);
+            if (this.player) {
+                this.player.render(ctx);
+                // Orbit shards live on the weapon, so render per-weapon extras here.
+                for (const w of this.player.weapons) w.renderExtras?.(ctx);
+            }
+            // Phase 1.4: peers come right after the local avatar so they
+            // visually sit at the same depth.
+            if (this.mpMode && this.mpRole === 'host') {
+                for (const rp of this.remotePlayers.values()) rp.render(ctx);
+            }
+            for (const p of this.projectiles) p.render(ctx);
+            for (const ep of this.enemyProjectiles) ep.render(ctx);
+            for (const p of this.particles) p.render(ctx);
+            for (const t of this.floatingTexts) t.render(ctx);
         }
-        for (const p of this.projectiles) p.render(ctx);
-        for (const ep of this.enemyProjectiles) ep.render(ctx);
-        for (const p of this.particles) p.render(ctx);
-        for (const t of this.floatingTexts) t.render(ctx);
 
         ctx.restore();
 
         // 3) Screen-space effects (flash, pulses, vignette) on top — these
         //    render relative to the viewport, not the world.
         this.effects.render(ctx, CONFIG.CANVAS_WIDTH, CONFIG.CANVAS_HEIGHT);
+    }
+
+    /**
+     * Phase 1.4: render the host's most recently received state for guests.
+     * Plain orbs / coloured circles are used for entities that don't carry
+     * their full sprite metadata over the wire — Phase 1.5 promotes the
+     * snapshot to include enemy sprite keys so the visual matches the host.
+     */
+    _renderGuestState(ctx) {
+        const state = this._mpState;
+        if (!state) return;
+        // Exp orbs first (visual depth: ground)
+        for (const o of state.orbs || []) {
+            if (drawSprite(ctx, 'expOrb', o.x, o.y, { size: o.sz })) continue;
+            ctx.save();
+            const g = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, (o.sz || 6) * 2.2);
+            g.addColorStop(0, 'rgba(100,180,255,0.55)');
+            g.addColorStop(1, 'rgba(100,180,255,0)');
+            ctx.fillStyle = g;
+            ctx.beginPath();
+            ctx.arc(o.x, o.y, (o.sz || 6) * 2.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#7ab8ff';
+            ctx.beginPath();
+            ctx.arc(o.x, o.y, o.sz || 6, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+        // Enemies — try sprite by id, fall back to a coloured blob with HP.
+        for (const e of state.enemies || []) {
+            const drewSprite = drawSprite(ctx, `enemy:${e.id}`, e.x, e.y, { size: e.sz });
+            if (!drewSprite) {
+                ctx.save();
+                ctx.fillStyle = e.b ? '#ff3333' : '#aa3344';
+                ctx.beginPath();
+                ctx.arc(e.x, e.y, e.sz || 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+            // Cheap HP bar (small enemies only when damaged).
+            if (e.mhp && e.hp < e.mhp) {
+                const pct = Math.max(0, e.hp / e.mhp);
+                const w = 30;
+                ctx.fillStyle = '#222';
+                ctx.fillRect(e.x - w / 2, e.y - (e.sz || 12) - 10, w, 3);
+                ctx.fillStyle = pct > 0.5 ? '#44ff44' : pct > 0.25 ? '#ffaa33' : '#ff4444';
+                ctx.fillRect(e.x - w / 2, e.y - (e.sz || 12) - 10, w * pct, 3);
+            }
+        }
+        // Local player (mirrored from host) + every peer in the snapshot.
+        if (this.player) this.player.render(ctx);
+        for (const rp of this.remotePlayers.values()) rp.render(ctx);
     }
 
     /**

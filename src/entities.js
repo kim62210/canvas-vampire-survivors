@@ -235,11 +235,22 @@ export class Player {
             : 1;
 
         // Sprite path: registered image asset replaces the procedural body.
-        // Aura/garlic effects are still drawn on top regardless.
-        const drewSprite = drawSprite(ctx, 'player', this.x, this.y, {
-            size: this.size,
-            alpha: strobe
-        });
+        // iter-27: try the class-specific sprite first (e.g. `class:warrior`),
+        // fall back to the generic `player` key so solo runs and missing
+        // class registrations stay on the legacy art.
+        let drewSprite = false;
+        if (this.classId) {
+            drewSprite = drawSprite(ctx, `class:${this.classId}`, this.x, this.y, {
+                size: this.size,
+                alpha: strobe
+            });
+        }
+        if (!drewSprite) {
+            drewSprite = drawSprite(ctx, 'player', this.x, this.y, {
+                size: this.size,
+                alpha: strobe
+            });
+        }
 
         if (!drewSprite) {
             ctx.save();
@@ -390,12 +401,22 @@ export class RemotePlayer {
                 ? 0.4
                 : 1
             : 1;
-        // Try the registered player sprite with a tint hint via overlay,
-        // otherwise fall back to a coloured orb so each peer is distinct.
-        const drewSprite = drawSprite(ctx, 'player', this.x, this.y, {
-            size: this.size,
-            alpha: this.dead ? 0.3 : strobe
-        });
+        // iter-27: prefer the peer's class-specific sprite so warriors and
+        // mages aren't visually identical. Falls back to the generic
+        // `player` art when classId is unset (e.g. legacy snapshots).
+        let drewSprite = false;
+        if (this.classId) {
+            drewSprite = drawSprite(ctx, `class:${this.classId}`, this.x, this.y, {
+                size: this.size,
+                alpha: this.dead ? 0.3 : strobe
+            });
+        }
+        if (!drewSprite) {
+            drewSprite = drawSprite(ctx, 'player', this.x, this.y, {
+                size: this.size,
+                alpha: this.dead ? 0.3 : strobe
+            });
+        }
         if (drewSprite) {
             // Draw a coloured outline ring so each peer is visually distinct
             // even when all share the same player sprite.

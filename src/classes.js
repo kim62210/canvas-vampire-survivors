@@ -15,44 +15,53 @@
  *   - getClassById(id): falls back to the default if id is unknown
  */
 
-import { WEAPONS } from './data.js';
+import { PASSIVES, WEAPONS } from './data.js';
 
+// iter-27: starter passive bundles per class. Applied once in `start()` via
+// `player.addPassive(def)` so each archetype reads distinctly: a warrior
+// hits harder and resists more, a mage casts faster and wider, a rogue
+// flits around with extra movement speed, a priest regenerates while
+// expanding their garlic aura. Unknown ids are skipped silently.
 export const CLASSES = {
     warrior: {
         id: 'warrior',
         name: '워리어',
         emoji: '⚔️',
-        description: '튼튼한 체력. 채찍으로 근접 공격.',
+        description: '튼튼한 체력 + 갑옷. 채찍 근접.',
         starterWeapon: WEAPONS.WHIP,
         maxHpDelta: 30,
-        color: '#ffd166'
+        color: '#ffd166',
+        starterPassives: [PASSIVES.ARMOR, PASSIVES.MIGHT]
     },
     mage: {
         id: 'mage',
         name: '마법사',
         emoji: '🔮',
-        description: '마법봉으로 원거리 공격. 체력은 약함.',
+        description: '빠른 마법봉 연사 + 광역. 체력 약함.',
         starterWeapon: WEAPONS.MAGIC_WAND,
         maxHpDelta: -20,
-        color: '#06d6a0'
+        color: '#06d6a0',
+        starterPassives: [PASSIVES.COOLDOWN, PASSIVES.AREA]
     },
     rogue: {
         id: 'rogue',
         name: '도적',
         emoji: '🗡️',
-        description: '단검을 흩뿌려 사방을 공격.',
+        description: '단검 + 빠른 발놀림. 약함 → 회피로.',
         starterWeapon: WEAPONS.KNIFE,
         maxHpDelta: -10,
-        color: '#118ab2'
+        color: '#118ab2',
+        starterPassives: [PASSIVES.MOVESPEED, PASSIVES.MIGHT]
     },
     priest: {
         id: 'priest',
         name: '사제',
         emoji: '🌿',
-        description: '마늘 오라로 주변을 정화. 회복형.',
+        description: '마늘 오라 + 자가 회복. 광역 정화.',
         starterWeapon: WEAPONS.GARLIC,
         maxHpDelta: 10,
-        color: '#ef476f'
+        color: '#ef476f',
+        starterPassives: [PASSIVES.RECOVERY, PASSIVES.AREA]
     }
 };
 

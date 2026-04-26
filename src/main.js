@@ -968,8 +968,16 @@ export class Game {
             const baseHp = this.player.maxHp;
             this.player.maxHp = Math.max(20, baseHp + (localClassDef.maxHpDelta || 0));
             this.player.hp = this.player.maxHp;
+            // Used by Player.render to look up the class-specific sprite.
+            this.player.classId = localClassDef.id;
+            // Apply starter passive bundle so each archetype plays distinctly
+            // — warrior tanks, mage spams, rogue dashes, priest sustains.
+            for (const passDef of localClassDef.starterPassives || []) {
+                if (passDef) this.player.addPassive(passDef);
+            }
         } else {
             this.player.weapons.push(new Weapon(WEAPONS.WHIP));
+            this.player.classId = null;
         }
 
         // iter-27: in coop, decorate the local Player with the nickname so
@@ -1330,6 +1338,11 @@ export class Game {
     }
 
     togglePause() {
+        // iter-27: coop pause is host-authoritative. A guest pausing locally
+        // would just stop their own render loop while the host keeps
+        // simulating, leaving the guest desynced. Until host-broadcast pause
+        // is implemented (post-1.5), guests can't pause at all.
+        if (this.mpMode && this.mpRole === 'guest') return;
         if (this.state === GameState.PLAYING) {
             this.state = GameState.PAUSED;
             this.ui.showPause();
@@ -1507,6 +1520,13 @@ export class Game {
 
     _onVisibilityChange() {
         if (typeof document === 'undefined') return;
+        // iter-27: in coop, only the host can pause — guests stay running so
+        // they keep applying `host:tick` snapshots (and their RAF doesn't
+        // freeze when the user briefly tabs out on mobile). Without this
+        // guard, a backgrounded guest tab transitions to PAUSED, the next
+        // `_frame` returns early, and the RAF chain dies — host:tick
+        // listeners still fire but nothing renders.
+        if (this.mpMode && this.mpRole === 'guest') return;
         if (document.hidden) {
             if (this.state === GameState.PLAYING) {
                 this._hiddenPaused = true;
@@ -1528,7 +1548,13 @@ export class Game {
     }
 
     _frame(now) {
-        if (this.state !== GameState.PLAYING && this.state !== GameState.LEVEL_UP) return;
+        // iter-27: only fully stop when the run is over. PAUSED used to
+        // bail here too, which permanently broke the RAF chain — once the
+        // chain dies, `_scheduleFrame` is never called again, so a coop
+        // guest who briefly went hidden would lock up. Now we keep the
+        // RAF alive in every non-GAMEOVER state and just gate update +
+        // render based on the current state below.
+        if (this.state === GameState.GAMEOVER) return;
         // Clamp dt so that (a) a paused+resumed tab does not nuke the sim in
         // one step, and (b) frame-rate spikes don't create tunneling bugs.
         const dt = Math.min((now - this.lastTime) / 1000, CONFIG.DT_CLAMP);
@@ -1542,6 +1568,8 @@ export class Game {
         }
         // iter-20: pass the canvas viewport so EffectLayer can recycle
         // off-screen emoji rain drops without reaching back into the DOM.
+        // We still tick effects + render in PAUSED so the canvas keeps the
+        // last-known frame painted instead of going black.
         this.effects.update(dt, {
             w: this.canvas?.width || CONFIG.CANVAS_WIDTH,
             h: this.canvas?.height || CONFIG.CANVAS_HEIGHT
@@ -2210,6 +2238,9 @@ export class Game {
                 if (meta?.nickname && rp.nickname !== niceName) rp.nickname = niceName;
                 if (rp.color !== peerColor) rp.color = peerColor;
             }
+            // iter-27: keep classId in sync so the renderer picks the right
+            // class sprite even if the peer joined / picked after start().
+            if (classId && rp.classId !== classId) rp.classId = classId;
             rp.x = p.x;
             rp.y = p.y;
             rp.hp = p.hp;

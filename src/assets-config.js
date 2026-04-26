@@ -21,6 +21,14 @@ registerSprites({
     // --- Player ---------------------------------------------------------
     player: { src: 'assets/sprites/player.png', size: 18, smoothing: false },
 
+    // --- iter-27: per-class character sprites for coop. Each peer renders
+    //     with their chosen archetype. Falls through to `player` if a key
+    //     isn't matched, so adding a new class without a sprite is safe.
+    'class:warrior': { src: 'assets/sprites/knight.png', size: 18, smoothing: false },
+    'class:mage': { src: 'assets/sprites/player.png', size: 18, smoothing: false },
+    'class:rogue': { src: 'assets/sprites/illusionist.png', size: 18, smoothing: false },
+    'class:priest': { src: 'assets/sprites/mage.png', size: 18, smoothing: false },
+
     // --- Common enemies ------------------------------------------------
     'enemy:bat': { src: 'assets/sprites/bat.png', size: 14, smoothing: false },
     'enemy:zombie': { src: 'assets/sprites/zombie.png', size: 18, smoothing: false },

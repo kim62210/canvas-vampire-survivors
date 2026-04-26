@@ -71,8 +71,8 @@ test('stages: getWavesFor never mutates the original WAVES catalogue', () => {
     const b = getWavesFor('forest');
     assert.notEqual(a, b);
     // Forest pool shouldn't contain the appended mage from crypt.
-    const opening = b.find((w) => w.label === 'Opening');
-    assert.ok(opening, 'forest must still have Opening wave');
+    const opening = b.find((w) => w.label === '도입');
+    assert.ok(opening, 'forest must still have the opening wave');
     assert.ok(!opening.pool.includes('mage'), 'forest opening wave must remain mage-free');
 });
 

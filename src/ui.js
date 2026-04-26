@@ -66,6 +66,7 @@ export class UI {
             'streakScreen',
             'helpScreen',
             'howToPlayScreen',
+            'multiplayerScreen',
             'btnStageChip'
         ];
         for (const id of ids) this.els[id] = document.getElementById(id);
@@ -82,6 +83,7 @@ export class UI {
             'streakScreen',
             'helpScreen',
             'howToPlayScreen',
+            'multiplayerScreen',
             'settingsMenu'
         ]) {
             const el = this.els[id];
@@ -216,6 +218,125 @@ export class UI {
 
     hideStreak() {
         if (this.els.streakScreen) this.els.streakScreen.style.display = 'none';
+    }
+
+    // -----------------------------------------------------------------
+    // iter-27: multiplayer overlays. Two screens share the same host:
+    //   - lobby:  pick nickname + create/join room
+    //   - waiting: room snapshot + (host) start button + (guest) waiting note
+    // The `MultiplayerClient` is owned by Game; UI just renders state and
+    // invokes callbacks.
+    // -----------------------------------------------------------------
+
+    showMultiplayerLobby({ onCreate, onJoin, onClose, defaultNickname = '' }) {
+        const m = this.els.multiplayerScreen;
+        if (!m) return;
+        m.innerHTML = `
+            <div class="overlay-card mp-card" role="dialog" aria-modal="true">
+                <button class="overlay-close" aria-label="닫기" title="닫기">✕</button>
+                <h2>${t('mpMenuTitle')}</h2>
+                <label class="mp-field">
+                    <span>${t('mpNickname')}</span>
+                    <input id="mpNickname" type="text" maxlength="16" value="${escapeAttr(defaultNickname)}" placeholder="Player" />
+                </label>
+                <div class="btn-row vertical">
+                    <button id="mpHostBtn" class="btn primary">${t('mpHostRoom')}</button>
+                </div>
+                <div class="mp-divider">또는</div>
+                <label class="mp-field">
+                    <span>${t('mpRoomCode')}</span>
+                    <input id="mpRoomCode" type="text" maxlength="6" placeholder="ABCDE" autocapitalize="characters" />
+                </label>
+                <div class="btn-row vertical">
+                    <button id="mpJoinBtn" class="btn ghost">${t('mpJoinRoom')}</button>
+                </div>
+                <div class="mp-status" id="mpStatus" aria-live="polite"></div>
+            </div>`;
+        m.style.display = 'flex';
+        const status = m.querySelector('#mpStatus');
+        const setStatus = (text, isError) => {
+            if (!status) return;
+            status.textContent = text || '';
+            status.dataset.kind = isError ? 'error' : 'info';
+        };
+        const close = () => {
+            m.style.display = 'none';
+            onClose && onClose();
+        };
+        m.querySelector('.overlay-close')?.addEventListener('click', close);
+        m.addEventListener('click', (e) => {
+            if (e.target === m) close();
+        });
+        m.querySelector('#mpHostBtn')?.addEventListener('click', () => {
+            const nickname = m.querySelector('#mpNickname')?.value?.trim() || 'Player';
+            setStatus(t('mpConnecting'), false);
+            onCreate?.(nickname, setStatus);
+        });
+        m.querySelector('#mpJoinBtn')?.addEventListener('click', () => {
+            const nickname = m.querySelector('#mpNickname')?.value?.trim() || 'Player';
+            const code = m.querySelector('#mpRoomCode')?.value?.trim().toUpperCase() || '';
+            if (!code) {
+                setStatus(t('mpInvalidCode'), true);
+                return;
+            }
+            setStatus(t('mpConnecting'), false);
+            onJoin?.(code, nickname, setStatus);
+        });
+    }
+
+    showMultiplayerWaitingRoom(snap, { selfSid, onStart, onLeave }) {
+        const m = this.els.multiplayerScreen;
+        if (!m) return;
+        const isHost = snap.hostSid === selfSid;
+        const memberRows = (snap.members || [])
+            .map((mem) => {
+                const role = mem.isHost
+                    ? `<span class="mp-role host">${t('mpYouAreHost')}</span>`
+                    : '';
+                const me = mem.sid === selfSid ? ' (나)' : '';
+                return `<li class="mp-member">${escapeHtml(mem.nickname)}${me} ${role}</li>`;
+            })
+            .join('');
+        m.innerHTML = `
+            <div class="overlay-card mp-card" role="dialog" aria-modal="true">
+                <h2>${t('mpWaitingRoom')}</h2>
+                <div class="mp-room-code" aria-live="polite">
+                    ${t('mpRoomCode')}: <strong>${escapeHtml(snap.roomId)}</strong>
+                    <button id="mpCopyCode" class="btn ghost mp-copy">${t('mpCopyCode')}</button>
+                </div>
+                <div class="mp-members-label">${t('mpRoomMembers')} (${snap.members?.length || 0}/4)</div>
+                <ul class="mp-members" role="list">${memberRows}</ul>
+                <div class="btn-row vertical">
+                    ${
+                        isHost
+                            ? `<button id="mpStartBtn" class="btn primary">${t('mpStartGame')}</button>`
+                            : `<div class="mp-waiting-note">${t('mpWaitingForHost')}</div>`
+                    }
+                    <button id="mpLeaveBtn" class="btn ghost">${t('leaveRoom')}</button>
+                </div>
+            </div>`;
+        m.style.display = 'flex';
+        m.querySelector('#mpStartBtn')?.addEventListener('click', () => onStart?.());
+        m.querySelector('#mpLeaveBtn')?.addEventListener('click', () => onLeave?.());
+        m.querySelector('#mpCopyCode')?.addEventListener('click', () => {
+            try {
+                navigator.clipboard?.writeText(snap.roomId);
+                const btn = m.querySelector('#mpCopyCode');
+                if (btn) {
+                    const orig = btn.textContent;
+                    btn.textContent = t('copied');
+                    setTimeout(() => {
+                        btn.textContent = orig;
+                    }, 1500);
+                }
+            } catch (_e) {
+                /* noop */
+            }
+        });
+    }
+
+    hideMultiplayer() {
+        if (this.els.multiplayerScreen) this.els.multiplayerScreen.style.display = 'none';
     }
 
     /** Keyboard-shortcuts help overlay. Mirrors the H hotkey. */
@@ -1140,4 +1261,27 @@ function checkboxRow(key, value) {
 // Expose catalogue count for badges / tests.
 export function totalAchievements() {
     return ACHIEVEMENTS.length;
+}
+
+// iter-27: tiny escaping helpers used by the multiplayer overlay so a
+// hostile nickname or room id can never break out of an attribute or inject
+// markup.
+function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, (ch) => {
+        switch (ch) {
+            case '&':
+                return '&amp;';
+            case '<':
+                return '&lt;';
+            case '>':
+                return '&gt;';
+            case '"':
+                return '&quot;';
+            default:
+                return '&#39;';
+        }
+    });
+}
+function escapeAttr(s) {
+    return escapeHtml(s);
 }

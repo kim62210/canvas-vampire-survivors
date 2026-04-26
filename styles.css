@@ -589,6 +589,111 @@ canvas {
     }
 }
 
+/* iter-27: multiplayer overlays (lobby + waiting room). */
+.mp-card {
+    max-width: 420px;
+    text-align: left;
+    position: relative;
+}
+.mp-card h2 {
+    text-align: center;
+    margin-bottom: 12px;
+}
+.mp-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 12px 0;
+}
+.mp-field span {
+    font-size: 13px;
+    color: var(--muted);
+}
+.mp-field input {
+    padding: 10px 12px;
+    font-size: 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: rgba(0, 0, 0, 0.3);
+    color: var(--text);
+    font-family: inherit;
+}
+.mp-field input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+.mp-divider {
+    text-align: center;
+    color: var(--muted);
+    margin: 14px 0 6px;
+    font-size: 13px;
+}
+.mp-status {
+    margin-top: 12px;
+    min-height: 20px;
+    font-size: 14px;
+    text-align: center;
+    color: var(--muted);
+}
+.mp-status[data-kind='error'] {
+    color: var(--danger);
+}
+.mp-room-code {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 12px 0 8px;
+    font-size: 15px;
+    color: var(--muted);
+}
+.mp-room-code strong {
+    font-size: 24px;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+}
+.mp-copy {
+    padding: 6px 12px;
+    font-size: 12px;
+    min-height: auto;
+}
+.mp-members-label {
+    margin: 18px 0 8px;
+    color: var(--muted);
+    font-size: 14px;
+}
+.mp-members {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 16px;
+}
+.mp-member {
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    margin-bottom: 6px;
+    font-size: 15px;
+}
+.mp-role.host {
+    color: var(--accent);
+    font-weight: 700;
+    margin-left: 4px;
+    font-size: 12px;
+}
+.mp-waiting-note {
+    padding: 14px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+}
+.btn-row.vertical {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
 /* iter-14: PWA install prompt slot. */
 .pwa-install-prompt {
     position: fixed;

@@ -49,6 +49,7 @@ import {
 } from './storage.js';
 import { setLocale, t as _t, detectLocale } from './i18n.js';
 import { hasSprite, drawSprite } from './assets.js';
+import { MultiplayerClient } from './multiplayer.js';
 import {
     DEFAULT_STAGE_ID,
     getBackgroundFor,
@@ -225,6 +226,12 @@ export class Game {
         this.replayRecorder = null;
         this.replayPlayer = null;
         this.replayActive = false;
+        // iter-27: multiplayer client (lazy-connected when the player opens
+        // the multiplayer lobby). Owns the Socket.io room state; the host
+        // mirrors its game state to /survivor and guests render whatever
+        // arrives in `host:tick`.
+        this.mp = new MultiplayerClient();
+        this.mpMode = false; // toggled true when a multiplayer game is active
         // Per-frame snapshot of move vector for the recorder (kept on the
         // game so other systems can also peek at the most recent input).
         this._lastMoveVec = { x: 0, y: 0 };
@@ -549,6 +556,108 @@ export class Game {
             this.ui.showStart();
             cancelAnimationFrame(this.raf);
             this.audio.stopMusic();
+        });
+        q('btnMultiplayer')?.addEventListener('click', () => this.openMultiplayerLobby());
+    }
+
+    /**
+     * iter-27: open the multiplayer lobby (host / join). Lazy-connects the
+     * Socket.io client on first open and wires the standard event flow:
+     *   create/join → waiting room → host clicks Start → coop game
+     * The host-authoritative game loop is wired up in Phase 1.4.
+     */
+    openMultiplayerLobby() {
+        const defaultNickname =
+            this.save?.profile?.nickname || `Player${Math.floor(Math.random() * 100)}`;
+        const showLobby = () => {
+            this.ui.showMultiplayerLobby({
+                defaultNickname,
+                onCreate: async (nickname, setStatus) => {
+                    try {
+                        this.mp.connect();
+                        const resp = await this.mp.createRoom(nickname);
+                        this._enterMultiplayerWaitingRoom({
+                            roomId: resp.roomId,
+                            hostSid: resp.hostSid,
+                            members: [{ sid: resp.sid, nickname, isHost: true }]
+                        });
+                    } catch (e) {
+                        setStatus?.(_t('mpDisconnected'), true);
+                    }
+                },
+                onJoin: async (code, nickname, setStatus) => {
+                    try {
+                        this.mp.connect();
+                        const resp = await this.mp.joinRoom(code, nickname);
+                        if (!resp?.ok) {
+                            setStatus?.(
+                                resp?.error === 'NOT_FOUND'
+                                    ? _t('mpRoomNotFound')
+                                    : resp?.error === 'FULL'
+                                      ? _t('mpRoomFull')
+                                      : _t('mpDisconnected'),
+                                true
+                            );
+                            return;
+                        }
+                        // Snapshot will arrive via room:state — but render
+                        // a placeholder right away so the UI doesn't flicker.
+                        this._enterMultiplayerWaitingRoom({
+                            roomId: code,
+                            hostSid: resp.hostSid,
+                            members: [{ sid: resp.sid, nickname, isHost: false }]
+                        });
+                    } catch (_e) {
+                        setStatus?.(_t('mpDisconnected'), true);
+                    }
+                },
+                onClose: () => this.ui.hideMultiplayer()
+            });
+        };
+
+        // Wire room:state pushes once — they refresh the waiting room.
+        if (!this._mpListenersBound) {
+            this._mpListenersBound = true;
+            this.mp.onRoomState((snap) => this._enterMultiplayerWaitingRoom(snap));
+            this.mp.onRoomClosed(() => {
+                this.mp.disconnect();
+                this.ui.hideMultiplayer();
+                this._announce(_t('mpRoomClosed'));
+                this.ui.showStart();
+            });
+            this.mp.onHostEvent((evt) => {
+                if (evt?.type === 'gameStart') {
+                    // Phase 1.4 plug-in point: a guest receiving gameStart
+                    // would mirror the host's seed/stage/difficulty. For
+                    // now the guest just starts a local run so the lobby
+                    // flow can be exercised end-to-end.
+                    this.ui.hideMultiplayer();
+                    this.audio.unlock();
+                    this.start();
+                }
+            });
+        }
+
+        showLobby();
+    }
+
+    _enterMultiplayerWaitingRoom(snap) {
+        if (!snap || !snap.roomId) return;
+        this.ui.showMultiplayerWaitingRoom(snap, {
+            selfSid: this.mp.sid,
+            onStart: () => {
+                if (!this.mp.isHost) return;
+                this.mp.sendHostEvent({ type: 'gameStart', roomId: snap.roomId });
+                this.ui.hideMultiplayer();
+                this.audio.unlock();
+                this.start();
+            },
+            onLeave: () => {
+                this.mp.leaveRoom();
+                this.mp.disconnect();
+                this.ui.hideMultiplayer();
+                this.ui.showStart();
+            }
         });
     }
 

@@ -217,6 +217,9 @@
                         <button id="btnReplay" class="btn ghost" data-i18n="replayLastRun">
                             Replay Last Run
                         </button>
+                        <button id="btnMultiplayer" class="btn ghost" data-i18n="multiplayer">
+                            멀티플레이
+                        </button>
                     </div>
                     <div class="hotkey-hint keyboard-only" aria-hidden="true">
                         <span data-i18n="hotkeyHint"
@@ -233,6 +236,7 @@
             <div id="streakScreen" class="overlay" style="display: none"></div>
             <div id="helpScreen" class="overlay" style="display: none"></div>
             <div id="howToPlayScreen" class="overlay" style="display: none"></div>
+            <div id="multiplayerScreen" class="overlay" style="display: none"></div>
 
             <div
                 id="levelUpMenu"
@@ -308,6 +312,10 @@
 
             <div id="settingsMenu" class="overlay" style="display: none"></div>
         </div>
+
+        <!-- iter-27: Socket.io client for the Survivor multiplayer namespace.
+             Loaded from cherry-game-server which already exposes Socket.io. -->
+        <script src="/socket.io/socket.io.js" defer></script>
 
         <!-- iter-27: register the Kenney "Tiny Dungeon" CC0 sprite pack.
              Loaded *before* main.js so the registry is populated by the time

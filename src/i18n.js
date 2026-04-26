@@ -135,7 +135,28 @@ const STRINGS = {
         // iter-27: PWA install prompt strings (Korean only).
         pwaInstallText: '서바이버를 앱으로 설치하면 전체화면으로 즐길 수 있어요.',
         pwaInstall: '설치',
-        pwaNotNow: '나중에'
+        pwaNotNow: '나중에',
+        // iter-27: multiplayer (host-authoritative co-op).
+        multiplayer: '멀티플레이',
+        mpMenuTitle: '멀티플레이',
+        mpHostRoom: '방 만들기',
+        mpJoinRoom: '방 입장',
+        mpRoomCode: '방 코드',
+        mpNickname: '닉네임',
+        mpWaitingRoom: '대기실',
+        mpRoomMembers: '참가자',
+        mpStartGame: '게임 시작',
+        mpYouAreHost: '(호스트)',
+        mpYouAreGuest: '(게스트)',
+        mpWaitingForHost: '호스트가 시작할 때까지 기다려주세요',
+        mpRoomNotFound: '방을 찾을 수 없습니다',
+        mpRoomFull: '방이 가득 찼습니다 (최대 4명)',
+        mpRoomClosed: '호스트가 나가서 방이 닫혔습니다',
+        mpCopyCode: '코드 복사',
+        mpInvalidCode: '방 코드를 입력해주세요',
+        mpConnecting: '연결 중…',
+        mpDisconnected: '연결이 끊겼습니다',
+        leaveRoom: '방 나가기'
     }
 };
 

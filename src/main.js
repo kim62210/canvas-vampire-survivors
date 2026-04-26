@@ -26,6 +26,7 @@ import {
     findEnemyDef,
     registerWeaponClass
 } from './entities.js';
+import { CLASSES, CLASS_ORDER, DEFAULT_CLASS_ID, getClassById } from './classes.js';
 import { Weapon } from './weapons.js';
 import { AudioEngine } from './audio.js';
 import { InputManager } from './input.js';
@@ -267,6 +268,15 @@ export class Game {
         // Roster captured when the run starts so guest joins after that
         // moment do not affect our authoritative spawn list mid-run.
         this._mpRoster = [];
+        // Phase C: per-sid class selection. Host accumulates these from
+        // `guest:event {type:'class', id}` and includes them in the
+        // gameStart broadcast so every peer applies the same starter
+        // weapon, hp delta, and tint.
+        this._mpClassChoices = new Map();
+        // Local choice — what the player picked for themselves in the
+        // waiting room. Guests send this upstream; host uses it for
+        // their own `this.player` config.
+        this._mpLocalClassId = DEFAULT_CLASS_ID;
         // Per-frame snapshot of move vector for the recorder (kept on the
         // game so other systems can also peek at the most recent input).
         this._lastMoveVec = { x: 0, y: 0 };
@@ -713,9 +723,19 @@ export class Game {
                     if (Array.isArray(evt.members)) {
                         this._mpRoster = evt.members.slice();
                     }
+                    // Phase C: stash the host-authoritative class map so
+                    // start() can apply each player's class config.
+                    this._mpClassMap = evt.classes || {};
                     this.ui.hideMultiplayer();
                     this.audio.unlock();
                     this.start();
+                } else if (evt?.type === 'classPick') {
+                    // Host broadcasts class picks (its own + relayed guests')
+                    // so every peer's waiting-room UI stays in sync.
+                    if (evt.sid && evt.classId) {
+                        this._mpClassChoices.set(evt.sid, evt.classId);
+                        this._mpLobbyHandle?.refreshClassChoices?.(this._mpClassChoices);
+                    }
                 } else if (evt?.type === 'gameOver') {
                     // Phase 1.5: host says the run is over for everyone.
                     if (this.state === GameState.PLAYING && this.mpRole === 'guest') {
@@ -744,6 +764,22 @@ export class Game {
                     vy: clampUnit(input.vy)
                 });
             });
+            // Phase C: host re-broadcasts every guest:event {classPick} so
+            // every other peer's waiting-room UI updates live.
+            this.mp.onGuestEvent((evt) => {
+                if (!evt || !evt.sid) return;
+                if (evt.type === 'classPick' && evt.classId) {
+                    this._mpClassChoices.set(evt.sid, evt.classId);
+                    this._mpLobbyHandle?.refreshClassChoices?.(this._mpClassChoices);
+                    if (this.mp.isHost) {
+                        this.mp.sendHostEvent({
+                            type: 'classPick',
+                            sid: evt.sid,
+                            classId: evt.classId
+                        });
+                    }
+                }
+            });
             // iter-27: live lobby list — render whenever the namespace
             // pushes an updated rooms snapshot.
             this.mp.onRoomsList((rooms) => {
@@ -764,23 +800,42 @@ export class Game {
 
     _enterMultiplayerWaitingRoom(snap) {
         if (!snap || !snap.roomId) return;
-        this.ui.showMultiplayerWaitingRoom(snap, {
+        // Re-emit our local class choice so the host always has the latest
+        // picture (covers reconnect + waiting-room re-renders).
+        this._broadcastClassChoice(this._mpLocalClassId);
+        this._mpLobbyHandle = this.ui.showMultiplayerWaitingRoom(snap, {
             selfSid: this.mp.sid,
+            classes: CLASS_ORDER.map((id) => CLASSES[id]),
+            classChoices: this._mpClassChoices,
+            selectedClassId: this._mpLocalClassId,
+            onPickClass: (classId) => {
+                this._mpLocalClassId = classId;
+                this._mpClassChoices.set(this.mp.sid, classId);
+                this._broadcastClassChoice(classId);
+            },
             onStart: () => {
                 if (!this.mp.isHost) return;
                 // Phase 1.4: ship the roster + chosen stage with gameStart
                 // so guests can pre-create RemotePlayer entries and we all
                 // render the same backdrop. Stage is host-authoritative.
                 const members = Array.isArray(snap.members) ? snap.members : this._mpRoster;
+                // Phase C: include each member's chosen class so guests
+                // apply identical configs in their `start()` flow.
+                const classes = {};
+                for (const m of members || []) {
+                    classes[m.sid] = this._mpClassChoices.get(m.sid) || DEFAULT_CLASS_ID;
+                }
                 this.mp.sendHostEvent({
                     type: 'gameStart',
                     roomId: snap.roomId,
                     members,
-                    stageId: this.save?.settings?.stage || null
+                    stageId: this.save?.settings?.stage || null,
+                    classes
                 });
                 this.mpMode = true;
                 this.mpRole = 'host';
                 this._mpRoster = Array.isArray(members) ? members.slice() : [];
+                this._mpClassMap = classes;
                 this.ui.hideMultiplayer();
                 this.audio.unlock();
                 this.start();
@@ -794,9 +849,22 @@ export class Game {
                 this.remotePlayers.clear();
                 this.guestInputs.clear();
                 this._mpState = null;
+                this._mpClassChoices.clear();
                 this.ui.showStart();
             }
         });
+    }
+
+    /** Emit the local class pick so other peers (and the host) can mirror it. */
+    _broadcastClassChoice(classId) {
+        if (!this.mp || !this.mp.connected) return;
+        if (this.mp.isHost) {
+            // Host sends a host:event so all guests see the host's pick too.
+            this.mp.sendHostEvent({ type: 'classPick', sid: this.mp.sid, classId });
+        } else {
+            // Guests forward via guest:event; the host re-broadcasts to peers.
+            this.mp.sendGuestEvent({ type: 'classPick', classId });
+        }
     }
 
     _resize() {
@@ -881,7 +949,37 @@ export class Game {
             (CONFIG.ARENA_WIDTH ?? CONFIG.CANVAS_WIDTH) / 2,
             (CONFIG.ARENA_HEIGHT ?? CONFIG.CANVAS_HEIGHT) / 2
         );
-        this.player.weapons.push(new Weapon(WEAPONS.WHIP));
+
+        // Phase C: in coop, the chosen class swaps the starter weapon and
+        // applies the HP delta. Outside coop we stay on the legacy WHIP.
+        let localClassDef = null;
+        if (this.mpMode) {
+            const selfSid = this.mp?.sid;
+            const localClassId =
+                this._mpClassMap?.[selfSid] || this._mpLocalClassId || DEFAULT_CLASS_ID;
+            localClassDef = getClassById(localClassId);
+            this.player.weapons.push(new Weapon(localClassDef.starterWeapon));
+            const baseHp = this.player.maxHp;
+            this.player.maxHp = Math.max(20, baseHp + (localClassDef.maxHpDelta || 0));
+            this.player.hp = this.player.maxHp;
+        } else {
+            this.player.weapons.push(new Weapon(WEAPONS.WHIP));
+        }
+
+        // iter-27: in coop, decorate the local Player with the nickname so
+        // it renders the same name label peers see for it. Solo runs leave
+        // both fields undefined and the render path skips the overlay.
+        if (this.mpMode) {
+            const selfSid = this.mp?.sid;
+            const meta = this._mpRoster?.find?.((m) => m?.sid === selfSid);
+            this.player.nickname = meta?.nickname || this.mp?.nickname || 'Player';
+            // Class colour wins over the slot palette so each archetype
+            // is recognisable at a glance.
+            this.player.nameColor = localClassDef?.color || PEER_COLORS[0];
+        } else {
+            this.player.nickname = null;
+            this.player.nameColor = null;
+        }
 
         // Phase 1.4: in coop mode, seed a RemotePlayer for every other
         // member of the room. The host runs their movement/HP from
@@ -895,13 +993,20 @@ export class Game {
             for (const m of this._mpRoster) {
                 if (!m?.sid || m.sid === selfSid) continue;
                 const angle = (slot / Math.max(1, this._mpRoster.length - 1)) * Math.PI * 2;
+                // Phase C: pull this peer's class colour + hp delta so the
+                // initial render frame matches what the host will broadcast.
+                const peerClassId = this._mpClassMap?.[m.sid] || DEFAULT_CLASS_ID;
+                const peerClassDef = getClassById(peerClassId);
                 const rp = new RemotePlayer({
                     sid: m.sid,
                     nickname: m.nickname || 'Player',
-                    color: PEER_COLORS[(slot + 1) % PEER_COLORS.length],
+                    color: peerClassDef.color,
                     x: cx + Math.cos(angle) * 60,
                     y: cy + Math.sin(angle) * 60
                 });
+                rp.maxHp = Math.max(20, 100 + (peerClassDef.maxHpDelta || 0));
+                rp.hp = rp.maxHp;
+                rp.classId = peerClassId;
                 this.remotePlayers.set(m.sid, rp);
                 slot++;
             }
@@ -1455,12 +1560,10 @@ export class Game {
             // HUD still reflects the mirrored player fields for parity with
             // single-player.
             this.ui.updateHud(this);
-            // If the host marked us dead in the latest tick, transition to
-            // game over once. Phase 1.5 swaps this for a global game-over
-            // event broadcast by the host so all guests end the run together.
-            if (this.player?.dead && this.state === GameState.PLAYING) {
-                this.gameOver();
-            }
+            // Phase B: dying alone no longer ends the run — the host owns
+            // the gameOver decision and broadcasts a `host:event` once
+            // every coop player is down. Guests just stand by while
+            // teammates attempt a revive.
             return;
         }
 
@@ -1502,7 +1605,9 @@ export class Game {
         }
 
         this.player.update(dt, this);
-        if (this.player.dead) {
+        // Solo path: dead → game over. Coop path: only end if every
+        // participant is down (revives can pull the host back up).
+        if (this._isCoopGameOver()) {
             this.gameOver();
             return;
         }
@@ -1892,6 +1997,75 @@ export class Game {
             }
             rp.tick(dt, this);
         }
+        this._processRevives(dt);
+    }
+
+    /** Build a flat list of every coop participant (host + remotes). */
+    _allCoopPlayers() {
+        const list = [];
+        if (this.player) list.push(this.player);
+        for (const rp of this.remotePlayers.values()) list.push(rp);
+        return list;
+    }
+
+    /**
+     * iter-27 / Phase B: drive the coop revive gauge. For each downed
+     * player, accumulate `reviveTimer` while *any* live ally is within
+     * REVIVE_DISTANCE; if no ally is close, decay it back so an
+     * interrupted revive doesn't carry across kills. Crossing the
+     * threshold restores the player at REVIVE_HP_PCT of max HP and
+     * grants a brief I-frame window so they don't immediately re-die.
+     */
+    _processRevives(dt) {
+        const all = this._allCoopPlayers();
+        if (all.length < 2) return; // no peers => nobody can revive
+        const reviveDist = CONFIG.REVIVE_DISTANCE;
+        const reviveTime = CONFIG.REVIVE_TIME;
+        for (const p of all) {
+            if (!p.dead) continue;
+            let helper = null;
+            for (const q of all) {
+                if (q === p || q.dead) continue;
+                const dx = q.x - p.x;
+                const dy = q.y - p.y;
+                if (Math.hypot(dx, dy) <= reviveDist) {
+                    helper = q;
+                    break;
+                }
+            }
+            if (helper) {
+                p.reviveTimer = (p.reviveTimer || 0) + dt;
+                if (p.reviveTimer >= reviveTime) {
+                    p.dead = false;
+                    p.reviveTimer = 0;
+                    p.hp = Math.max(1, Math.floor(p.maxHp * CONFIG.REVIVE_HP_PCT));
+                    p.invincible = true;
+                    p.invincibleTimer = CONFIG.REVIVE_INVINCIBILITY;
+                    // Tiny floating note so the helper sees the revive land.
+                    this.createFloatingText(
+                        '↑',
+                        p.x,
+                        p.y - 36,
+                        '#7af0c2'
+                    );
+                }
+            } else if (p.reviveTimer > 0) {
+                // Decay slowly when nobody is helping so a long-distance
+                // ally can still finish a near-complete revive.
+                p.reviveTimer = Math.max(0, p.reviveTimer - dt * 0.5);
+            }
+        }
+    }
+
+    /**
+     * Solo: gameOver as soon as the host player dies.
+     * Coop: gameOver only when *every* participant is down.
+     */
+    _isCoopGameOver() {
+        if (!this.mpMode) return !!this.player?.dead;
+        const all = this._allCoopPlayers();
+        if (all.length === 0) return false;
+        return all.every((p) => p.dead);
     }
 
     /**
@@ -1911,7 +2085,9 @@ export class Game {
             mhp: this.player.maxHp,
             lvl: this.player.level,
             inv: !!this.player.invincible,
-            dead: !!this.player.dead
+            dead: !!this.player.dead,
+            // Phase B: ship revive progress so guests render the ally gauge.
+            rt: this.player.reviveTimer || 0
         });
         for (const rp of this.remotePlayers.values()) {
             players.push({
@@ -1922,7 +2098,8 @@ export class Game {
                 mhp: rp.maxHp,
                 lvl: rp.level,
                 inv: !!rp.invincible,
-                dead: !!rp.dead
+                dead: !!rp.dead,
+                rt: rp.reviveTimer || 0
             });
         }
         const enemies = new Array(this.enemies.length);
@@ -1943,13 +2120,29 @@ export class Game {
             const o = this.expOrbs[i];
             orbs[i] = { x: o.x, y: o.y, sz: o.size };
         }
+        // Phase A: include the player projectiles + enemy projectiles so
+        // guests see attacks landing. We send only the visible-render fields
+        // (id for sprite key, x/y, size) — gameplay is host-authoritative
+        // so the guest never simulates these.
+        const projectiles = new Array(this.projectiles.length);
+        for (let i = 0; i < this.projectiles.length; i++) {
+            const p = this.projectiles[i];
+            projectiles[i] = { id: p.id || p.def?.id, x: p.x, y: p.y, sz: p.size, a: p.angle };
+        }
+        const enemyProjectiles = new Array(this.enemyProjectiles.length);
+        for (let i = 0; i < this.enemyProjectiles.length; i++) {
+            const ep = this.enemyProjectiles[i];
+            enemyProjectiles[i] = { x: ep.x, y: ep.y, sz: ep.size };
+        }
         this.mp.sendHostTick({
             t: this.gameTime,
             k: this.kills,
             wave: this.currentWave?.label || '',
             players,
             enemies,
-            orbs
+            orbs,
+            proj: projectiles,
+            ep: enemyProjectiles
         });
     }
 
@@ -1979,6 +2172,7 @@ export class Game {
             this.player.level = me.lvl || 1;
             this.player.invincible = !!me.inv;
             this.player.dead = !!me.dead;
+            this.player.reviveTimer = me.rt || 0;
         }
         // Rebuild remotePlayers from the snapshot so newly joined peers
         // appear automatically and dropped peers disappear.
@@ -1992,17 +2186,23 @@ export class Game {
             // gameStart so peer labels show real names rather than sid hex.
             const meta = this._mpRoster?.find?.((m) => m?.sid === p.sid);
             const niceName = meta?.nickname || `Player`;
+            // Phase C: prefer the class colour over the slot palette so a
+            // glance at the avatar tells you who's playing what archetype.
+            const classId = this._mpClassMap?.[p.sid];
+            const classDef = classId ? getClassById(classId) : null;
+            const peerColor = classDef?.color || PEER_COLORS[(slot + 1) % PEER_COLORS.length];
             if (!rp) {
                 rp = new RemotePlayer({
                     sid: p.sid,
                     nickname: niceName,
-                    color: PEER_COLORS[(slot + 1) % PEER_COLORS.length],
+                    color: peerColor,
                     x: p.x,
                     y: p.y
                 });
                 this.remotePlayers.set(p.sid, rp);
-            } else if (meta?.nickname && rp.nickname !== niceName) {
-                rp.nickname = niceName;
+            } else {
+                if (meta?.nickname && rp.nickname !== niceName) rp.nickname = niceName;
+                if (rp.color !== peerColor) rp.color = peerColor;
             }
             rp.x = p.x;
             rp.y = p.y;
@@ -2011,6 +2211,7 @@ export class Game {
             rp.level = p.lvl || 1;
             rp.invincible = !!p.inv;
             rp.dead = !!p.dead;
+            rp.reviveTimer = p.rt || 0;
             slot++;
         }
         for (const sid of [...this.remotePlayers.keys()]) {
@@ -2347,6 +2548,42 @@ export class Game {
         // Local player (mirrored from host) + every peer in the snapshot.
         if (this.player) this.player.render(ctx);
         for (const rp of this.remotePlayers.values()) rp.render(ctx);
+        // Phase A: player projectiles — sprite-by-id when available, otherwise
+        // a coloured blob so the attack at least registers visually.
+        for (const p of state.proj || []) {
+            const drewSprite = p.id
+                ? drawSprite(ctx, `projectile:${p.id}`, p.x, p.y, {
+                      size: p.sz || 8,
+                      rotate: typeof p.a === 'number' ? p.a : false
+                  })
+                : false;
+            if (!drewSprite) {
+                ctx.save();
+                ctx.fillStyle = '#ffe082';
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.sz || 8, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+        // Phase A: enemy projectiles — tinted pink dot like host renders.
+        for (const ep of state.ep || []) {
+            const drewSprite = drawSprite(ctx, 'enemyProjectile', ep.x, ep.y, {
+                size: ep.sz || 6
+            });
+            if (!drewSprite) {
+                ctx.save();
+                ctx.fillStyle = '#ff44aa';
+                ctx.beginPath();
+                ctx.arc(ep.x, ep.y, ep.sz || 6, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                ctx.beginPath();
+                ctx.arc(ep.x, ep.y, (ep.sz || 6) * 0.45, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
     }
 
     /**

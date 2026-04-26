@@ -351,28 +351,58 @@ export class UI {
         });
     }
 
-    showMultiplayerWaitingRoom(snap, { selfSid, onStart, onLeave }) {
+    showMultiplayerWaitingRoom(
+        snap,
+        { selfSid, onStart, onLeave, classes = [], classChoices, selectedClassId, onPickClass }
+    ) {
         const m = this.els.multiplayerScreen;
         if (!m) return;
         const isHost = snap.hostSid === selfSid;
-        const memberRows = (snap.members || [])
-            .map((mem) => {
-                const role = mem.isHost
-                    ? `<span class="mp-role host">${t('mpYouAreHost')}</span>`
-                    : '';
-                const me = mem.sid === selfSid ? ' (나)' : '';
-                return `<li class="mp-member">${escapeHtml(mem.nickname)}${me} ${role}</li>`;
-            })
-            .join('');
+        const renderMemberRows = (members, choices) =>
+            (members || [])
+                .map((mem) => {
+                    const role = mem.isHost
+                        ? `<span class="mp-role host">${t('mpYouAreHost')}</span>`
+                        : '';
+                    const me = mem.sid === selfSid ? ' (나)' : '';
+                    const cls = choices?.get?.(mem.sid);
+                    const def = cls ? classes.find((c) => c.id === cls) : null;
+                    const classBadge = def
+                        ? `<span class="mp-class-badge">${def.emoji} ${escapeHtml(def.name)}</span>`
+                        : `<span class="mp-class-badge muted">${t('mpClassPickPending')}</span>`;
+                    return `<li class="mp-member">${escapeHtml(mem.nickname)}${me} ${classBadge} ${role}</li>`;
+                })
+                .join('');
+
+        const renderClassPicker = (chosenId) =>
+            classes
+                .map((c) => {
+                    const sel = c.id === chosenId ? ' selected' : '';
+                    return `<button type="button" class="mp-class-card${sel}" data-class="${escapeAttr(c.id)}">
+                        <span class="mp-class-emoji">${c.emoji}</span>
+                        <span class="mp-class-name">${escapeHtml(c.name)}</span>
+                        <span class="mp-class-desc">${escapeHtml(c.description)}</span>
+                    </button>`;
+                })
+                .join('');
+
         m.innerHTML = `
-            <div class="overlay-card mp-card" role="dialog" aria-modal="true">
+            <div class="overlay-card mp-card mp-card-wide" role="dialog" aria-modal="true">
                 <h2>${t('mpWaitingRoom')}</h2>
                 <div class="mp-room-code" aria-live="polite">
                     ${t('mpRoomCode')}: <strong>${escapeHtml(snap.roomId)}</strong>
                     <button id="mpCopyCode" class="btn ghost mp-copy">${t('mpCopyCode')}</button>
                 </div>
                 <div class="mp-members-label">${t('mpRoomMembers')} (${snap.members?.length || 0}/4)</div>
-                <ul class="mp-members" role="list">${memberRows}</ul>
+                <ul id="mpMembersList" class="mp-members" role="list">${renderMemberRows(snap.members, classChoices)}</ul>
+                ${
+                    classes.length
+                        ? `<div class="mp-class-section">
+                            <div class="mp-class-label">${t('mpPickClass')}</div>
+                            <div id="mpClassGrid" class="mp-class-grid">${renderClassPicker(selectedClassId)}</div>
+                        </div>`
+                        : ''
+                }
                 <div class="btn-row vertical">
                     ${
                         isHost
@@ -400,6 +430,24 @@ export class UI {
                 /* noop */
             }
         });
+        // Class picker click — update local selection visual + fire callback.
+        m.querySelectorAll('.mp-class-card').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const id = btn.getAttribute('data-class');
+                m.querySelectorAll('.mp-class-card').forEach((b) =>
+                    b.classList.toggle('selected', b === btn)
+                );
+                onPickClass?.(id);
+            });
+        });
+        // Returned handle lets the caller refresh peer-side class badges
+        // when a `classPick` event arrives without re-rendering the grid.
+        return {
+            refreshClassChoices: (choices) => {
+                const list = m.querySelector('#mpMembersList');
+                if (list) list.innerHTML = renderMemberRows(snap.members, choices);
+            }
+        };
     }
 
     hideMultiplayer() {

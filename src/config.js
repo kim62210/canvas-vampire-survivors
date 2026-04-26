@@ -26,6 +26,14 @@ export const CONFIG = {
     ARENA_HEIGHT: 1600,
     PLAYER_SPEED: 240, // px / second (was 4 px/frame => 240 @ 60fps)
     PLAYER_SIZE: 20,
+    // iter-27: coop revive — dead players come back when an ally stays inside
+    // REVIVE_DISTANCE for REVIVE_TIME seconds, restoring REVIVE_HP_PCT of their
+    // max HP and granting a brief invincibility window so a fresh swarm can't
+    // re-kill them on the same frame.
+    REVIVE_DISTANCE: 80,
+    REVIVE_TIME: 3.0,
+    REVIVE_HP_PCT: 0.5,
+    REVIVE_INVINCIBILITY: 1.5,
     MAX_ENEMIES: 300,
     SPAWN_RADIUS: 900,
     DESPAWN_RADIUS: 1200,

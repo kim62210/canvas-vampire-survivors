@@ -162,7 +162,10 @@ const STRINGS = {
         leaveRoom: '방 나가기',
         // iter-27: 자동 방 목록과 함께 직접 코드로 입장하는 보조 경로의 라벨.
         mpJoinByCodeOr: '또는 방 코드로 직접 참가',
-        mpRoomCodePlaceholder: '예: ABC12'
+        mpRoomCodePlaceholder: '예: ABC12',
+        // iter-27 / Phase C: 직업 선택 UI.
+        mpPickClass: '직업 선택',
+        mpClassPickPending: '직업 선택 중…'
     }
 };
 

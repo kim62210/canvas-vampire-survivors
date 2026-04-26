@@ -808,6 +808,74 @@ canvas {
     flex: 0 0 auto;
 }
 
+/* iter-27 / Phase C: class picker grid in the waiting room. */
+.mp-card-wide {
+    max-width: 520px;
+}
+.mp-class-section {
+    margin-top: 12px;
+}
+.mp-class-label {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+.mp-class-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+.mp-class-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: inherit;
+    cursor: pointer;
+    text-align: left;
+    transition:
+        background 0.15s,
+        border-color 0.15s,
+        transform 0.1s;
+}
+.mp-class-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+.mp-class-card.selected {
+    border-color: var(--accent);
+    background: rgba(123, 191, 255, 0.12);
+    transform: translateY(-1px);
+}
+.mp-class-emoji {
+    font-size: 22px;
+    line-height: 1;
+}
+.mp-class-name {
+    font-weight: 700;
+    font-size: 14px;
+}
+.mp-class-desc {
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.4;
+}
+.mp-class-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    font-size: 12px;
+}
+.mp-class-badge.muted {
+    color: var(--muted);
+}
+
 /* iter-14: PWA install prompt slot. */
 .pwa-install-prompt {
     position: fixed;

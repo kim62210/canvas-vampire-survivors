@@ -36,9 +36,21 @@ export class Player {
         this.invincibleTimer = 0;
         this.dead = false;
         this.unhitTimer = 0; // seconds since last damage taken
+        // iter-27: coop revive — gauge fills while an ally stays close.
+        this.reviveTimer = 0;
     }
 
     update(dt, game) {
+        // iter-27: knocked-out players freeze in place until an ally revives
+        // them. Skip movement, weapons, regen — but keep i-frame timer ticking
+        // so a freshly revived player can't be re-killed on the same frame.
+        if (this.dead) {
+            if (this.invincible) {
+                this.invincibleTimer -= dt;
+                if (this.invincibleTimer <= 0) this.invincible = false;
+            }
+            return;
+        }
         // Movement ---------------------------------------------------------
         const v = game.input.getMoveVector();
         // iter-14: stage modifier (e.g. tundra applies 0.9 here for icy
@@ -273,6 +285,35 @@ export class Player {
             ctx.stroke();
             ctx.restore();
         }
+
+        // iter-27: own nickname overlay during coop. Set externally by main.js
+        // when a multiplayer run starts so we don't pay for it in solo runs.
+        if (this.nickname) {
+            const labelY = this.y - this.size - 14;
+            ctx.save();
+            ctx.font = '12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillStyle = 'rgba(0,0,0,0.65)';
+            ctx.fillText(this.nickname, this.x + 1, labelY + 1);
+            ctx.fillStyle = this.nameColor || '#7ad7ff';
+            ctx.fillText(this.nickname, this.x, labelY);
+            // iter-27 / Phase B: knocked-out indicator + revive gauge below.
+            if (this.dead) {
+                ctx.fillStyle = 'rgba(255,80,80,0.9)';
+                ctx.fillText('💀', this.x, labelY - 14);
+                if (this.reviveTimer > 0) {
+                    const w = 36;
+                    const yBar = this.y + this.size + 6;
+                    const pct = Math.min(1, this.reviveTimer / CONFIG.REVIVE_TIME);
+                    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                    ctx.fillRect(this.x - w / 2, yBar, w, 4);
+                    ctx.fillStyle = '#7af0c2';
+                    ctx.fillRect(this.x - w / 2, yBar, w * pct, 4);
+                }
+            }
+            ctx.restore();
+        }
     }
 }
 
@@ -309,6 +350,7 @@ export class RemotePlayer {
         this.invincible = false;
         this.invincibleTimer = 0;
         this.dead = false;
+        this.reviveTimer = 0;
     }
 
     /** Apply current input vector with player speed; clamp to arena. */
@@ -406,6 +448,17 @@ export class RemotePlayer {
         if (this.dead) {
             ctx.fillStyle = 'rgba(255,80,80,0.9)';
             ctx.fillText('💀', this.x, labelY - 14);
+            // iter-27: revive gauge while an ally stays close. Drawn under
+            // the avatar so it doesn't fight with the nickname label above.
+            if (this.reviveTimer > 0) {
+                const w = 36;
+                const yBar = this.y + this.size + 6;
+                const pct = Math.min(1, this.reviveTimer / CONFIG.REVIVE_TIME);
+                ctx.fillStyle = 'rgba(0,0,0,0.6)';
+                ctx.fillRect(this.x - w / 2, yBar, w, 4);
+                ctx.fillStyle = '#7af0c2';
+                ctx.fillRect(this.x - w / 2, yBar, w * pct, 4);
+            }
         }
         ctx.restore();
     }
@@ -1043,6 +1096,10 @@ export class ExpOrb {
             return;
         }
         const p = game.player;
+        // iter-27 / Phase B: a downed player can't collect XP. The orb
+        // just hovers in place until they're revived (or the lifetime
+        // timer above culls it).
+        if (!p || p.dead) return;
         const dx = p.x - this.x;
         const dy = p.y - this.y;
         const d = Math.hypot(dx, dy);

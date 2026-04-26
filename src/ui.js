@@ -14,7 +14,7 @@
 
 import { ACHIEVEMENTS, PASSIVES, WEAPONS } from './data.js';
 import { CONFIG } from './config.js';
-import { t, setLocale, availableLocales } from './i18n.js';
+import { t, setLocale } from './i18n.js';
 import { getStage, listStages } from './stages.js';
 import { buildShareText, dailyStreakSummary, loadDailyHistory } from './daily.js';
 import {
@@ -757,7 +757,6 @@ export class UI {
                 ${checkboxRow('damageNumbers', settings.damageNumbers !== false)}
                 ${checkboxRow('criticalFlash', settings.criticalFlash !== false)}
                 ${vibrationRow}
-                ${selectRow('locale', settings.locale, availableLocales())}
                 ${selectRow('touchButtonScale', String(settings.touchButtonScale ?? 1), ['0.8', '1', '1.2'])}
                 ${remapRow}
                 <div class="settings-buttons">

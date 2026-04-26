@@ -27,6 +27,7 @@ import {
     registerWeaponClass
 } from './entities.js';
 import { CLASSES, CLASS_ORDER, DEFAULT_CLASS_ID, getClassById } from './classes.js';
+import { ACTIVE_SKILLS, DEFAULT_SKILL_FOR_CLASS, getSkillById } from './skills.js';
 import { Weapon } from './weapons.js';
 import { AudioEngine } from './audio.js';
 import { InputManager } from './input.js';
@@ -466,7 +467,7 @@ export class Game {
         const special = document.getElementById('specialSkillBtn');
         if (special) {
             this.input.attachSpecialButton(special);
-            this.input.onTouchSpecial = () => this.togglePause();
+            this.input.onTouchSpecial = () => this.fireActiveSkill();
         }
         // iter-14: gamepad confirm/cancel/menu wiring. We map A→togglePause
         // and B→togglePause as well for now (overlay UIs read DOM keystrokes
@@ -805,6 +806,22 @@ export class Game {
                         this._applyUpgrade(choice, rp);
                     }
                     this._remoteLevelUpInflight?.delete?.(evt.sid);
+                } else if (evt.type === 'fireSkill' && this.mp.isHost) {
+                    // iter-27: guest pressed special. Validate cooldown
+                    // server-side (defense in depth) and run the effect.
+                    const rp = this.remotePlayers.get(evt.sid);
+                    if (
+                        rp &&
+                        rp.activeSkill &&
+                        (rp.activeSkillTimer || 0) >= rp.activeSkill.cooldown
+                    ) {
+                        rp.activeSkillTimer = 0;
+                        try {
+                            rp.activeSkill.fire(rp, this);
+                        } catch (_e) {
+                            /* swallow */
+                        }
+                    }
                 }
             });
             // iter-27: live lobby list — render whenever the namespace
@@ -1024,6 +1041,17 @@ export class Game {
             this.player.nameColor = null;
         }
 
+        // iter-27: assign an active skill — class-themed in coop, generic
+        // panic-heal otherwise. Cooldown timer counts up in update();
+        // pressing the special key fires when ready and resets the timer.
+        const activeSkillId =
+            (this.mpMode && localClassDef ? DEFAULT_SKILL_FOR_CLASS[localClassDef.id] : null) ||
+            'lifeline';
+        const activeSkillDef = getSkillById(activeSkillId);
+        this.player.activeSkill = activeSkillDef;
+        this.player.activeSkillTimer = 0; // seconds since last cast (fully ready when >= cooldown)
+        if (activeSkillDef) this.player.activeSkillTimer = activeSkillDef.cooldown;
+
         // Phase 1.4: in coop mode, seed a RemotePlayer for every other
         // member of the room. The host runs their movement/HP from
         // received inputs; guests overwrite this map every host:tick so
@@ -1059,6 +1087,12 @@ export class Game {
                     if (passDef) rp.addPassive(passDef);
                 }
                 rp.hp = rp.maxHp;
+                // iter-27: each peer also gets the class-default active skill.
+                const peerSkillDef = getSkillById(
+                    DEFAULT_SKILL_FOR_CLASS[peerClassId] || 'lifeline'
+                );
+                rp.activeSkill = peerSkillDef;
+                rp.activeSkillTimer = peerSkillDef ? peerSkillDef.cooldown : 0;
                 this.remotePlayers.set(m.sid, rp);
                 slot++;
             }
@@ -1692,6 +1726,13 @@ export class Game {
             this.gameOver();
             return;
         }
+        // Tick the local active-skill cooldown so the HUD ring fills.
+        if (this.player.activeSkill) {
+            this.player.activeSkillTimer = Math.min(
+                (this.player.activeSkillTimer || 0) + dt,
+                this.player.activeSkill.cooldown
+            );
+        }
         // iter-14: stage modifiers — cold tick (no-op on forest/crypt).
         this._applyColdTick(dt);
 
@@ -2178,8 +2219,43 @@ export class Game {
             // Phase B: full update — movement, weapons, regen — so the
             // host produces this peer's projectiles for the next host:tick.
             rp.update(dt, this);
+            // iter-27: tick the peer's active-skill cooldown so the guest's
+            // HUD ring (mirrored via host:tick) keeps filling.
+            if (rp.activeSkill) {
+                rp.activeSkillTimer = Math.min(
+                    (rp.activeSkillTimer || 0) + dt,
+                    rp.activeSkill.cooldown
+                );
+            }
         }
         this._processRevives(dt);
+    }
+
+    /**
+     * iter-27: trigger the local player's active skill. Solo / host fires
+     * directly; a guest forwards the request to the host via guest:event so
+     * the world change is applied authoritatively. Cooldown gating happens
+     * locally too — a guest who spams the button only sends events when
+     * their mirrored timer has filled, so the wire stays light.
+     */
+    fireActiveSkill() {
+        const skill = this.player?.activeSkill;
+        if (!skill) return;
+        if ((this.player.activeSkillTimer || 0) < skill.cooldown) return;
+        this.player.activeSkillTimer = 0;
+        if (this.mpMode && this.mpRole === 'guest') {
+            try {
+                this.mp.sendGuestEvent({ type: 'fireSkill' });
+            } catch (_e) {
+                /* ignore — the host:tick echo will resync the timer */
+            }
+            return;
+        }
+        try {
+            skill.fire(this.player, this);
+        } catch (_e) {
+            /* never crash gameplay because of a skill bug */
+        }
     }
 
     /** Build a flat list of every coop participant (host + remotes). */
@@ -2258,6 +2334,19 @@ export class Game {
     _sendHostTick() {
         if (!this.mp || !this.player) return;
         const players = [];
+        // Compact loadout summary so guests can rebuild their HUD chips
+        // (unique weapon at its highest level, stacked passive count).
+        const summarizeLoadout = (p) => ({
+            wp: p.weapons.map((w) => ({ id: w.id, lvl: w.level, ev: !!w.isEvolved?.() })),
+            ps: Object.fromEntries(
+                Object.entries(p.passives).map(([id, entry]) => [id, entry.count])
+            ),
+            // iter-27: ship the active skill id + cooldown progress so each
+            // guest mirrors their own ring (and any visible peer ring).
+            sk: p.activeSkill?.id || null,
+            skT: p.activeSkillTimer || 0,
+            skC: p.activeSkill?.cooldown || 0
+        });
         // Host's own avatar (sid = host's socket id).
         players.push({
             sid: this.mp.sid,
@@ -2273,7 +2362,8 @@ export class Game {
             inv: !!this.player.invincible,
             dead: !!this.player.dead,
             // Phase B: ship revive progress so guests render the ally gauge.
-            rt: this.player.reviveTimer || 0
+            rt: this.player.reviveTimer || 0,
+            ...summarizeLoadout(this.player)
         });
         for (const rp of this.remotePlayers.values()) {
             players.push({
@@ -2287,7 +2377,8 @@ export class Game {
                 xpn: rp.expToNext,
                 inv: !!rp.invincible,
                 dead: !!rp.dead,
-                rt: rp.reviveTimer || 0
+                rt: rp.reviveTimer || 0,
+                ...summarizeLoadout(rp)
             });
         }
         const enemies = new Array(this.enemies.length);
@@ -2365,6 +2456,38 @@ export class Game {
             this.player.invincible = !!me.inv;
             this.player.dead = !!me.dead;
             this.player.reviveTimer = me.rt || 0;
+            // iter-27: rebuild the local weapons/passives chip data from the
+            // host's authoritative loadout summary so the HUD reflects every
+            // upgrade applied server-side.
+            if (Array.isArray(me.wp)) {
+                this.player.weapons = me.wp
+                    .map(({ id, lvl, ev }) => {
+                        const def = Object.values(WEAPONS).find((w) => w.id === id);
+                        if (!def) return null;
+                        return {
+                            id,
+                            def,
+                            icon: def.icon,
+                            level: lvl || 1,
+                            isEvolved: () => !!ev
+                        };
+                    })
+                    .filter(Boolean);
+            }
+            if (me.ps && typeof me.ps === 'object') {
+                const next = {};
+                for (const [id, count] of Object.entries(me.ps)) {
+                    const def = Object.values(PASSIVES).find((p) => p.id === id);
+                    if (def) next[id] = { def, count };
+                }
+                this.player.passives = next;
+            }
+            // iter-27: mirror the active-skill id + cooldown progress so
+            // the guest's HUD ring stays accurate without a local timer.
+            if (me.sk && this.player.activeSkill?.id !== me.sk) {
+                this.player.activeSkill = getSkillById(me.sk);
+            }
+            if (typeof me.skT === 'number') this.player.activeSkillTimer = me.skT;
         }
         // Rebuild remotePlayers from the snapshot so newly joined peers
         // appear automatically and dropped peers disappear.

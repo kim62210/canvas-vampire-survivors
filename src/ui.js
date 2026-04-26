@@ -763,23 +763,61 @@ export class UI {
             this.els.waveLabel.textContent = `${t('wave')}: ${game.currentWave.label}`;
         }
 
-        // Weapon icons
-        this._renderChips(
-            this.els.weaponIcons,
-            p.weapons.map((w) => ({
-                icon: w.icon,
-                level: w.level,
-                max: CONFIG.WEAPON_MAX_LEVEL,
-                evolved: !!w.isEvolved?.()
-            }))
-        );
-        // Passive icons
-        const passives = [];
+        // Weapon icons — dedupe by id and keep the highest level so the
+        // chip row never shows the same weapon twice during stale UI ticks.
+        const weaponMap = new Map();
+        for (const w of p.weapons) {
+            const cur = weaponMap.get(w.id);
+            if (!cur || w.level > cur.level) {
+                weaponMap.set(w.id, {
+                    icon: w.icon,
+                    level: w.level,
+                    max: CONFIG.WEAPON_MAX_LEVEL,
+                    evolved: !!w.isEvolved?.()
+                });
+            }
+        }
+        this._renderChips(this.els.weaponIcons, [...weaponMap.values()]);
+        // Passive icons — dedupe by id, keep highest stack count.
+        const passiveMap = new Map();
         for (const id in p.passives) {
             const p2 = p.passives[id];
-            passives.push({ icon: p2.def.icon, level: p2.count, max: CONFIG.PASSIVE_MAX_STACK });
+            const cur = passiveMap.get(id);
+            if (!cur || p2.count > cur.level) {
+                passiveMap.set(id, {
+                    icon: p2.def.icon,
+                    level: p2.count,
+                    max: CONFIG.PASSIVE_MAX_STACK
+                });
+            }
         }
-        this._renderChips(this.els.passiveIcons, passives);
+        this._renderChips(this.els.passiveIcons, [...passiveMap.values()]);
+
+        // iter-27: active skill cooldown ring + icon.
+        if (this.els.specialSkillBtn || document.getElementById('specialSkillBtn')) {
+            const btn = this.els.specialSkillBtn || document.getElementById('specialSkillBtn');
+            const iconEl = document.getElementById('specialSkillIcon');
+            const cdEl = document.getElementById('specialSkillCd');
+            const skill = p.activeSkill;
+            if (!skill) {
+                btn.hidden = true;
+            } else {
+                btn.hidden = false;
+                if (iconEl && iconEl.textContent !== skill.icon) iconEl.textContent = skill.icon;
+                const t = p.activeSkillTimer || 0;
+                const cd = skill.cooldown || 1;
+                const ratio = Math.min(1, t / cd);
+                if (cdEl) {
+                    if (ratio >= 0.999) {
+                        cdEl.style.clipPath = 'inset(100% 0 0 0)';
+                    } else {
+                        const top = Math.round((1 - ratio) * 100);
+                        cdEl.style.clipPath = `inset(0 0 ${100 - top}% 0)`;
+                    }
+                }
+                btn.classList.toggle('ready', ratio >= 0.999);
+            }
+        }
     }
 
     _renderChips(container, items) {

@@ -576,10 +576,51 @@ canvas {
     transform: translate(-50%, -50%);
 }
 
-/* iter-27: special-skill button retired. It overlapped the top-right
-   pause button and never carried a real per-build skill, so the markup
-   stays for backwards compatibility but the styling forces it hidden. */
+/* iter-27: active-skill slot — bottom-right circle button. Cooldown is
+   shown as a darkening overlay (skill-cd) that shrinks as the timer fills.
+   Hidden when the player has no active skill assigned (e.g. menu state). */
 .special-skill-btn {
+    position: fixed;
+    right: 20px;
+    bottom: 110px;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 2px solid var(--accent);
+    background: rgba(20, 28, 48, 0.7);
+    color: #fff;
+    font-size: 26px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 30;
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
+    overflow: hidden;
+    -webkit-tap-highlight-color: transparent;
+}
+.special-skill-btn .skill-icon {
+    position: relative;
+    z-index: 2;
+    pointer-events: none;
+}
+.special-skill-btn .skill-cd {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    pointer-events: none;
+    z-index: 1;
+    transition: clip-path 0.05s linear;
+}
+.special-skill-btn.ready {
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(123, 191, 255, 0.6);
+}
+.special-skill-btn:not(.ready) {
+    border-color: rgba(255, 255, 255, 0.3);
+    cursor: not-allowed;
+}
+.special-skill-btn[hidden] {
     display: none !important;
 }
 

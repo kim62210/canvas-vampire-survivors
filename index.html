@@ -123,17 +123,16 @@
                 <div id="joystickKnob" class="joystick-knob"></div>
             </div>
 
-            <!-- iter-27: special-skill button retired. Hidden in CSS for
-                 backwards compatibility with code that still queries the id;
-                 the actual ⏸ pause control lives in the top-right HUD. -->
+            <!-- iter-27: revived as the active-skill slot. Tapping (mobile)
+                 or pressing Space / Q (desktop) fires the equipped skill if
+                 its cooldown ring is full. Updated by ui.updateHud each frame. -->
             <button
                 id="specialSkillBtn"
                 class="special-skill-btn"
-                aria-label="Special skill"
-                aria-hidden="true"
-                hidden
+                aria-label="Active skill"
             >
-                ✦
+                <span class="skill-icon" id="specialSkillIcon">✦</span>
+                <span class="skill-cd" id="specialSkillCd"></span>
             </button>
 
             <!-- iter-14: PWA install prompt. Shown once on first load on a browser

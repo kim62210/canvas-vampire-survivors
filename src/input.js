@@ -136,6 +136,12 @@ export class InputManager {
             } else if (this._matches('mute', key)) {
                 e.preventDefault();
                 this.onActionMute();
+            } else if (key === ' ' || key === 'q' || key === 'space' || key === 'spacebar') {
+                // iter-27: Space / Q fires the active skill (same callback
+                // as the mobile right-hand button). Prevent default so the
+                // page doesn't scroll on Space.
+                e.preventDefault();
+                this.onTouchSpecial();
             }
         };
         const ku = (e) => {

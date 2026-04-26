@@ -5,6 +5,11 @@
  * elsewhere (`weapons.js`, `entities.js`, `achievements.js`); this module is
  * intentionally side-effect free so it can be diffed during balancing.
  *
+ * iter-27: localised the player-facing `name`, `description`, `label` and
+ * `evolveName` strings into Korean. Numeric and behavioural fields (id, hp,
+ * damage, effect maps, check functions, …) are unchanged so balance stays
+ * identical to the upstream English build.
+ *
  * Dependencies: none.
  *
  * Exports:
@@ -25,9 +30,9 @@
 export const WEAPONS = {
     WHIP: {
         id: 'whip',
-        name: 'Whip',
+        name: '채찍',
         icon: '⚔️',
-        description: 'Lashes to both sides of the hero. Evolves: full circle sweep.',
+        description: '영웅 양옆을 후려친다. 진화: 360도 휘두르기.',
         baseDamage: 20,
         baseCooldown: 1.5,
         baseRange: 90,
@@ -35,13 +40,13 @@ export const WEAPONS = {
         piercing: false,
         type: 'melee',
         evolveLevel: 5,
-        evolveName: 'Bloody Sweep'
+        evolveName: '혈류 휘두르기'
     },
     MAGIC_WAND: {
         id: 'magic_wand',
-        name: 'Magic Wand',
+        name: '마법 지팡이',
         icon: '🔮',
-        description: 'Homing bolt that seeks the closest foe. Evolves: triple volley.',
+        description: '가장 가까운 적을 추적하는 유도탄. 진화: 3연발.',
         baseDamage: 15,
         baseCooldown: 1.2,
         baseRange: 320,
@@ -51,13 +56,13 @@ export const WEAPONS = {
         speed: 420,
         homing: true,
         evolveLevel: 5,
-        evolveName: 'Seeker Storm'
+        evolveName: '추적의 폭풍'
     },
     KNIFE: {
         id: 'knife',
-        name: 'Knife',
+        name: '단검',
         icon: '🗡️',
-        description: 'Piercing blade thrown forward. Evolves: wide 5-blade fan.',
+        description: '전방으로 던지는 관통 칼날. 진화: 5날 부채.',
         baseDamage: 12,
         baseCooldown: 0.4,
         baseRange: 420,
@@ -66,7 +71,7 @@ export const WEAPONS = {
         type: 'projectile',
         speed: 620,
         evolveLevel: 5,
-        evolveName: 'Blade Fan',
+        evolveName: '검 부채',
         // iter-14 evolution micro-tweak: the fan also gets a flat +10% crit
         // chance on top of the player's current critChance roll. Picked up
         // by Weapon._rollCrit when the weapon `isEvolved()`.
@@ -74,9 +79,9 @@ export const WEAPONS = {
     },
     ORBIT: {
         id: 'orbit',
-        name: 'Orbiter',
+        name: '회전 파편',
         icon: '💫',
-        description: 'Spinning shards circle the hero. Evolves: two rings spinning.',
+        description: '영웅 주위를 도는 파편. 진화: 두 개의 고리.',
         baseDamage: 16,
         baseCooldown: 0.4, // used as "tick" for damage re-hit window
         baseRange: 120, // orbit radius
@@ -84,15 +89,15 @@ export const WEAPONS = {
         piercing: true,
         type: 'orbit',
         evolveLevel: 5,
-        evolveName: 'Twin Halo',
+        evolveName: '쌍둥이 후광',
         // iter-14: evolved Twin Halo also boosts shard damage by +10%.
         evolveDamageMult: 1.1
     },
     LIGHTNING: {
         id: 'lightning',
-        name: 'Lightning',
+        name: '번개',
         icon: '⚡',
-        description: 'Smites a random foe. Lv3+ chains. Evolves: storm burst.',
+        description: '무작위 적을 강타. 3레벨 이상에서 연쇄. 진화: 폭풍 강타.',
         baseDamage: 35,
         baseCooldown: 3.0,
         baseRange: 420,
@@ -101,15 +106,15 @@ export const WEAPONS = {
         chain: true,
         chainCount: 3,
         evolveLevel: 5,
-        evolveName: 'Thunder Call',
+        evolveName: '천둥 부름',
         // iter-14: evolved Thunder Call rolls a +15% crit on the strikes.
         evolveBonusCrit: 0.15
     },
     MINE: {
         id: 'mine',
-        name: 'Area Mine',
+        name: '광역 지뢰',
         icon: '💣',
-        description: 'Drops a mine that arms and detonates. Evolves: double-stack.',
+        description: '지뢰를 놓고 폭발. 진화: 더블 스택.',
         baseDamage: 45,
         baseCooldown: 2.2,
         baseRange: 100, // explosion radius
@@ -118,13 +123,13 @@ export const WEAPONS = {
         type: 'mine',
         fuse: 1.2,
         evolveLevel: 5,
-        evolveName: 'Cluster Mine'
+        evolveName: '산탄 지뢰'
     },
     GARLIC: {
         id: 'garlic',
-        name: 'Garlic',
+        name: '마늘',
         icon: '🧄',
-        description: 'Damaging aura around the hero.',
+        description: '영웅 주변에 피해 오라.',
         baseDamage: 5,
         baseCooldown: 0.2,
         baseRange: 110,
@@ -135,9 +140,9 @@ export const WEAPONS = {
     // --- v2.4 additions ---------------------------------------------------
     FROST_NOVA: {
         id: 'frost_nova',
-        name: 'Frost Nova',
+        name: '서리 노바',
         icon: '❄️',
-        description: 'Expanding ring of ice slows foes caught in the burst. Evolves: twin-ring.',
+        description: '얼음 고리가 퍼지며 닿은 적을 둔화. 진화: 쌍 고리.',
         baseDamage: 28,
         baseCooldown: 3.2,
         baseRange: 200, // blast radius
@@ -147,13 +152,13 @@ export const WEAPONS = {
         slowPct: 0.5,
         slowDuration: 1.2,
         evolveLevel: 5,
-        evolveName: 'Glacial Cascade'
+        evolveName: '빙하 폭포'
     },
     SOUL_DRAIN: {
         id: 'soul_drain',
-        name: 'Soul Drain',
+        name: '영혼 흡수',
         icon: '🩸',
-        description: 'Beam that tethers the nearest foe and heals on tick. Evolves: dual-lash.',
+        description: '가장 가까운 적과 연결되어 매 틱마다 회복. 진화: 두 줄기.',
         baseDamage: 8,
         baseCooldown: 0.25, // tick rate
         baseRange: 260,
@@ -162,13 +167,13 @@ export const WEAPONS = {
         type: 'drain',
         lifestealPct: 0.25,
         evolveLevel: 5,
-        evolveName: 'Vampiric Chord'
+        evolveName: '흡혈의 줄'
     },
     BOOMERANG: {
         id: 'boomerang',
-        name: 'Boomerang',
+        name: '부메랑',
         icon: '🪃',
-        description: 'Flung forward, homes back to the hero. Evolves: twin arc.',
+        description: '전방으로 던져지고 영웅에게 돌아옴. 진화: 쌍둥이 호.',
         baseDamage: 18,
         baseCooldown: 1.1,
         baseRange: 340,
@@ -178,7 +183,7 @@ export const WEAPONS = {
         speed: 380,
         boomerang: true,
         evolveLevel: 5,
-        evolveName: 'Twin Arc',
+        evolveName: '쌍둥이 호',
         // iter-14: Twin Arc fires 5% faster than its base cooldown formula.
         evolveCooldownMult: 0.95
     },
@@ -189,9 +194,9 @@ export const WEAPONS = {
     // available as a starter once UNLOCKS.konami_code is earned.
     RETRO_BLASTER: {
         id: 'retro_blaster',
-        name: 'Retro Blaster',
+        name: '레트로 블래스터',
         icon: '👾',
-        description: '8-bit arcade beam. Pierces forward in a tight burst. Evolves: triple beam.',
+        description: '8비트 아케이드 빔. 좁은 발사로 전방을 관통. 진화: 3연 빔.',
         baseDamage: 14,
         baseCooldown: 0.5,
         baseRange: 480,
@@ -200,7 +205,7 @@ export const WEAPONS = {
         type: 'projectile',
         speed: 700,
         evolveLevel: 5,
-        evolveName: 'Pixel Storm'
+        evolveName: '픽셀 폭풍'
     }
 };
 
@@ -210,118 +215,105 @@ export const WEAPONS = {
 export const PASSIVES = {
     MAX_HP: {
         id: 'max_hp',
-        name: 'Vitality',
+        name: '활력',
         icon: '❤️',
-        description: 'Max HP +20%',
+        description: '최대 체력 +20%',
         effect: { maxHpMult: 0.2 }
     },
     RECOVERY: {
         id: 'recovery',
-        name: 'Recovery',
+        name: '회복',
         icon: '💚',
-        description: 'Regen +0.5 HP/s',
+        description: '체력 재생 +0.5/초',
         effect: { hpRegen: 0.5 }
     },
     ARMOR: {
         id: 'armor',
-        name: 'Armor',
+        name: '갑옷',
         icon: '🛡️',
-        description: 'Damage taken -1',
+        description: '받는 피해 -1',
         effect: { armor: 1 }
     },
     MOVESPEED: {
         id: 'movespeed',
-        name: 'Swiftness',
+        name: '신속',
         icon: '👟',
-        description: 'Move speed +10%',
+        description: '이동 속도 +10%',
         effect: { speedMult: 0.1 }
     },
     MIGHT: {
         id: 'might',
-        name: 'Might',
+        name: '위력',
         icon: '💪',
-        description: 'Damage +10%',
+        description: '피해 +10%',
         effect: { damageMult: 0.1 }
     },
     AREA: {
         id: 'area',
-        name: 'Area',
+        name: '범위',
         icon: '📏',
-        description: 'Weapon range +10%',
+        description: '무기 사거리 +10%',
         effect: { areaMult: 0.1 }
     },
     COOLDOWN: {
         id: 'cooldown',
-        name: 'Cooldown',
+        name: '재사용',
         icon: '⏱️',
-        description: 'Attack speed +8%',
+        description: '공격 속도 +8%',
         effect: { cooldownMult: -0.08 }
     },
     MAGNET: {
         id: 'magnet',
-        name: 'Magnet',
+        name: '자석',
         icon: '🧲',
-        description: 'Pickup range +25%',
+        description: '획득 거리 +25%',
         effect: { magnetMult: 0.25 }
     },
     GROWTH: {
         id: 'growth',
-        name: 'Growth',
+        name: '성장',
         icon: '📈',
-        description: 'XP gain +10%',
+        description: '경험치 획득 +10%',
         effect: { expMult: 0.1 }
     },
     LUCK: {
         id: 'luck',
-        name: 'Luck',
+        name: '행운',
         icon: '🍀',
-        description: 'Crit chance +5%',
+        description: '치명타 확률 +5%',
         effect: { critChance: 0.05 }
     },
     // --- iter-14 passives -------------------------------------------------
-    // The three new passives all hook into existing player stats so the level-
-    // up roller pool grows without any new code path. `dodgeChance` is summed
-    // (capped at 0.6 in entities.js) and consulted before damage is applied;
-    // `magnetMult` is reused for Pickup Magnet+ which stacks multiplicatively
-    // on the existing MAGNET passive; `damageReduction` is summed and clamped
-    // to a soft 0.6 cap on the consumer side so the player can't go fully
-    // immortal even with five stacks.
     DODGE: {
         id: 'dodge',
-        name: 'Evasion',
+        name: '회피',
         icon: '💨',
-        description: 'Dodge chance +5%',
+        description: '회피 확률 +5%',
         effect: { dodgeChance: 0.05 }
     },
     MAGNET_PLUS: {
         id: 'magnet_plus',
-        name: 'Pickup Magnet+',
+        name: '강화 자석',
         icon: '🧲',
-        description: 'Pickup range +35%',
+        description: '획득 거리 +35%',
         effect: { magnetMult: 0.35 }
     },
     DAMAGE_REDUCTION: {
         id: 'damage_reduction',
-        name: 'Bulwark',
+        name: '보루',
         icon: '🛡️',
-        description: 'Incoming damage -8%',
+        description: '받는 피해 -8%',
         effect: { damageReduction: 0.08 }
     }
 };
 
 // ---------------------------------------------------------------------------
 // Enemies
-// Five distinct archetypes + legacy types kept for backwards compat.
-// New archetype flags (all optional):
-//   ranged:     fires projectiles at the player
-//   splitter:   on death, spawns splitChildren × ENEMIES.splitInto
-//   dasher:     charges forward in short bursts
-//   shielded:   takes reduced damage until shield breaks
 // ---------------------------------------------------------------------------
 export const ENEMIES = {
     BAT: {
         id: 'bat',
-        name: 'Bat',
+        name: '박쥐',
         archetype: 'chaser',
         hp: 15,
         speed: 110,
@@ -332,7 +324,7 @@ export const ENEMIES = {
     },
     ZOMBIE: {
         id: 'zombie',
-        name: 'Zombie',
+        name: '좀비',
         archetype: 'chaser',
         hp: 30,
         speed: 70,
@@ -343,7 +335,7 @@ export const ENEMIES = {
     },
     SKELETON: {
         id: 'skeleton',
-        name: 'Skeleton',
+        name: '해골',
         archetype: 'chaser',
         hp: 25,
         speed: 95,
@@ -354,7 +346,7 @@ export const ENEMIES = {
     },
     WOLF: {
         id: 'wolf',
-        name: 'Dire Wolf',
+        name: '흉포한 늑대',
         archetype: 'dasher',
         dasher: true,
         dashSpeed: 320,
@@ -369,7 +361,7 @@ export const ENEMIES = {
     },
     GOLEM: {
         id: 'golem',
-        name: 'Golem',
+        name: '골렘',
         archetype: 'shielded',
         shielded: true,
         shieldHp: 60,
@@ -383,7 +375,7 @@ export const ENEMIES = {
     },
     GHOST: {
         id: 'ghost',
-        name: 'Ghost',
+        name: '유령',
         archetype: 'chaser',
         hp: 20,
         speed: 130,
@@ -393,10 +385,9 @@ export const ENEMIES = {
         size: 15,
         ghost: true
     },
-    // --- New archetypes --------------------------------------------------
     MAGE: {
         id: 'mage',
-        name: 'Cultist',
+        name: '광신도',
         archetype: 'ranged',
         ranged: true,
         firingRange: 360,
@@ -413,7 +404,7 @@ export const ENEMIES = {
     },
     SLIME: {
         id: 'slime',
-        name: 'Slime',
+        name: '슬라임',
         archetype: 'splitter',
         splitter: true,
         splitCount: 2,
@@ -426,7 +417,7 @@ export const ENEMIES = {
     },
     SLIMELING: {
         id: 'slimeling',
-        name: 'Slimeling',
+        name: '새끼 슬라임',
         archetype: 'chaser',
         hp: 18,
         speed: 105,
@@ -435,10 +426,10 @@ export const ENEMIES = {
         color: '#66ddaa',
         size: 10
     },
-    // --- v2.4 additions: bomber (self-destructs) + illusionist (clone) ---
+    // --- v2.4 additions: bomber + illusionist ---
     BOMBER: {
         id: 'bomber',
-        name: 'Bomber',
+        name: '폭탄병',
         archetype: 'bomber',
         bomber: true,
         fuseRange: 80, // begins countdown when within this distance
@@ -454,7 +445,7 @@ export const ENEMIES = {
     },
     ILLUSIONIST: {
         id: 'illusionist',
-        name: 'Illusionist',
+        name: '환영술사',
         archetype: 'illusionist',
         illusionist: true,
         cloneCooldown: 5.5,
@@ -478,7 +469,7 @@ ENEMIES.SLIME.splitInto = 'slimeling';
 export const BOSSES = {
     REAPER: {
         id: 'reaper',
-        name: 'The Reaper',
+        name: '수확자',
         hp: 2500,
         speed: 80,
         damage: 40,
@@ -491,7 +482,7 @@ export const BOSSES = {
     },
     VOID_LORD: {
         id: 'void_lord',
-        name: 'Void Lord',
+        name: '공허의 군주',
         hp: 6000,
         speed: 60,
         damage: 60,
@@ -502,10 +493,9 @@ export const BOSSES = {
         ability: 'charge',
         spawnAt: 600 // 10 minutes
     },
-    // --- v2.4 mid/late bosses --------------------------------------------
     NECROMANCER: {
         id: 'necromancer',
-        name: 'Necromancer',
+        name: '강령술사',
         hp: 4200,
         speed: 70,
         damage: 50,
@@ -518,7 +508,7 @@ export const BOSSES = {
     },
     CHRONO_LICH: {
         id: 'chrono_lich',
-        name: 'Chrono Lich',
+        name: '시간의 리치',
         hp: 10000,
         speed: 55,
         damage: 75,
@@ -529,14 +519,9 @@ export const BOSSES = {
         ability: 'charge',
         spawnAt: 720 // 12:00
     },
-    // --- iter-14 tundra final boss ---------------------------------------
-    // IceQueen is a frost-palette variant of the 10-minute boss. The tundra
-    // stage swaps her in for VoidLord via `bossOverrides`; on other stages she
-    // never auto-spawns. Listed here so the boss list, daily-mode replays and
-    // achievement registry can reference her by id without a special case.
     ICE_QUEEN: {
         id: 'ice_queen',
-        name: 'The Ice Queen',
+        name: '얼음 여왕',
         hp: 6200,
         speed: 55,
         damage: 60,
@@ -545,11 +530,6 @@ export const BOSSES = {
         size: 66,
         boss: true,
         ability: 'charge',
-        // Listed at 660 to keep the BOSSES timeline strictly ascending
-        // (Reaper 300 < Necro 450 < VoidLord 600 < IceQueen 660 < ChronoLich
-        // 720). Tundra's `bossOverrides` swaps her into VoidLord's 600 slot
-        // at runtime; this raw value is never read on tundra (the override
-        // path uses the source boss's spawnAt + offset).
         spawnAt: 660,
         iceQueen: true // visual flag, read by entities renderer for frost halo
     }
@@ -557,235 +537,223 @@ export const BOSSES = {
 
 // ---------------------------------------------------------------------------
 // Wave director: each entry is a window [from, to) (seconds) listing the pool
-// of enemies that may spawn, plus a spawn-rate multiplier. The director falls
-// back to the final entry once gameTime exceeds the last window.
+// of enemies that may spawn, plus a spawn-rate multiplier.
 // ---------------------------------------------------------------------------
 export const WAVES = [
-    { from: 0, to: 30, pool: ['bat', 'zombie'], spawnMult: 1.0, label: 'Opening' },
-    { from: 30, to: 60, pool: ['bat', 'zombie', 'skeleton'], spawnMult: 1.1, label: 'Wave 2' },
+    { from: 0, to: 30, pool: ['bat', 'zombie'], spawnMult: 1.0, label: '도입' },
+    { from: 30, to: 60, pool: ['bat', 'zombie', 'skeleton'], spawnMult: 1.1, label: '2 웨이브' },
     {
         from: 60,
         to: 90,
         pool: ['zombie', 'skeleton', 'mage'],
         spawnMult: 1.15,
-        label: 'Cultists'
+        label: '광신도'
     },
     {
         from: 90,
         to: 120,
         pool: ['skeleton', 'wolf', 'ghost', 'mage'],
         spawnMult: 1.2,
-        label: 'Pack'
+        label: '무리'
     },
     {
         from: 120,
         to: 180,
         pool: ['wolf', 'ghost', 'slime', 'mage', 'bomber'],
         spawnMult: 1.3,
-        label: 'Splitters'
+        label: '분열병'
     },
     {
         from: 180,
         to: 240,
         pool: ['wolf', 'golem', 'ghost', 'slime', 'bomber'],
         spawnMult: 1.4,
-        label: 'Vanguard'
+        label: '선봉'
     },
     {
         from: 240,
         to: 300,
         pool: ['golem', 'ghost', 'slime', 'mage', 'illusionist'],
         spawnMult: 1.5,
-        label: 'Pressure'
+        label: '압박'
     },
     {
         from: 300,
         to: 420,
         pool: ['wolf', 'golem', 'ghost', 'slime', 'mage', 'bomber', 'illusionist'],
         spawnMult: 1.6,
-        label: 'Post-Reaper'
+        label: '수확자 이후'
     },
     {
         from: 420,
         to: 600,
         pool: ['golem', 'slime', 'mage', 'ghost', 'wolf', 'illusionist'],
         spawnMult: 1.75,
-        label: 'Escalation'
+        label: '격화'
     },
     {
         from: 600,
         to: Infinity,
         pool: ['golem', 'slime', 'mage', 'ghost', 'wolf', 'skeleton', 'bomber', 'illusionist'],
         spawnMult: 2.0,
-        label: 'Endgame'
+        label: '종반'
     }
 ];
 
 // ---------------------------------------------------------------------------
-// Achievements: condition evaluated at end-of-run + continuously in-game.
-// `check(ctx)` returns true when unlocked. `ctx` = { game, run }
+// Achievements
 // ---------------------------------------------------------------------------
 export const ACHIEVEMENTS = [
     {
         id: 'first_blood',
-        name: 'First Blood',
+        name: '첫 처치',
         icon: '🗡️',
-        description: 'Defeat your first foe.',
+        description: '첫 적을 처치하세요.',
         check: (c) => c.game.kills >= 1
     },
     {
         id: 'slayer_100',
-        name: 'Centurion',
+        name: '백인장',
         icon: '🎯',
-        description: 'Defeat 100 foes in a single run.',
+        description: '한 판에서 100명 처치.',
         check: (c) => c.game.kills >= 100
     },
     {
         id: 'slayer_1000',
-        name: 'Legion Breaker',
+        name: '군단 격파',
         icon: '🏆',
-        description: 'Defeat 1000 foes in a single run.',
+        description: '한 판에서 1000명 처치.',
         check: (c) => c.game.kills >= 1000
     },
     {
         id: 'boss_slayer',
-        name: 'Reaper Down',
+        name: '수확자 격파',
         icon: '☠️',
-        description: 'Defeat the Reaper mid-boss.',
+        description: '수확자 중간 보스를 처치.',
         check: (c) => !!c.run.bossesDefeated?.reaper
     },
     {
         id: 'void_breaker',
-        name: 'Void Breaker',
+        name: '공허 파괴자',
         icon: '🌌',
-        description: 'Defeat the Void Lord.',
+        description: '공허의 군주를 처치.',
         check: (c) => !!c.run.bossesDefeated?.void_lord
     },
     {
         id: 'survive_5min',
-        name: 'Five-Minute Flame',
+        name: '5분 불꽃',
         icon: '⏱️',
-        description: 'Survive 5 minutes.',
+        description: '5분 생존.',
         check: (c) => c.game.gameTime >= 300
     },
     {
         id: 'survive_10min',
-        name: 'Ten-Minute Titan',
+        name: '10분 거인',
         icon: '🔥',
-        description: 'Survive 10 minutes.',
+        description: '10분 생존.',
         check: (c) => c.game.gameTime >= 600
     },
     {
         id: 'survive_15min',
-        name: 'Quarter Hour',
+        name: '사반의 시간',
         icon: '⌛',
-        description: 'Survive 15 minutes.',
+        description: '15분 생존.',
         check: (c) => c.game.gameTime >= 900
     },
     {
         id: 'weapon_max',
-        name: 'Mastery',
+        name: '숙련',
         icon: '🌟',
-        description: 'Reach max level on any weapon.',
+        description: '어떤 무기든 최대 레벨 도달.',
         check: (c) => !!c.run.maxedWeapon
     },
     {
         id: 'untouchable',
-        name: 'Untouchable',
+        name: '불가침',
         icon: '🛡️',
-        description: 'Avoid damage for 60 straight seconds.',
+        description: '60초 연속 무피격.',
         check: (c) => (c.run.longestUnhit || 0) >= 60
     },
     {
         id: 'xp_hoarder',
-        name: 'XP Hoarder',
+        name: '경험치 수집가',
         icon: '💎',
-        description: 'Collect 100 XP orbs in a run.',
+        description: '한 판에서 100개 경험치 구슬 수집.',
         check: (c) => (c.run.orbsCollected || 0) >= 100
     },
     {
         id: 'level_20',
-        name: 'High Roller',
+        name: '고렙 도전자',
         icon: '📈',
-        description: 'Reach hero level 20.',
+        description: '영웅 레벨 20 달성.',
         check: (c) => c.game.player?.level >= 20
     },
     // --- v2.4 additions ---------------------------------------------------
     {
         id: 'speed_demon',
-        name: 'Speed Demon',
+        name: '속도의 악마',
         icon: '💨',
-        description: 'Defeat the Void Lord in under 5 minutes of real time.',
+        description: '실시간 5분 이내에 공허의 군주 처치.',
         check: (c) =>
             !!c.run.bossesDefeated?.void_lord && (c.run.realSecondsToVoidLord || Infinity) < 300
     },
     {
         id: 'no_hit_boss',
-        name: 'Flawless Duel',
+        name: '완벽한 결투',
         icon: '🕊️',
-        description: 'Defeat any boss without taking damage during the fight.',
+        description: '보스전 중 무피격으로 보스 처치.',
         check: (c) => !!c.run.noHitBoss
     },
     {
         id: 'max_all',
-        name: 'Max All',
+        name: '모두 최대',
         icon: '👑',
-        description: 'Reach max level on every weapon slot in a single run.',
+        description: '한 판에서 모든 무기 슬롯 최대 레벨.',
         check: (c) => (c.run.maxedWeaponCount || 0) >= 6
     },
     {
         id: 'early_evolve',
-        name: 'Early Evolve',
+        name: '조기 진화',
         icon: '🔮',
-        description: 'Evolve a weapon before the 7-minute mark.',
+        description: '7분 전에 무기 진화.',
         check: (c) => !!c.run.evolvedBefore?.sevenMin
     },
     {
         id: 'triple_build',
-        name: 'Triple Threat',
+        name: '3연 위협',
         icon: '🎲',
-        description: 'Finish 3 distinct weapon-composition runs (lifetime).',
+        description: '누적 3개의 서로 다른 빌드 완주.',
         check: (c) => (c.game.save?.totals?.uniqueBuilds || 0) >= 3
     },
     {
         id: 'zen_5min',
-        name: 'Zen Walker',
+        name: '무위의 행자',
         icon: '🧘',
-        description: 'Survive 5 minutes without picking up a single passive.',
+        description: '패시브 없이 5분 생존.',
         check: (c) => c.game.gameTime >= 300 && (c.run.passivesPicked || 0) === 0
     },
     // --- iter-20: hidden / easter-egg achievements ------------------------
-    // These three are intentionally undocumented in the gallery's tooltip
-    // copy until they're earned (the UI reveals them once unlocked). Their
-    // `hidden: true` flag is read by ui.js to gate the description preview.
     {
         id: 'konami_code',
-        name: 'Konami Code',
+        name: '코나미 코드',
         icon: '🎮',
-        description: 'Found the legendary cheat. Unlocks the Retro Blaster.',
+        description: '전설의 치트 코드 발견. 레트로 블래스터를 해금합니다.',
         hidden: true,
         check: (c) => !!c.run.konamiCode
     },
     {
         id: 'speedrun_plus',
-        name: 'Speedrunner Plus',
+        name: '스피드런 플러스',
         icon: '⚡',
-        description:
-            'Cleared a major boss in under 5 minutes of real time. Unlocks a sprite trail.',
+        description: '실시간 5분 이내에 주요 보스 처치. 스프라이트 잔상을 해금합니다.',
         hidden: true,
-        // The tracker sets `run.fastBossClear` whenever any boss falls in
-        // under 300 wall-clock seconds. Reaper on the Crypt stage (4:00
-        // spawn) is the only viable path; on Forest it's intentionally
-        // unreachable without pause-abuse, which the speedrun anchor
-        // already filters out.
         check: (c) => !!c.run.fastBossClear
     },
     {
         id: 'pacifist_provoked',
-        name: 'Pacifist Provoked',
+        name: '평화주의자의 분노',
         icon: '🕊️',
-        description:
-            'Survived 60 seconds with zero kills — let the world do the work. Unlocks a special boss title.',
+        description: '60초 동안 0킬로 생존 — 세상이 알아서 일하게. 특별 보스 칭호를 해금합니다.',
         hidden: true,
         check: (c) => (c.run.pacifistTimer || 0) >= 60 && c.game.kills === 0
     }
@@ -804,10 +772,7 @@ export const UNLOCKS = {
     survive_15min: { weapon: 'boomerang' },
     void_breaker: { weapon: 'frost_nova' },
     speed_demon: { weapon: 'soul_drain' },
-    // iter-20: easter-egg unlocks. Konami grants a starter weapon, the
-    // other two unlock cosmetic flags consumed by the renderer / UI but
-    // are still surfaced as standard UNLOCKS entries so the achievement
-    // gallery can show their reward chip consistently.
+    // iter-20: easter-egg unlocks.
     konami_code: { weapon: 'retro_blaster' },
     speedrun_plus: { cosmetic: 'sprite_trail' },
     pacifist_provoked: { cosmetic: 'boss_title_pacifist' }

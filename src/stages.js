@@ -58,9 +58,9 @@ import { BOSSES, WAVES } from './data.js';
 export const STAGES = Object.freeze({
     FOREST: Object.freeze({
         id: 'forest',
-        name: 'Whisperwood',
+        name: '속삭이는 숲',
         icon: '🌲',
-        description: 'The default forest. Balanced enemy mix, bosses on schedule.',
+        description: '기본 숲 스테이지. 균형 잡힌 적 구성과 정해진 시간의 보스.',
         background: { fill: '#1a1a2e', gridAlpha: 0.04 },
         musicStyle: 'forest',
         poolOverrides: {},
@@ -69,9 +69,9 @@ export const STAGES = Object.freeze({
     }),
     CRYPT: Object.freeze({
         id: 'crypt',
-        name: 'Sunken Crypt',
+        name: '가라앉은 무덤',
         icon: '🪦',
-        description: 'Darker. More ranged casters. The Reaper rushes you at 4:00.',
+        description: '어둡고 원거리 캐스터가 많음. 수확자가 4:00에 등장.',
         background: { fill: '#0c0816', gridAlpha: 0.025 },
         musicStyle: 'crypt',
         // Bias spawns: more mages and illusionists, fewer melee chasers.
@@ -115,9 +115,9 @@ export const STAGES = Object.freeze({
     // ----------------------------------------------------------------------
     TUNDRA: Object.freeze({
         id: 'tundra',
-        name: 'Frozen Tundra',
+        name: '얼어붙은 툰드라',
         icon: '❄️',
-        description: 'Slippery snow (-10% speed), tougher beasts (+20% HP), creeping cold.',
+        description: '미끄러운 눈(-10% 속도), 강해진 적(+20% 체력), 스며드는 추위.',
         background: { fill: '#2a3a4f', gridAlpha: 0.05 },
         musicStyle: 'forest',
         poolOverrides: {

@@ -569,53 +569,54 @@ export class Game {
     openMultiplayerLobby() {
         const defaultNickname =
             this.save?.profile?.nickname || `Player${Math.floor(Math.random() * 100)}`;
-        const showLobby = () => {
-            this.ui.showMultiplayerLobby({
-                defaultNickname,
-                onCreate: async (nickname, setStatus) => {
-                    try {
-                        this.mp.connect();
-                        const resp = await this.mp.createRoom(nickname);
-                        this._enterMultiplayerWaitingRoom({
-                            roomId: resp.roomId,
-                            hostSid: resp.hostSid,
-                            members: [{ sid: resp.sid, nickname, isHost: true }]
-                        });
-                    } catch (e) {
-                        setStatus?.(_t('mpDisconnected'), true);
-                    }
-                },
-                onJoin: async (code, nickname, setStatus) => {
-                    try {
-                        this.mp.connect();
-                        const resp = await this.mp.joinRoom(code, nickname);
-                        if (!resp?.ok) {
-                            setStatus?.(
-                                resp?.error === 'NOT_FOUND'
-                                    ? _t('mpRoomNotFound')
-                                    : resp?.error === 'FULL'
-                                      ? _t('mpRoomFull')
-                                      : _t('mpDisconnected'),
-                                true
-                            );
-                            return;
-                        }
-                        // Snapshot will arrive via room:state — but render
-                        // a placeholder right away so the UI doesn't flicker.
-                        this._enterMultiplayerWaitingRoom({
-                            roomId: code,
-                            hostSid: resp.hostSid,
-                            members: [{ sid: resp.sid, nickname, isHost: false }]
-                        });
-                    } catch (_e) {
-                        setStatus?.(_t('mpDisconnected'), true);
-                    }
-                },
-                onClose: () => this.ui.hideMultiplayer()
-            });
+
+        const onCreate = async (nickname, setStatus) => {
+            try {
+                this.mp.connect();
+                const resp = await this.mp.createRoom(nickname);
+                this._enterMultiplayerWaitingRoom({
+                    roomId: resp.roomId,
+                    hostSid: resp.hostSid,
+                    members: [{ sid: resp.sid, nickname, isHost: true }]
+                });
+            } catch (_e) {
+                setStatus?.(_t('mpDisconnected'), true);
+            }
+        };
+        const onJoin = async (roomId, nickname, setStatus) => {
+            try {
+                this.mp.connect();
+                const resp = await this.mp.joinRoom(roomId, nickname);
+                if (!resp?.ok) {
+                    setStatus?.(
+                        resp?.error === 'NOT_FOUND'
+                            ? _t('mpRoomNotFound')
+                            : resp?.error === 'FULL'
+                              ? _t('mpRoomFull')
+                              : _t('mpDisconnected'),
+                        true
+                    );
+                    return;
+                }
+                this._enterMultiplayerWaitingRoom({
+                    roomId,
+                    hostSid: resp.hostSid,
+                    members: [{ sid: resp.sid, nickname, isHost: false }]
+                });
+            } catch (_e) {
+                setStatus?.(_t('mpDisconnected'), true);
+            }
         };
 
-        // Wire room:state pushes once — they refresh the waiting room.
+        const lobbyHandle = this.ui.showMultiplayerLobby({
+            defaultNickname,
+            onCreate,
+            onJoin,
+            onClose: () => this.ui.hideMultiplayer()
+        });
+        this._mpLobbyHandle = lobbyHandle;
+
+        // Wire socket-side listeners only once per Game lifetime.
         if (!this._mpListenersBound) {
             this._mpListenersBound = true;
             this.mp.onRoomState((snap) => this._enterMultiplayerWaitingRoom(snap));
@@ -627,18 +628,28 @@ export class Game {
             });
             this.mp.onHostEvent((evt) => {
                 if (evt?.type === 'gameStart') {
-                    // Phase 1.4 plug-in point: a guest receiving gameStart
-                    // would mirror the host's seed/stage/difficulty. For
-                    // now the guest just starts a local run so the lobby
-                    // flow can be exercised end-to-end.
+                    // Phase 1.4 plug-in point: guests will mirror seed/stage.
                     this.ui.hideMultiplayer();
                     this.audio.unlock();
                     this.start();
                 }
             });
+            // iter-27: live lobby list — render whenever the namespace
+            // pushes an updated rooms snapshot.
+            this.mp.onRoomsList((rooms) => {
+                this._mpLobbyHandle?.renderRooms?.(rooms);
+            });
         }
 
-        showLobby();
+        // Lazy-connect + initial fetch so the list paints on first open.
+        try {
+            this.mp.connect();
+            this.mp.listRooms().then((resp) => {
+                if (resp?.ok) lobbyHandle?.renderRooms?.(resp.rooms || []);
+            });
+        } catch (_e) {
+            /* connect errors surface via the disconnect listener */
+        }
     }
 
     _enterMultiplayerWaitingRoom(snap) {

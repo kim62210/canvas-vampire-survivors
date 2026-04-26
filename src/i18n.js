@@ -156,6 +156,9 @@ const STRINGS = {
         mpInvalidCode: '방 코드를 입력해주세요',
         mpConnecting: '연결 중…',
         mpDisconnected: '연결이 끊겼습니다',
+        mpRoomList: '활성 방 목록',
+        mpRoomListEmpty: '아직 만들어진 방이 없어요. 위 버튼으로 방을 만들어보세요!',
+        mpRoomFullBadge: '가득 참',
         leaveRoom: '방 나가기'
     }
 };

@@ -47,7 +47,8 @@ export class MultiplayerClient {
             hostTick: [],
             hostEvent: [],
             guestInput: [],
-            guestEvent: []
+            guestEvent: [],
+            roomsList: []
         };
     }
 
@@ -86,6 +87,8 @@ export class MultiplayerClient {
         this.socket.on('host:event', (evt) => this._fire('hostEvent', evt));
         this.socket.on('guest:input', (input) => this._fire('guestInput', input));
         this.socket.on('guest:event', (evt) => this._fire('guestEvent', evt));
+        // iter-27: lobby room list — pushed on connect and on every mutation.
+        this.socket.on('rooms:list', (payload) => this._fire('roomsList', payload?.rooms || []));
     }
 
     disconnect() {
@@ -160,11 +163,26 @@ export class MultiplayerClient {
         if (this.socket && this.isGuest) this.socket.emit('guest:event', evt);
     }
 
+    /** Resolves to `{ ok: true, rooms: [{roomId, host, count, max, full}] }`. */
+    listRooms() {
+        this._ensureConnected();
+        return new Promise((resolve) => {
+            const timeout = setTimeout(() => resolve({ ok: false, rooms: [] }), 3000);
+            this.socket.emit('rooms:list', {}, (resp) => {
+                clearTimeout(timeout);
+                resolve(resp || { ok: false, rooms: [] });
+            });
+        });
+    }
+
     onRoomState(cb) {
         this._listeners.roomState.push(cb);
     }
     onRoomClosed(cb) {
         this._listeners.roomClosed.push(cb);
+    }
+    onRoomsList(cb) {
+        this._listeners.roomsList.push(cb);
     }
     onHostTick(cb) {
         this._listeners.hostTick.push(cb);

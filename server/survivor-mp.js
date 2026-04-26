@@ -60,8 +60,40 @@ module.exports = function attachSurvivorMp(io) {
         ns.to(room.id).emit('room:state', roomSnapshot(room));
     }
 
+    /**
+     * iter-27: lobby uses a live "active rooms" list instead of a copy-paste
+     * code flow. Every namespace client receives `rooms:list` on connect and
+     * whenever the room set mutates (create/join/leave/disconnect). Clients
+     * already inside a room ignore the broadcast.
+     */
+    function activeRoomsSnapshot() {
+        const list = [];
+        for (const [id, room] of rooms) {
+            const hostInfo = room.members.get(room.hostSid);
+            list.push({
+                roomId: id,
+                host: hostInfo?.nickname || 'Player',
+                count: room.members.size,
+                max: MAX_PLAYERS_PER_ROOM,
+                full: room.members.size >= MAX_PLAYERS_PER_ROOM
+            });
+        }
+        return list;
+    }
+    function broadcastRoomsList() {
+        ns.emit('rooms:list', { rooms: activeRoomsSnapshot() });
+    }
+
     ns.on('connection', (socket) => {
         let currentRoomId = null;
+
+        // Push the current lobby snapshot to the new connection immediately
+        // so the lobby UI doesn't show "Loading…" on first paint.
+        try {
+            socket.emit('rooms:list', { rooms: activeRoomsSnapshot() });
+        } catch (_e) {
+            /* noop */
+        }
 
         const cleanup = () => {
             if (!currentRoomId) return;
@@ -79,7 +111,16 @@ module.exports = function attachSurvivorMp(io) {
             } else {
                 broadcastRoomState(room);
             }
+            broadcastRoomsList();
         };
+
+        socket.on('rooms:list', (_payload, ack) => {
+            try {
+                ack?.({ ok: true, rooms: activeRoomsSnapshot() });
+            } catch (_e) {
+                /* noop */
+            }
+        });
 
         socket.on('room:create', (payload, ack) => {
             const nickname = sanitizeNickname(payload?.nickname);
@@ -98,6 +139,7 @@ module.exports = function attachSurvivorMp(io) {
                 /* swallow ack errors — client may have disconnected */
             }
             broadcastRoomState(room);
+            broadcastRoomsList();
         });
 
         socket.on('room:join', (payload, ack) => {
@@ -125,6 +167,7 @@ module.exports = function attachSurvivorMp(io) {
                 /* swallow */
             }
             broadcastRoomState(room);
+            broadcastRoomsList();
         });
 
         socket.on('room:leave', () => cleanup());

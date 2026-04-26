@@ -693,6 +693,75 @@ canvas {
     flex-direction: column;
     gap: 8px;
 }
+.mp-rooms-label {
+    margin: 18px 0 8px;
+    color: var(--muted);
+    font-size: 14px;
+}
+.mp-rooms {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 12px;
+    max-height: 240px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.mp-rooms-item {
+    margin-bottom: 6px;
+}
+.mp-rooms-empty {
+    padding: 18px 14px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 10px;
+    list-style: none;
+}
+.mp-room-row {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: inherit;
+    font-size: 15px;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.15s;
+}
+.mp-room-row:hover:not([disabled]),
+.mp-room-row:focus-visible:not([disabled]) {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: var(--accent);
+}
+.mp-room-row[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.mp-room-host {
+    flex: 1 1 auto;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.mp-room-count {
+    color: var(--muted);
+    font-size: 13px;
+}
+.mp-room-full {
+    background: var(--danger);
+    color: #fff;
+    border-radius: 6px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 700;
+}
 
 /* iter-14: PWA install prompt slot. */
 .pwa-install-prompt {

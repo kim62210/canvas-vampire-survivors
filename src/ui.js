@@ -242,14 +242,10 @@ export class UI {
                 <div class="btn-row vertical">
                     <button id="mpHostBtn" class="btn primary">${t('mpHostRoom')}</button>
                 </div>
-                <div class="mp-divider">또는</div>
-                <label class="mp-field">
-                    <span>${t('mpRoomCode')}</span>
-                    <input id="mpRoomCode" type="text" maxlength="6" placeholder="ABCDE" autocapitalize="characters" />
-                </label>
-                <div class="btn-row vertical">
-                    <button id="mpJoinBtn" class="btn ghost">${t('mpJoinRoom')}</button>
-                </div>
+                <div class="mp-rooms-label">${t('mpRoomList')}</div>
+                <ul id="mpRoomsList" class="mp-rooms" role="list" aria-live="polite">
+                    <li class="mp-rooms-empty">${t('mpRoomListEmpty')}</li>
+                </ul>
                 <div class="mp-status" id="mpStatus" aria-live="polite"></div>
             </div>`;
         m.style.display = 'flex';
@@ -272,15 +268,49 @@ export class UI {
             setStatus(t('mpConnecting'), false);
             onCreate?.(nickname, setStatus);
         });
-        m.querySelector('#mpJoinBtn')?.addEventListener('click', () => {
-            const nickname = m.querySelector('#mpNickname')?.value?.trim() || 'Player';
-            const code = m.querySelector('#mpRoomCode')?.value?.trim().toUpperCase() || '';
-            if (!code) {
-                setStatus(t('mpInvalidCode'), true);
-                return;
-            }
-            setStatus(t('mpConnecting'), false);
-            onJoin?.(code, nickname, setStatus);
+        // Returned helpers let main.js refresh the list whenever
+        // `rooms:list` arrives without re-rendering the whole overlay.
+        return {
+            renderRooms: (rooms) => this._renderMpRooms(m, rooms, onJoin, setStatus),
+            setStatus
+        };
+    }
+
+    /**
+     * iter-27: paint the live room list inside the lobby card. Each row is
+     * a button that fires onJoin(roomId, nickname, setStatus). Full rooms
+     * render disabled.
+     */
+    _renderMpRooms(overlay, rooms, onJoin, setStatus) {
+        const list = overlay.querySelector('#mpRoomsList');
+        if (!list) return;
+        if (!rooms || rooms.length === 0) {
+            list.innerHTML = `<li class="mp-rooms-empty">${t('mpRoomListEmpty')}</li>`;
+            return;
+        }
+        list.innerHTML = rooms
+            .map((r) => {
+                const disabled = r.full ? 'disabled' : '';
+                const fullBadge = r.full
+                    ? `<span class="mp-room-full">${t('mpRoomFullBadge')}</span>`
+                    : '';
+                return `<li class="mp-rooms-item">
+                    <button class="mp-room-row" data-room="${escapeAttr(r.roomId)}" ${disabled}>
+                        <span class="mp-room-host">${escapeHtml(r.host)}</span>
+                        <span class="mp-room-count">${r.count} / ${r.max}</span>
+                        ${fullBadge}
+                    </button>
+                </li>`;
+            })
+            .join('');
+        list.querySelectorAll('.mp-room-row').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                if (btn.hasAttribute('disabled')) return;
+                const roomId = btn.getAttribute('data-room');
+                const nickname = overlay.querySelector('#mpNickname')?.value?.trim() || 'Player';
+                setStatus?.(t('mpConnecting'), false);
+                onJoin?.(roomId, nickname, setStatus);
+            });
         });
     }
 

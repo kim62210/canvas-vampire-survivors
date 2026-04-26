@@ -190,7 +190,7 @@ export class Player {
         // gets feedback that the passive triggered.
         const dodge = this.getDodgeChance();
         if (dodge > 0 && Math.random() < dodge) {
-            game?.createFloatingText?.('Miss!', this.x, this.y - 30, '#88ffcc');
+            game?.createFloatingText?.('회피!', this.x, this.y - 30, '#88ffcc');
             return;
         }
         const afterArmor = Math.max(1, damage - this.getArmor());

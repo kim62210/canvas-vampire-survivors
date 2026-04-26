@@ -163,6 +163,11 @@ export class Game {
         this.keymap = loadKeymap();
         this.input.setKeymap(this.keymap);
         this.ui = new UI(this);
+        // iter-27: setLocale runs before the UI exists (line ~150), so the
+        // static menu/HUD labels stay on whatever the markup shipped with
+        // (English defaults). Trigger a one-shot translate now that the
+        // walker exists so the boot screen lands in Korean.
+        this.ui.onLocaleChanged();
 
         // Achievements tracker persists the lifetime record.
         this.achievements = new AchievementTracker(this.save);
@@ -320,7 +325,7 @@ export class Game {
             /* swallow — boot-time miss is fine */
         }
         this._flushAchievementToasts?.();
-        this._announce('Cheat code unlocked. Retro Blaster available.');
+        this._announce('치트 코드 해금! 레트로 블래스터를 사용할 수 있어요.');
     }
 
     /** Toggle a global mute and persist so a refresh keeps the choice. */
@@ -329,7 +334,7 @@ export class Game {
         this.save.settings.muted = next;
         saveSave(this.save);
         this.audio.setMuted(next);
-        this._announce(next ? 'Audio muted' : 'Audio unmuted');
+        this._announce(next ? '음소거됨' : '음소거 해제');
     }
 
     /** Open the help overlay; close it if it's already open. */
@@ -466,6 +471,7 @@ export class Game {
         const banner = document.getElementById('pwaInstallPrompt');
         const installBtn = document.getElementById('pwaInstallBtn');
         const dismissBtn = document.getElementById('pwaInstallDismiss');
+        const closeBtn = document.getElementById('pwaInstallClose');
         if (!banner || !installBtn || !dismissBtn) return;
         const markSeen = () => {
             this.save.flags = this.save.flags || {};
@@ -494,6 +500,9 @@ export class Game {
             markSeen();
         });
         dismissBtn.addEventListener('click', markSeen);
+        // iter-27: explicit close (✕) for the mobile layout where the prompt
+        // floats over the menu — same behaviour as "Not now" but discoverable.
+        closeBtn?.addEventListener('click', markSeen);
     }
 
     _bindDomButtons() {
@@ -668,7 +677,7 @@ export class Game {
         this.speedrunRng = new SeededRng(CONFIG.SPEEDRUN_SEED);
         this.speedrunStart = performance.now();
         this.start();
-        this._announce('Speedrun started — deterministic seed.');
+        this._announce('스피드런 시작 — 고정 시드.');
     }
 
     /**
@@ -685,7 +694,7 @@ export class Game {
         this.speedrunRng = new SeededRng(this.dailyChallenge.seed);
         this.speedrunStart = performance.now();
         this.start();
-        this._announce(`Daily Challenge ${this.dailyChallenge.date} — ${this.stageId}.`);
+        this._announce(`일일 챌린지 ${this.dailyChallenge.date} — ${this.stageId}.`);
     }
 
     /** Apply the daily challenge's bossOffset to a `getBossesFor` result. */
@@ -1282,7 +1291,7 @@ export class Game {
             this.shake(0.5);
             this.audio.explosion();
             this.achievements.onBossDefeated(e.id);
-            this._announce(`${e.id.replace('_', ' ')} defeated`);
+            this._announce(`${e.name || e.id.replace('_', ' ')} 처치`);
             // Mark no-hit-boss if the player's unhit streak is longer than
             // the fight itself. We use the unhit timer (seconds without
             // damage) as a cheap proxy; any damage during the fight resets it.
@@ -1418,7 +1427,7 @@ export class Game {
             // hurt single-pulse and the boss triple so the player can
             // tell what just happened from the haptic alone.
             this.haptics?.levelUp();
-            this._announce(`Level ${this.player.level}! Choose an upgrade.`);
+            this._announce(`레벨 ${this.player.level}! 강화를 선택하세요.`);
             // iter-15: notify the tutorial state machine — its "level up"
             // step waits for exactly this event.
             if (this.tutorial?.active) {
@@ -1581,7 +1590,7 @@ export class Game {
         // iter-19: triple-pulse vibration so the player feels the warning
         // even with audio off / sleeve-pocket play.
         this.haptics?.bossSpawn();
-        this._announce(`Boss incoming: ${bossDef.name || bossDef.id}`);
+        this._announce(`보스 등장: ${bossDef.name || bossDef.id}`);
     }
 
     _flushAchievementToasts() {
@@ -1590,7 +1599,7 @@ export class Game {
             this.ui.showAchievementToast(ach);
             this.audio.achievement();
             this.effects.achievement();
-            this._announce(`Achievement unlocked: ${ach.name}. ${ach.description}`);
+            this._announce(`업적 달성: ${ach.name}. ${ach.description}`);
             // iter-20: harmless emoji-rain celebration the first time the
             // player crosses the 15-minute Survivor threshold. We trigger
             // off the achievement-just-unlocked event rather than polling

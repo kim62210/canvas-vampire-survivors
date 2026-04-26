@@ -24,7 +24,7 @@ const STRINGS = {
         continue: '이어하기',
         settings: '설정',
         howToPlay: '플레이 방법',
-        move: 'WASD / 방향키로 이동',
+        move: '왼쪽 조이스틱(또는 WASD)으로 이동',
         autoAttack: '무기는 근처 적을 자동 공격',
         survive: '최대한 오래 살아남자!',
         level: '레벨',
@@ -92,7 +92,7 @@ const STRINGS = {
         noStreakYet: '아직 일일 챌린지 기록이 없어요 — 오늘 도전해보세요!',
         howToPlayBtn: '플레이 방법',
         helpTitle: '단축키',
-        hotkeyHint: '팁: P/Esc 일시정지 · M 음소거 · H 도움말',
+        hotkeyHint: '팁: 좌측 조이스틱으로 이동 · 우측 ✦ 특수 스킬',
         helpKeyMove: '이동',
         helpKeyPause: '일시정지 / 재개',
         helpKeyMute: '음소거',
@@ -101,16 +101,16 @@ const STRINGS = {
         helpKeySettings: '설정 패널',
         helpKeyConfirm: '확인 / 발사',
         howToTitle: '플레이 방법',
-        howToBody1: '자동 공격 게임입니다. WASD나 방향키로 이동하면 무기는 알아서 발사됩니다.',
-        howToBody2:
-            '초록색 경험치 구슬을 주워 레벨업하세요. 레벨업마다 강화를 하나씩 고를 수 있습니다.',
+        howToBody1:
+            '자동 공격 게임이에요. 왼쪽 조이스틱으로 이동만 하면 무기는 알아서 적을 공격합니다.',
+        howToBody2: '경험치 구슬을 주워 레벨업하세요. 레벨업마다 강화 하나를 고를 수 있어요.',
         howToBody3: '오래 버티면 몇 분 간격으로 보스가 등장합니다.',
-        howToBody4: 'P/Esc 일시정지, M 음소거, H 단축키 도움말을 언제든 열 수 있어요.',
+        howToBody4: '화면 모서리의 메뉴 버튼으로 일시정지·음소거·설정을 열 수 있어요.',
         gotIt: '확인',
         tutorialOffer: '환영합니다! 5단계 튜토리얼을 진행할까요?',
         tryTutorial: '튜토리얼 시작',
         skipTutorial: '건너뛰기',
-        tutorialSkipHint: 'Esc로 건너뛰기.',
+        tutorialSkipHint: '건너뛰기 버튼을 눌러 종료할 수 있어요.',
         tutorialDone: '튜토리얼 완료!',
         replayLastRun: '마지막 판 리플레이',
         noReplay: '저장된 리플레이가 없어요 — 한 판 먼저 끝내보세요.',
@@ -119,7 +119,7 @@ const STRINGS = {
         criticalFlash: '치명타 화면 플래시',
         vibration: '진동 (모바일)',
         customizeControls: '키 바인딩 변경',
-        remapHint: '항목을 클릭한 뒤 원하는 키를 누르세요.',
+        remapHint: '항목을 탭한 뒤 원하는 키를 누르세요. (외장 키보드 연결 시)',
         pressAnyKey: '아무 키나 누르세요…',
         keymapConflict: '키 바인딩이 충돌합니다',
         resetDefaults: '기본값으로 초기화',
@@ -131,7 +131,11 @@ const STRINGS = {
         remap_right: '오른쪽 이동',
         remap_pause: '일시정지 / 재개',
         remap_help: '도움말 토글',
-        remap_mute: '음소거'
+        remap_mute: '음소거',
+        // iter-27: PWA install prompt strings (Korean only).
+        pwaInstallText: '서바이버를 앱으로 설치하면 전체화면으로 즐길 수 있어요.',
+        pwaInstall: '설치',
+        pwaNotNow: '나중에'
     }
 };
 

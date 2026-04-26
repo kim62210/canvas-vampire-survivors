@@ -599,7 +599,7 @@ export class UI {
             const label = isMaxed
                 ? ' (MAXED)'
                 : lvl > 0
-                  ? ` (${up.type === 'weapon' ? 'Lv.' : 'x'}${lvl + 1})`
+                  ? ` (${up.type === 'weapon' ? 'Lv ' : 'x'}${lvl + 1})`
                   : ' (New!)';
             const willEvolve =
                 up.type === 'weapon' &&
@@ -612,7 +612,7 @@ export class UI {
             if (isMaxed) div.classList.add('maxed');
             div.setAttribute(
                 'aria-label',
-                `${up.data.name}${label}. ${up.data.description}${willEvolve ? '. Evolves into ' + up.data.evolveName : ''}`
+                `${up.data.name}${label}. ${up.data.description}${willEvolve ? '. 진화: ' + up.data.evolveName : ''}`
             );
             div.innerHTML = `
                 <div class="name">${up.data.icon} ${up.data.name}${label}</div>

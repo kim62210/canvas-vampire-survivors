@@ -879,7 +879,13 @@ export class Game {
         if (!container || !this.canvas) return;
         const w = Math.max(320, window.innerWidth);
         const h = Math.max(480, window.innerHeight);
-        const ZOOM = 2;
+        // iter-27: tuned the zoom factor down from 2.0 → 1.7 so the camera
+        // sits ~15% closer to the action — sprites read better on phones
+        // without changing entity world sizes. CSS viewport stays at the
+        // device size; CONFIG.CANVAS_WIDTH/HEIGHT and the canvas backbuffer
+        // both scale by ZOOM so camera math, grid, background and screen
+        // effects all stay in lockstep.
+        const ZOOM = 1.7;
         CONFIG.CANVAS_WIDTH = w * ZOOM;
         CONFIG.CANVAS_HEIGHT = h * ZOOM;
         container.style.width = `${w}px`;

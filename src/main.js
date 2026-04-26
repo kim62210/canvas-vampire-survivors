@@ -48,6 +48,7 @@ import {
     saveSave
 } from './storage.js';
 import { setLocale, t as _t, detectLocale } from './i18n.js';
+import { hasSprite, drawSprite } from './assets.js';
 import {
     DEFAULT_STAGE_ID,
     getBackgroundFor,
@@ -1707,20 +1708,33 @@ export class Game {
                 e.render(ctx);
                 continue;
             }
-            const sprite = getEnemySprite(e.type, e.size);
-            if (sprite) {
-                ctx.drawImage(sprite, e.x - sprite.width / 2, e.y - sprite.height / 2);
-                // Cheap HP bar (cached sprite can't reflect current HP).
-                const pct = Math.max(0, e.hp / e.maxHp);
-                if (pct < 1) {
-                    const w = 30;
-                    ctx.fillStyle = '#222';
-                    ctx.fillRect(e.x - w / 2, e.y - e.size - 10, w, 3);
-                    ctx.fillStyle = pct > 0.5 ? '#44ff44' : pct > 0.25 ? '#ffaa33' : '#ff4444';
-                    ctx.fillRect(e.x - w / 2, e.y - e.size - 10, w * pct, 3);
+            // iter-26: prefer registered image asset when available; falls
+            // back to the offscreen bitmap cache, then to the full per-frame
+            // path. The HP-bar overlay is shared so any visual stays consistent.
+            const spriteKey = `enemy:${e.id}`;
+            let drewBody = false;
+            if (hasSprite(spriteKey)) {
+                drewBody = drawSprite(ctx, spriteKey, e.x, e.y, { size: e.size });
+            }
+            if (!drewBody) {
+                const sprite = getEnemySprite(e.type, e.size);
+                if (sprite) {
+                    ctx.drawImage(sprite, e.x - sprite.width / 2, e.y - sprite.height / 2);
+                    drewBody = true;
                 }
-            } else {
+            }
+            if (!drewBody) {
                 e.render(ctx);
+                continue;
+            }
+            // Cheap HP bar (sprites can't reflect current HP on their own).
+            const pct = Math.max(0, e.hp / e.maxHp);
+            if (pct < 1) {
+                const w = 30;
+                ctx.fillStyle = '#222';
+                ctx.fillRect(e.x - w / 2, e.y - e.size - 10, w, 3);
+                ctx.fillStyle = pct > 0.5 ? '#44ff44' : pct > 0.25 ? '#ffaa33' : '#ff4444';
+                ctx.fillRect(e.x - w / 2, e.y - e.size - 10, w * pct, 3);
             }
         }
     }

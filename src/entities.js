@@ -345,30 +345,35 @@ export function registerWeaponClass(_cls) {
  * the simulation for everyone. Each remote keeps its own HP and i-frames
  * so multiple players can take damage independently.
  */
-export class RemotePlayer {
+export class RemotePlayer extends Player {
     constructor({ sid, nickname, color, x, y }) {
+        super(x, y);
         this.sid = sid;
         this.nickname = nickname || 'Player';
         this.color = color || '#ff7766';
-        this.x = x;
-        this.y = y;
         this.vx = 0;
         this.vy = 0;
-        this.size = CONFIG.PLAYER_SIZE;
-        this.maxHp = 100;
-        this.hp = 100;
-        this.level = 1;
-        this.invincible = false;
-        this.invincibleTimer = 0;
-        this.dead = false;
-        this.reviveTimer = 0;
+        // Inherits weapons[], passives, hp/maxHp/level/exp/invincible from
+        // Player so the host can run the same Weapon and ExpOrb code paths
+        // against this peer with no special-casing.
     }
 
-    /** Apply current input vector with player speed; clamp to arena. */
-    tick(dt, game) {
-        if (this.dead) return;
+    /**
+     * Override `Player.update` so movement reads the buffered `vx/vy` set
+     * by the host's `_updateRemotePlayers` (from `guest:input`) instead of
+     * polling local input. Weapons + i-frames + regen still tick because
+     * we delegate to the same code as Player would run.
+     */
+    update(dt, game) {
+        if (this.dead) {
+            if (this.invincible) {
+                this.invincibleTimer -= dt;
+                if (this.invincibleTimer <= 0) this.invincible = false;
+            }
+            return;
+        }
         const stageSpeedMult = game?.stageMods?.playerSpeedMult ?? 1;
-        const speed = CONFIG.PLAYER_SPEED * stageSpeedMult;
+        const speed = CONFIG.PLAYER_SPEED * this.getSpeedMult() * stageSpeedMult;
         this.x += this.vx * speed * dt;
         this.y += this.vy * speed * dt;
         const r = this.size;
@@ -378,21 +383,21 @@ export class RemotePlayer {
         else if (this.x > W - r) this.x = W - r;
         if (this.y < r) this.y = r;
         else if (this.y > H - r) this.y = H - r;
+        for (const w of this.weapons) w.update(dt, this, game);
         if (this.invincible) {
             this.invincibleTimer -= dt;
             if (this.invincibleTimer <= 0) this.invincible = false;
         }
+        const regen = this._passiveSum('hpRegen');
+        if (regen) this.heal(regen * dt);
     }
 
-    takeDamage(amount) {
-        if (this.dead || this.invincible) return;
-        this.hp -= amount;
-        this.invincible = true;
-        this.invincibleTimer = 0.3;
-        if (this.hp <= 0) {
-            this.hp = 0;
-            this.dead = true;
-        }
+    /**
+     * Kept as an alias so legacy callers that still invoke `tick` continue
+     * to work. Same body as `update` — both arrive via `_updateRemotePlayers`.
+     */
+    tick(dt, game) {
+        return this.update(dt, game);
     }
 
     render(ctx) {
@@ -1116,19 +1121,33 @@ export class ExpOrb {
             this.shouldRemove = true;
             return;
         }
-        const p = game.player;
-        // iter-27 / Phase B: a downed player can't collect XP. The orb
-        // just hovers in place until they're revived (or the lifetime
-        // timer above culls it).
-        if (!p || p.dead) return;
-        const dx = p.x - this.x;
-        const dy = p.y - this.y;
-        const d = Math.hypot(dx, dy);
-        const mag = p.getMagnetRange();
+        // iter-27 / Phase C: in coop, every alive player can pull the orb.
+        // We pick the closest live candidate so the magnet feels
+        // co-operative rather than only-host. Solo runs degrade to the
+        // single-player path automatically (remotePlayers is empty).
+        let target = null;
+        let bestD = Infinity;
+        const consider = (p) => {
+            if (!p || p.dead) return;
+            const d = Math.hypot(p.x - this.x, p.y - this.y);
+            if (d < bestD) {
+                bestD = d;
+                target = p;
+            }
+        };
+        consider(game.player);
+        if (game.remotePlayers) {
+            for (const rp of game.remotePlayers.values()) consider(rp);
+        }
+        if (!target) return;
+        const dx = target.x - this.x;
+        const dy = target.y - this.y;
+        const d = bestD;
+        const mag = target.getMagnetRange();
 
         if (d < CONFIG.PICKUP_DISTANCE) {
-            p.gainExp(this.value);
-            game.createFloatingText(`+${this.value}XP`, p.x, p.y - 40, '#66bbff');
+            target.gainExp(this.value);
+            game.createFloatingText(`+${this.value}XP`, target.x, target.y - 40, '#66bbff');
             game.audio.pickup();
             if (game.run) game.run.orbsCollected = (game.run.orbsCollected || 0) + 1;
             this.shouldRemove = true;

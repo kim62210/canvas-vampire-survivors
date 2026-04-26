@@ -15,7 +15,7 @@
  */
 
 import { CONFIG, Difficulty, GameState } from './config.js';
-import { ACHIEVEMENTS, BOSSES, ENEMIES, WAVES, WEAPONS } from './data.js';
+import { ACHIEVEMENTS, BOSSES, ENEMIES, PASSIVES, WAVES, WEAPONS } from './data.js';
 import {
     Enemy,
     ExpOrb,
@@ -32,7 +32,7 @@ import { AudioEngine } from './audio.js';
 import { InputManager } from './input.js';
 import { HapticEngine } from './haptics.js';
 import { loadKeymap, saveKeymap } from './keymap.js';
-import { UI } from './ui.js';
+import { UI, buildUpgradePool, isUpgradeLive, pickN } from './ui.js';
 import { FpsMeter, ShakeCamera } from './systems.js';
 import { SpatialHash } from './spatial-hash.js';
 import { Pool, resetFloatingText, resetParticle } from './pool.js';
@@ -736,6 +736,23 @@ export class Game {
                         this._mpClassChoices.set(evt.sid, evt.classId);
                         this._mpLobbyHandle?.refreshClassChoices?.(this._mpClassChoices);
                     }
+                } else if (evt?.type === 'levelUp') {
+                    // Phase D: this is an upstream level-up notification for
+                    // *this* guest. Surface the modal exactly as solo runs do
+                    // (audio+haptic+a11y), and ship the picked card back via
+                    // guest:event so the host applies it authoritatively.
+                    if (evt.sid && evt.sid === this.mp?.sid) {
+                        this.audio.levelUp();
+                        this.haptics?.levelUp();
+                        this._announce(`레벨 ${evt.level || ''}! 강화를 선택하세요.`);
+                        this.ui.showLevelUpFromSnapshot(evt.level, evt.choices || [], (pick) => {
+                            this.ui.hideLevelUp();
+                            this.mp.sendGuestEvent({
+                                type: 'pickUpgrade',
+                                pick: pick || null
+                            });
+                        });
+                    }
                 } else if (evt?.type === 'gameOver') {
                     // Phase 1.5: host says the run is over for everyone.
                     if (this.state === GameState.PLAYING && this.mpRole === 'guest') {
@@ -778,6 +795,16 @@ export class Game {
                             classId: evt.classId
                         });
                     }
+                } else if (evt.type === 'pickUpgrade' && this.mp.isHost) {
+                    // Phase D: guest finished their level-up modal. Resolve
+                    // the slim {type, id} DTO back into a real WEAPONS /
+                    // PASSIVES def and apply it to the right RemotePlayer.
+                    const rp = this.remotePlayers.get(evt.sid);
+                    if (rp) {
+                        const choice = this._resolveUpgradeChoice(evt.pick);
+                        this._applyUpgrade(choice, rp);
+                    }
+                    this._remoteLevelUpInflight?.delete?.(evt.sid);
                 }
             });
             // iter-27: live lobby list — render whenever the namespace
@@ -964,10 +991,11 @@ export class Game {
             const localClassId =
                 this._mpClassMap?.[selfSid] || this._mpLocalClassId || DEFAULT_CLASS_ID;
             localClassDef = getClassById(localClassId);
+            // Apply HP delta via baseMaxHp so subsequent recalculateStats()
+            // (triggered by every addPassive) keeps the boosted/lowered cap.
+            this.player.baseMaxHp = Math.max(20, 100 + (localClassDef.maxHpDelta || 0));
+            this.player.recalculateStats();
             this.player.weapons.push(new Weapon(localClassDef.starterWeapon));
-            const baseHp = this.player.maxHp;
-            this.player.maxHp = Math.max(20, baseHp + (localClassDef.maxHpDelta || 0));
-            this.player.hp = this.player.maxHp;
             // Used by Player.render to look up the class-specific sprite.
             this.player.classId = localClassDef.id;
             // Apply starter passive bundle so each archetype plays distinctly
@@ -975,6 +1003,7 @@ export class Game {
             for (const passDef of localClassDef.starterPassives || []) {
                 if (passDef) this.player.addPassive(passDef);
             }
+            this.player.hp = this.player.maxHp;
         } else {
             this.player.weapons.push(new Weapon(WEAPONS.WHIP));
             this.player.classId = null;
@@ -1018,9 +1047,18 @@ export class Game {
                     x: cx + Math.cos(angle) * 60,
                     y: cy + Math.sin(angle) * 60
                 });
-                rp.maxHp = Math.max(20, 100 + (peerClassDef.maxHpDelta || 0));
-                rp.hp = rp.maxHp;
                 rp.classId = peerClassId;
+                // Phase B: every peer gets their archetype's starter weapon
+                // + starter passives. The host runs `Weapon.update` on this
+                // RemotePlayer each frame so its projectiles are produced
+                // server-side and shipped to all guests via host:tick.
+                rp.baseMaxHp = Math.max(20, 100 + (peerClassDef.maxHpDelta || 0));
+                rp.recalculateStats();
+                rp.weapons.push(new Weapon(peerClassDef.starterWeapon));
+                for (const passDef of peerClassDef.starterPassives || []) {
+                    if (passDef) rp.addPassive(passDef);
+                }
+                rp.hp = rp.maxHp;
                 this.remotePlayers.set(m.sid, rp);
                 slot++;
             }
@@ -1564,13 +1602,14 @@ export class Game {
         // when no pad is attached.
         this.input.pollGamepad?.();
         // iter-27: in coop the sim *never* stops. Even when a player opens
-        // the pause menu we keep simulating on the host (so guests keep
-        // receiving host:tick) and keep applying ticks on guests (so the
-        // pauser's screen stays in sync with everyone else). Solo runs
-        // still freeze the world while the menu is up.
+        // the pause menu OR a level-up modal lands on someone, we keep
+        // simulating on the host (so guests keep receiving host:tick) and
+        // keep applying ticks on guests. Solo runs still freeze the world
+        // while a menu is up.
         if (
             this.state === GameState.PLAYING ||
-            (this.mpMode && this.state === GameState.PAUSED)
+            (this.mpMode &&
+                (this.state === GameState.PAUSED || this.state === GameState.LEVEL_UP))
         ) {
             this.update(dt);
         }
@@ -1994,6 +2033,88 @@ export class Game {
             }
             this.ui.showLevelUp(this.player, (choice) => this._applyUpgrade(choice));
         }
+        // Phase D: dispatch any queued RemotePlayer level-ups via host:event.
+        // We only fire when there's no outstanding event for that sid (avoids
+        // a guest receiving two modals at once); the next level-up waits in
+        // _remotePendingLevelUps until the previous pickUpgrade comes back.
+        if (this.mpMode && this.mpRole === 'host' && this._remotePendingLevelUps?.size) {
+            for (const [sid, count] of this._remotePendingLevelUps) {
+                if (count <= 0) continue;
+                if (this._remoteLevelUpInflight?.has?.(sid)) continue;
+                const rp = this.remotePlayers.get(sid);
+                if (!rp) {
+                    this._remotePendingLevelUps.delete(sid);
+                    continue;
+                }
+                const choices = this._buildRemoteUpgradeChoices(rp);
+                this._remoteLevelUpInflight = this._remoteLevelUpInflight || new Set();
+                this._remoteLevelUpInflight.add(sid);
+                this.mp.sendHostEvent({
+                    type: 'levelUp',
+                    sid,
+                    level: rp.level,
+                    choices
+                });
+                this._remotePendingLevelUps.set(sid, count - 1);
+            }
+        }
+    }
+
+    /**
+     * Phase D: assemble the upgrade pool for a RemotePlayer the same way
+     * the local UI does, then ship a slim DTO to the guest. Only the
+     * fields the modal needs (type/id/name/description/icon/label) cross
+     * the wire — everything else stays in the host's authoritative
+     * `WEAPONS` / `PASSIVES` tables for `_applyUpgrade` to look up later.
+     */
+    _buildRemoteUpgradeChoices(player) {
+        const pool = buildUpgradePool(player);
+        const liveCount = pool.filter((p) => isUpgradeLive(player, p)).length;
+        const livePool = pool.slice(0, liveCount);
+        const maxedPool = pool.slice(liveCount);
+        const picks = pickN(livePool, 3);
+        while (picks.length < 3 && maxedPool.length) {
+            const i = Math.floor(Math.random() * maxedPool.length);
+            picks.push(maxedPool.splice(i, 1)[0]);
+        }
+        return picks.map((up) => {
+            const existing =
+                up.type === 'weapon'
+                    ? player.weapons.find((w) => w.id === up.data.id)
+                    : player.passives[up.data.id];
+            const lvl = up.type === 'weapon' ? (existing?.level ?? 0) : (existing?.count ?? 0);
+            const isMaxed =
+                up.type === 'weapon'
+                    ? lvl >= CONFIG.WEAPON_MAX_LEVEL
+                    : lvl >= CONFIG.PASSIVE_MAX_STACK;
+            const label = isMaxed
+                ? 'MAXED'
+                : lvl > 0
+                  ? `${up.type === 'weapon' ? 'Lv ' : 'x'}${lvl + 1}`
+                  : 'New!';
+            return {
+                type: up.type,
+                id: up.data.id,
+                name: up.data.name,
+                description: up.data.description,
+                icon: up.data.icon,
+                label
+            };
+        });
+    }
+
+    /** Resolve a `{type, id}` DTO from the guest back into the live def. */
+    _resolveUpgradeChoice(dto) {
+        if (!dto || !dto.id) return null;
+        if (dto.type === 'weapon') {
+            const data = WEAPONS[dto.id] || Object.values(WEAPONS).find((w) => w.id === dto.id);
+            return data ? { type: 'weapon', data } : null;
+        }
+        if (dto.type === 'passive') {
+            const data = PASSIVES[dto.id] || Object.values(PASSIVES).find((p) => p.id === dto.id);
+            return data ? { type: 'passive', data } : null;
+        }
+        return null;
     }
 
     _updateParticlesAndText(dt) {
@@ -2037,7 +2158,9 @@ export class Game {
                 rp.vx = inp.vx;
                 rp.vy = inp.vy;
             }
-            rp.tick(dt, this);
+            // Phase B: full update — movement, weapons, regen — so the
+            // host produces this peer's projectiles for the next host:tick.
+            rp.update(dt, this);
         }
         this._processRevives(dt);
     }
@@ -2126,6 +2249,10 @@ export class Game {
             hp: this.player.hp,
             mhp: this.player.maxHp,
             lvl: this.player.level,
+            // Phase C: ship per-player EXP so each peer's HUD bar fills
+            // accurately on the guest side.
+            xp: this.player.exp,
+            xpn: this.player.expToNext,
             inv: !!this.player.invincible,
             dead: !!this.player.dead,
             // Phase B: ship revive progress so guests render the ally gauge.
@@ -2139,6 +2266,8 @@ export class Game {
                 hp: rp.hp,
                 mhp: rp.maxHp,
                 lvl: rp.level,
+                xp: rp.exp,
+                xpn: rp.expToNext,
                 inv: !!rp.invincible,
                 dead: !!rp.dead,
                 rt: rp.reviveTimer || 0
@@ -2212,6 +2341,10 @@ export class Game {
             this.player.hp = me.hp;
             this.player.maxHp = me.mhp;
             this.player.level = me.lvl || 1;
+            // Phase C: mirror EXP so the local HUD progress bar tracks the
+            // host's authoritative state (avoids the bar staying at 0).
+            if (typeof me.xp === 'number') this.player.exp = me.xp;
+            if (typeof me.xpn === 'number') this.player.expToNext = me.xpn;
             this.player.invincible = !!me.inv;
             this.player.dead = !!me.dead;
             this.player.reviveTimer = me.rt || 0;
@@ -2282,14 +2415,15 @@ export class Game {
         this.mp.sendGuestInput({ vx: cx, vy: cy });
     }
 
-    _applyUpgrade(choice) {
+    _applyUpgrade(choice, player = this.player) {
+        const isHostPlayer = player === this.player;
         if (choice) {
             if (choice.type === 'weapon') {
-                const existing = this.player.weapons.find((w) => w.id === choice.data.id);
+                const existing = player.weapons.find((w) => w.id === choice.data.id);
                 if (existing) {
                     const prevLvl = existing.level;
                     existing.levelUp();
-                    if (existing.level >= CONFIG.WEAPON_MAX_LEVEL) {
+                    if (existing.level >= CONFIG.WEAPON_MAX_LEVEL && isHostPlayer) {
                         this.achievements.onWeaponMaxed();
                         // Track how many distinct weapons have been maxed this run.
                         if (prevLvl < CONFIG.WEAPON_MAX_LEVEL) {
@@ -2302,26 +2436,35 @@ export class Game {
                         existing.def.evolveLevel &&
                         prevLvl < existing.def.evolveLevel &&
                         existing.level >= existing.def.evolveLevel &&
-                        this.gameTime < CONFIG.EARLY_EVOLVE_THRESHOLD
+                        this.gameTime < CONFIG.EARLY_EVOLVE_THRESHOLD &&
+                        isHostPlayer
                     ) {
                         this.run.evolvedBefore = this.run.evolvedBefore || {};
                         this.run.evolvedBefore.sevenMin = true;
                     }
                 } else {
-                    this.player.weapons.push(new Weapon(choice.data));
+                    player.weapons.push(new Weapon(choice.data));
                 }
             } else {
-                this.player.passives[choice.data.id] ??= { def: choice.data, count: 0 };
-                if (this.player.passives[choice.data.id].count < CONFIG.PASSIVE_MAX_STACK) {
-                    this.player.passives[choice.data.id].count++;
-                    this.player.recalculateStats();
-                    this.run.passivesPicked = (this.run.passivesPicked || 0) + 1;
+                player.passives[choice.data.id] ??= { def: choice.data, count: 0 };
+                if (player.passives[choice.data.id].count < CONFIG.PASSIVE_MAX_STACK) {
+                    player.passives[choice.data.id].count++;
+                    player.recalculateStats();
+                    if (isHostPlayer) {
+                        this.run.passivesPicked = (this.run.passivesPicked || 0) + 1;
+                    }
                 }
             }
         }
-        this.ui.hideLevelUp();
-        this.state = GameState.PLAYING;
-        this.lastTime = performance.now();
+        // Only the host's own modal owns the global state transition. A
+        // RemotePlayer's level-up was driven by a host:event/guest:event
+        // round-trip and never paused the world, so there's nothing to
+        // hide / unfreeze here.
+        if (isHostPlayer) {
+            this.ui.hideLevelUp();
+            this.state = GameState.PLAYING;
+            this.lastTime = performance.now();
+        }
     }
 
     _selectWave() {
@@ -2775,7 +2918,17 @@ const origGainExp = Player.prototype.gainExp;
 Player.prototype.gainExp = function (amount) {
     const ups = origGainExp.call(this, amount);
     if (ups.length && window.__vsGame) {
-        window.__vsGame._pendingLevelUps = (window.__vsGame._pendingLevelUps || 0) + ups.length;
+        const game = window.__vsGame;
+        // Phase D: in coop, RemotePlayer instances also gain XP through the
+        // shared ExpOrb path. Route their level-ups into a per-sid queue so
+        // the host can dispatch a host:event modal for the right peer.
+        if (this.sid && game.remotePlayers?.has?.(this.sid)) {
+            game._remotePendingLevelUps = game._remotePendingLevelUps || new Map();
+            const cur = game._remotePendingLevelUps.get(this.sid) || 0;
+            game._remotePendingLevelUps.set(this.sid, cur + ups.length);
+        } else {
+            game._pendingLevelUps = (game._pendingLevelUps || 0) + ups.length;
+        }
     }
     return ups;
 };

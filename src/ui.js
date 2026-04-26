@@ -887,6 +887,58 @@ export class UI {
         this.els.levelUpMenu.style.display = 'none';
     }
 
+    /**
+     * iter-27 / Phase D: render a level-up menu populated by an upstream
+     * snapshot (the host built the pool authoritatively because only the
+     * host knows the peer's weapons/passives state). `choices` is a flat
+     * array of `{type, id, name, description, icon, label}`. `onPick`
+     * receives `{type, id}` of the chosen card so the guest can wire it
+     * into a `guest:event` back to the host.
+     */
+    showLevelUpFromSnapshot(level, choices, onPick) {
+        const options = this.els.upgradeOptions;
+        if (!options) return;
+        options.innerHTML = '';
+        if (!Array.isArray(choices) || choices.length === 0) {
+            // Nothing to upgrade — auto-dismiss with null pick (host will
+            // heal the peer back to full as the legacy local path does).
+            onPick?.(null);
+            return;
+        }
+        for (const c of choices) {
+            const div = document.createElement('div');
+            div.className = 'upgrade-option';
+            div.setAttribute('role', 'menuitem');
+            div.setAttribute('tabindex', '0');
+            const labelSuffix = c.label ? ` (${c.label})` : '';
+            div.setAttribute(
+                'aria-label',
+                `${c.name || c.id}${labelSuffix}. ${c.description || ''}`
+            );
+            div.innerHTML = `
+                <div class="name">${c.icon || ''} ${escapeHtml(c.name || c.id)}${labelSuffix}</div>
+                <div class="desc">${escapeHtml(c.description || '')}</div>
+            `;
+            const fire = () => onPick?.({ type: c.type, id: c.id });
+            div.addEventListener('click', fire);
+            div.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    fire();
+                } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    (div.nextElementSibling || options.firstElementChild)?.focus();
+                } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    (div.previousElementSibling || options.lastElementChild)?.focus();
+                }
+            });
+            options.appendChild(div);
+        }
+        this.els.levelUpMenu.style.display = 'flex';
+        options.querySelector('.upgrade-option')?.focus();
+    }
+
     showBossBanner() {
         if (!this.els.bossBanner) return;
         this._activeBannerKey = 'bossIncoming';
@@ -1294,7 +1346,7 @@ export class UI {
     }
 }
 
-function buildUpgradePool(player) {
+export function buildUpgradePool(player) {
     // Two tiers: live (selectable) upgrades first, then "maxed" cards as a
     // visible reminder of mastery. The level-up screen still prefers `live`,
     // so the player rarely sees a maxed card unless their build is full.
@@ -1327,7 +1379,7 @@ function buildUpgradePool(player) {
     return live.concat(maxed);
 }
 
-function isUpgradeLive(player, up) {
+export function isUpgradeLive(player, up) {
     if (up.type === 'weapon') {
         const existing = player.weapons.find((w) => w.id === up.data.id);
         return !existing || existing.level < CONFIG.WEAPON_MAX_LEVEL;
@@ -1336,7 +1388,7 @@ function isUpgradeLive(player, up) {
     return !existing || existing.count < CONFIG.PASSIVE_MAX_STACK;
 }
 
-function pickN(arr, n) {
+export function pickN(arr, n) {
     const out = [];
     const copy = arr.slice();
     while (out.length < n && copy.length) {

@@ -47,7 +47,7 @@ import {
     resetSave,
     saveSave
 } from './storage.js';
-import { setLocale, t as _t } from './i18n.js';
+import { setLocale, t as _t, detectLocale } from './i18n.js';
 import {
     DEFAULT_STAGE_ID,
     getBackgroundFor,
@@ -147,7 +147,7 @@ export class Game {
 
         // Save + settings
         this.save = loadSave();
-        setLocale(this.save.settings.locale || 'en');
+        setLocale(this.save.settings.locale || detectLocale());
         if (this.save.settings.colorblind) document.body.classList.add('cb-mode');
 
         // Audio + input + UI

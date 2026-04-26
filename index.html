@@ -309,6 +309,11 @@
             <div id="settingsMenu" class="overlay" style="display: none"></div>
         </div>
 
+        <!-- iter-27: register the Kenney "Tiny Dungeon" CC0 sprite pack.
+             Loaded *before* main.js so the registry is populated by the time
+             the first frame renders. Untracked keys fall back to the original
+             procedural shape, so a missing PNG never crashes the game. -->
+        <script type="module" src="./src/assets-config.js"></script>
         <script type="module">
             import { boot } from './src/main.js';
             const game = boot();

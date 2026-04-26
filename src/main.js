@@ -1338,11 +1338,6 @@ export class Game {
     }
 
     togglePause() {
-        // iter-27: coop pause is host-authoritative. A guest pausing locally
-        // would just stop their own render loop while the host keeps
-        // simulating, leaving the guest desynced. Until host-broadcast pause
-        // is implemented (post-1.5), guests can't pause at all.
-        if (this.mpMode && this.mpRole === 'guest') return;
         if (this.state === GameState.PLAYING) {
             this.state = GameState.PAUSED;
             this.ui.showPause();
@@ -1367,15 +1362,20 @@ export class Game {
             // by however long we were paused so wall-clock readings exclude
             // pause time. Both anchors are floats, so a simple addition keeps
             // the existing `performance.now() - anchor` math correct.
-            if (this._pauseStartedAt) {
+            // iter-27: skipped in coop because the world kept simulating
+            // through PAUSED — there is no paused window to subtract.
+            if (this._pauseStartedAt && !this.mpMode) {
                 const paused = performance.now() - this._pauseStartedAt;
                 if (paused > 0 && Number.isFinite(paused)) {
                     if (this.speedrunStart) this.speedrunStart += paused;
                     if (this._runStartWallClock) this._runStartWallClock += paused;
                 }
-                this._pauseStartedAt = 0;
             }
-            this._scheduleFrame();
+            this._pauseStartedAt = 0;
+            // iter-27: in coop the RAF chain never stopped, so re-scheduling
+            // here would double-tick the world. Solo paths still need the
+            // restart because `_frame` had bailed during PAUSED.
+            if (!this.mpMode) this._scheduleFrame();
         }
     }
 
@@ -1563,7 +1563,15 @@ export class Game {
         // are fresh by the time update() reads `getMoveVector`. Safe no-op
         // when no pad is attached.
         this.input.pollGamepad?.();
-        if (this.state === GameState.PLAYING) {
+        // iter-27: in coop the sim *never* stops. Even when a player opens
+        // the pause menu we keep simulating on the host (so guests keep
+        // receiving host:tick) and keep applying ticks on guests (so the
+        // pauser's screen stays in sync with everyone else). Solo runs
+        // still freeze the world while the menu is up.
+        if (
+            this.state === GameState.PLAYING ||
+            (this.mpMode && this.state === GameState.PAUSED)
+        ) {
             this.update(dt);
         }
         // iter-20: pass the canvas viewport so EffectLayer can recycle

@@ -574,6 +574,21 @@ export class Game {
         q('btnTutorial')?.addEventListener('click', () => this.startTutorialRun());
         q('btnRetry')?.addEventListener('click', () => {
             this.ui.hideGameOver();
+            // Phase 1.5: in coop the host can re-issue gameStart so all
+            // peers retry together; guests just wait. Solo retry stays the
+            // single-player path.
+            if (this.mpMode && this.mpRole === 'host') {
+                this.mp.sendHostEvent({
+                    type: 'gameStart',
+                    roomId: this.mp.roomId,
+                    members: this._mpRoster,
+                    stageId: this.save?.settings?.stage || null
+                });
+                this.audio.unlock();
+                this.start();
+                return;
+            }
+            if (this.mpMode && this.mpRole === 'guest') return; // wait for host
             if (this.dailyMode) this.startDaily();
             else if (this.speedrunMode) this.startSpeedrun();
             else this.start();
@@ -583,6 +598,22 @@ export class Game {
             this.ui.showStart();
             this.state = GameState.MENU;
             this.speedrunMode = false;
+            // Phase 1.5: leaving the run also leaves the multiplayer room
+            // so the host doesn't dangle and other guests get a clean
+            // room:closed broadcast.
+            if (this.mpMode) {
+                try {
+                    this.mp.leaveRoom();
+                    this.mp.disconnect();
+                } catch (_e) {
+                    /* noop */
+                }
+                this.mpMode = false;
+                this.mpRole = null;
+                this.remotePlayers.clear();
+                this.guestInputs.clear();
+                this._mpState = null;
+            }
         });
         q('btnResume')?.addEventListener('click', () => this.togglePause());
         q('btnQuit')?.addEventListener('click', () => {
@@ -685,6 +716,19 @@ export class Game {
                     this.ui.hideMultiplayer();
                     this.audio.unlock();
                     this.start();
+                } else if (evt?.type === 'gameOver') {
+                    // Phase 1.5: host says the run is over for everyone.
+                    if (this.state === GameState.PLAYING && this.mpRole === 'guest') {
+                        // Use host-reported stats so the screen is consistent
+                        // across all peers (the guest's mirrored values may
+                        // be one tick behind on the wire).
+                        if (this.player && evt.stats) {
+                            this.player.level = evt.stats.level || this.player.level;
+                        }
+                        if (typeof evt.stats?.kills === 'number') this.kills = evt.stats.kills;
+                        if (typeof evt.stats?.time === 'number') this.gameTime = evt.stats.time;
+                        this.gameOver();
+                    }
                 }
             });
             // Phase 1.4: guest-side state mirror. Each tick is the host's
@@ -1219,6 +1263,31 @@ export class Game {
         // iter-19: long death-knell pattern. Fired once at the moment of
         // game over, before any leaderboard / replay finalisation work.
         this.haptics?.gameOver();
+
+        // Phase 1.5: in coop mode the host broadcasts a single gameOver
+        // event so all guests transition together. Guests skip the
+        // leaderboard / replay finalisation entirely (this run wasn't
+        // authoritative on their machine) and just surface the UI screen.
+        if (this.mpMode && this.mpRole === 'host') {
+            try {
+                this.mp.sendHostEvent({
+                    type: 'gameOver',
+                    stats: {
+                        kills: this.kills,
+                        time: this.gameTime,
+                        level: this.player?.level || 1
+                    }
+                });
+            } catch (_e) {
+                /* ignore — local game-over still proceeds */
+            }
+        }
+        if (this.mpMode && this.mpRole === 'guest') {
+            // Guest path: just show the final screen with the mirrored
+            // host stats. Skip the heavy persistence work below.
+            this.ui.showGameOver(this);
+            return;
+        }
         // iter-15: snapshot + persist the recorded replay (single slot).
         // We do this before any of the leaderboard / achievement logic so a
         // crash inside those paths never loses the replay. Skipped during
@@ -1919,15 +1988,21 @@ export class Game {
             if (!p.sid || p.sid === selfSid) continue;
             seen.add(p.sid);
             let rp = this.remotePlayers.get(p.sid);
+            // Phase 1.5: resolve nickname against the roster captured at
+            // gameStart so peer labels show real names rather than sid hex.
+            const meta = this._mpRoster?.find?.((m) => m?.sid === p.sid);
+            const niceName = meta?.nickname || `Player`;
             if (!rp) {
                 rp = new RemotePlayer({
                     sid: p.sid,
-                    nickname: p.sid,
+                    nickname: niceName,
                     color: PEER_COLORS[(slot + 1) % PEER_COLORS.length],
                     x: p.x,
                     y: p.y
                 });
                 this.remotePlayers.set(p.sid, rp);
+            } else if (meta?.nickname && rp.nickname !== niceName) {
+                rp.nickname = niceName;
             }
             rp.x = p.x;
             rp.y = p.y;

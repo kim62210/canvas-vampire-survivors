@@ -352,13 +352,13 @@ export class RemotePlayer {
         // otherwise fall back to a coloured orb so each peer is distinct.
         const drewSprite = drawSprite(ctx, 'player', this.x, this.y, {
             size: this.size,
-            alpha: strobe
+            alpha: this.dead ? 0.3 : strobe
         });
         if (drewSprite) {
             // Draw a coloured outline ring so each peer is visually distinct
             // even when all share the same player sprite.
             ctx.save();
-            ctx.globalAlpha = strobe;
+            ctx.globalAlpha = this.dead ? 0.3 : strobe;
             ctx.strokeStyle = this.color;
             ctx.lineWidth = 3;
             ctx.beginPath();
@@ -367,7 +367,7 @@ export class RemotePlayer {
             ctx.restore();
         } else {
             ctx.save();
-            ctx.globalAlpha = strobe;
+            ctx.globalAlpha = this.dead ? 0.3 : strobe;
             ctx.fillStyle = this.color;
             ctx.beginPath();
             ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
@@ -378,6 +378,36 @@ export class RemotePlayer {
             ctx.fill();
             ctx.restore();
         }
+
+        // iter-27 / Phase 1.5: nickname label + tiny HP bar above the avatar.
+        // Drawn in screen-relative pixels (no transform shenanigans needed
+        // because the world transform is already in effect during render).
+        const labelY = this.y - this.size - 14;
+        ctx.save();
+        ctx.font = '12px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        // Soft shadow so light-on-light backgrounds stay readable.
+        ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        ctx.fillText(this.nickname, this.x + 1, labelY + 1);
+        ctx.fillStyle = this.color;
+        ctx.fillText(this.nickname, this.x, labelY);
+        // HP bar — tucked just below the name, only when damaged.
+        if (this.maxHp > 0 && this.hp < this.maxHp) {
+            const w = 32;
+            const hbY = labelY + 2;
+            ctx.fillStyle = 'rgba(0,0,0,0.6)';
+            ctx.fillRect(this.x - w / 2, hbY, w, 3);
+            const pct = Math.max(0, this.hp / this.maxHp);
+            ctx.fillStyle = pct > 0.5 ? '#44ff66' : pct > 0.25 ? '#ffaa33' : '#ff4444';
+            ctx.fillRect(this.x - w / 2, hbY, w * pct, 3);
+        }
+        // 'DEAD' tag if knocked out — small, low-key.
+        if (this.dead) {
+            ctx.fillStyle = 'rgba(255,80,80,0.9)';
+            ctx.fillText('💀', this.x, labelY - 14);
+        }
+        ctx.restore();
     }
 }
 

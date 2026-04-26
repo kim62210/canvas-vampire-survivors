@@ -1,258 +1,22 @@
 /**
  * @module i18n
- * @description Minimal localisation layer. Ships English, 简体中文, 한국어;
- * new locales drop in by adding a key to `STRINGS` and a PR. All lookups fall
- * back to English then to the raw key, so a typo never crashes.
+ * @description Single-locale layer for the Korean build. Originally shipped
+ * en + zh + ko; the channel target (a Korean-only game portal) made the
+ * extra locales dead weight, so the public API is now ko-locked: any locale
+ * argument resolves to ko, and `availableLocales()` returns `['ko']` so the
+ * Settings panel skips drawing a one-option select. STRINGS lookup still
+ * falls back to the raw key, so a typo never crashes.
  *
  * Dependencies: none.
  *
  * Exports:
  *   - setLocale(loc), getLocale()
- *   - availableLocales() → string[]
+ *   - availableLocales() → ['ko']
  *   - t(key) → translated string
- *   - detectLocale() → best-effort browser language match
+ *   - detectLocale() → 'ko' (kept for API compatibility)
  */
 
 const STRINGS = {
-    en: {
-        title: 'SURVIVOR',
-        subtitle: 'Vampire Survivors style roguelite',
-        start: 'Start Run',
-        continue: 'Continue',
-        settings: 'Settings',
-        howToPlay: 'How to play',
-        move: 'WASD / arrow keys to move',
-        autoAttack: 'Weapons auto-attack nearby foes',
-        survive: 'Survive as long as you can!',
-        level: 'LEVEL',
-        xp: 'XP',
-        time: 'TIME',
-        kills: 'KILLS',
-        hp: 'HP',
-        gameover: 'YOU DIED',
-        finalTime: 'Survived',
-        finalKills: 'Kills',
-        finalLevel: 'Level',
-        retry: 'Retry',
-        mainMenu: 'Main Menu',
-        paused: 'PAUSED',
-        resume: 'Resume',
-        quit: 'Quit to Menu',
-        masterVolume: 'Master Volume',
-        sfxVolume: 'SFX Volume',
-        musicVolume: 'Music Volume',
-        musicEnabled: 'Music',
-        difficulty: 'Difficulty',
-        showFps: 'Show FPS',
-        screenShake: 'Screen shake',
-        reducedMotion: 'Reduced motion',
-        colorblind: 'High contrast (colorblind)',
-        locale: 'Language',
-        close: 'Close',
-        resetData: 'Reset all saved data',
-        confirmReset: 'This will wipe achievements and high scores. Continue?',
-        chooseUpgrade: 'Choose an upgrade',
-        highScore: 'Best',
-        highScores: 'High Scores',
-        wave: 'Wave',
-        bossIncoming: 'A BOSS APPROACHES',
-        achievementUnlocked: 'Achievement Unlocked',
-        date: 'Date',
-        noHighScores: 'No runs recorded yet.',
-        achievements: 'Achievements',
-        viewAchievements: 'View Achievements',
-        totals: 'Totals',
-        speedrun: 'Speedrun',
-        leaderboard: 'Leaderboard',
-        export: 'Export',
-        import: 'Import',
-        paste: 'Paste JSON',
-        splits: 'Splits',
-        noHit: 'No-Hit',
-        weapons: 'Weapons',
-        speedrunMode: 'Speedrun Mode',
-        newPb: 'New personal best!',
-        // iter-12: stages, daily, share
-        stage: 'Stage',
-        chooseStage: 'Choose a Stage',
-        dailyChallenge: 'Daily Challenge',
-        dailyToday: "Today's Challenge",
-        shareDaily: 'Share Result',
-        copied: 'Copied to clipboard',
-        copyManual: 'Select & copy manually',
-        damageNumbers: 'Show damage numbers',
-        touchButtonScale: 'Touch button size',
-        // iter-13: streak / help / how-to-play / hotkeys
-        viewStreak: 'View Streak',
-        dailyStreak: 'Daily Streak',
-        currentStreak: 'Current streak',
-        bestStreak: 'Best streak',
-        last14Days: 'Last 14 days',
-        noStreakYet: 'No daily runs recorded yet — try today’s challenge!',
-        howToPlayBtn: 'How to Play',
-        helpTitle: 'Keyboard shortcuts',
-        hotkeyHint: 'Tip: P/Esc pause · M mute · H help',
-        helpKeyMove: 'Move',
-        helpKeyPause: 'Pause / resume',
-        helpKeyMute: 'Mute audio',
-        helpKeyHelp: 'Toggle help',
-        helpKeyLanguage: 'Toggle language',
-        helpKeySettings: 'Settings panel',
-        helpKeyConfirm: 'Confirm / fire',
-        howToTitle: 'How to play',
-        howToBody1:
-            'You are auto-attacking. Move with WASD or arrow keys; weapons fire on their own.',
-        howToBody2: 'Pick up green orbs to gain XP. Each level lets you choose one upgrade.',
-        howToBody3: 'Survive long enough and a boss appears every few minutes.',
-        howToBody4: 'Hit P or Esc to pause, M to mute, H to see this list any time.',
-        gotIt: 'Got it',
-        // iter-15: tutorial / replay / critical flash
-        tutorialOffer: 'Welcome! Take a quick 5-step tutorial?',
-        tryTutorial: 'Try Tutorial',
-        skipTutorial: 'Skip',
-        tutorialSkipHint: 'Press Esc to skip.',
-        tutorialDone: 'Tutorial complete!',
-        replayLastRun: 'Replay Last Run',
-        noReplay: 'No replay saved yet — finish a run first.',
-        replaySpeed: 'Speed',
-        replayPlaying: 'Replay (input disabled)',
-        criticalFlash: 'Critical-hit screen flash',
-        // iter-19: haptic feedback + remap UI strings.
-        vibration: 'Vibration (mobile)',
-        customizeControls: 'Customize controls',
-        remapHint: 'Click a row, then press a key to bind it.',
-        pressAnyKey: 'Press any key…',
-        keymapConflict: 'Conflicting bindings',
-        resetDefaults: 'Reset to defaults',
-        cancel: 'Cancel',
-        save: 'Save',
-        remap_up: 'Move up',
-        remap_down: 'Move down',
-        remap_left: 'Move left',
-        remap_right: 'Move right',
-        remap_pause: 'Pause / resume',
-        remap_help: 'Toggle help',
-        remap_mute: 'Mute audio'
-    },
-    zh: {
-        title: '幸存者',
-        subtitle: '吸血鬼幸存者风格 Roguelite',
-        start: '开始游戏',
-        continue: '继续',
-        settings: '设置',
-        howToPlay: '玩法',
-        move: 'WASD / 方向键 移动',
-        autoAttack: '武器自动攻击附近敌人',
-        survive: '尽可能存活更久！',
-        level: '等级',
-        xp: '经验',
-        time: '时间',
-        kills: '击杀',
-        hp: '生命',
-        gameover: '你死了',
-        finalTime: '存活时间',
-        finalKills: '击杀',
-        finalLevel: '等级',
-        retry: '再来一局',
-        mainMenu: '返回菜单',
-        paused: '已暂停',
-        resume: '继续游戏',
-        quit: '退出到菜单',
-        masterVolume: '主音量',
-        sfxVolume: '音效',
-        musicVolume: '音乐',
-        musicEnabled: '音乐',
-        difficulty: '难度',
-        showFps: '显示 FPS',
-        screenShake: '屏幕抖动',
-        reducedMotion: '减少动效',
-        colorblind: '高对比度（色盲友好）',
-        locale: '语言',
-        close: '关闭',
-        resetData: '清空所有存档',
-        confirmReset: '这会抹掉成就和最高分，确认？',
-        chooseUpgrade: '选择一个升级',
-        highScore: '最佳',
-        highScores: '高分榜',
-        wave: '波次',
-        bossIncoming: 'BOSS 来了',
-        achievementUnlocked: '成就解锁',
-        date: '日期',
-        noHighScores: '暂无记录',
-        achievements: '成就',
-        viewAchievements: '查看成就',
-        totals: '累计',
-        speedrun: '速通',
-        leaderboard: '排行榜',
-        export: '导出',
-        import: '导入',
-        paste: '粘贴 JSON',
-        splits: '分段',
-        noHit: '无伤',
-        weapons: '武器',
-        speedrunMode: '速通模式',
-        newPb: '个人最佳！',
-        // iter-12: 关卡、每日挑战、分享
-        stage: '关卡',
-        chooseStage: '选择关卡',
-        dailyChallenge: '今日挑战',
-        dailyToday: '今日挑战',
-        shareDaily: '分享成绩',
-        copied: '已复制到剪贴板',
-        copyManual: '请手动复制',
-        damageNumbers: '显示伤害数字',
-        touchButtonScale: '触摸按钮大小',
-        // iter-13: 连胜/帮助/玩法/快捷键
-        viewStreak: '查看连胜',
-        dailyStreak: '每日挑战连胜',
-        currentStreak: '当前连胜',
-        bestStreak: '最佳连胜',
-        last14Days: '最近 14 天',
-        noStreakYet: '暂无每日挑战记录——来打一局今天的吧！',
-        howToPlayBtn: '玩法说明',
-        helpTitle: '键盘快捷键',
-        hotkeyHint: '提示：P/Esc 暂停 · M 静音 · H 帮助',
-        helpKeyMove: '移动',
-        helpKeyPause: '暂停 / 继续',
-        helpKeyMute: '静音',
-        helpKeyHelp: '显示 / 关闭帮助',
-        helpKeyLanguage: '切换语言',
-        helpKeySettings: '设置面板',
-        helpKeyConfirm: '确认 / 攻击',
-        howToTitle: '玩法说明',
-        howToBody1: '武器会自动攻击。WASD 或方向键移动即可。',
-        howToBody2: '拾取绿色经验球升级，每升一级可以选一个强化。',
-        howToBody3: '活得够久就会出现 BOSS——每隔几分钟一只。',
-        howToBody4: '随时按 P/Esc 暂停、M 静音、H 显示此说明。',
-        gotIt: '知道了',
-        // iter-15
-        tutorialOffer: '欢迎！想先来个 5 步教学吗？',
-        tryTutorial: '开始教学',
-        skipTutorial: '跳过',
-        tutorialSkipHint: '按 Esc 跳过。',
-        tutorialDone: '教学完成！',
-        replayLastRun: '重播上一局',
-        noReplay: '还没有可重播的对局——先打完一把吧。',
-        replaySpeed: '速度',
-        replayPlaying: '重播中（输入已禁用）',
-        criticalFlash: '暴击屏幕闪光',
-        // iter-19
-        vibration: '振动反馈（移动端）',
-        customizeControls: '自定义按键',
-        remapHint: '点击一项，然后按下任意键完成绑定。',
-        pressAnyKey: '请按任意键…',
-        keymapConflict: '存在按键冲突',
-        resetDefaults: '恢复默认',
-        cancel: '取消',
-        save: '保存',
-        remap_up: '向上移动',
-        remap_down: '向下移动',
-        remap_left: '向左移动',
-        remap_right: '向右移动',
-        remap_pause: '暂停 / 继续',
-        remap_help: '显示 / 关闭帮助',
-        remap_mute: '静音'
-    },
     ko: {
         title: '서바이버',
         subtitle: '뱀파이어 서바이버 스타일 로그라이트',
@@ -311,7 +75,6 @@ const STRINGS = {
         weapons: '무기',
         speedrunMode: '스피드런 모드',
         newPb: '개인 신기록!',
-        // iter-12: stages, daily, share
         stage: '스테이지',
         chooseStage: '스테이지 선택',
         dailyChallenge: '일일 챌린지',
@@ -321,7 +84,6 @@ const STRINGS = {
         copyManual: '수동으로 복사하세요',
         damageNumbers: '데미지 숫자 표시',
         touchButtonScale: '터치 버튼 크기',
-        // iter-13: streak / help / how-to-play / hotkeys
         viewStreak: '연속 기록 보기',
         dailyStreak: '일일 연속 기록',
         currentStreak: '현재 연속',
@@ -345,7 +107,6 @@ const STRINGS = {
         howToBody3: '오래 버티면 몇 분 간격으로 보스가 등장합니다.',
         howToBody4: 'P/Esc 일시정지, M 음소거, H 단축키 도움말을 언제든 열 수 있어요.',
         gotIt: '확인',
-        // iter-15: tutorial / replay / critical flash
         tutorialOffer: '환영합니다! 5단계 튜토리얼을 진행할까요?',
         tryTutorial: '튜토리얼 시작',
         skipTutorial: '건너뛰기',
@@ -356,7 +117,6 @@ const STRINGS = {
         replaySpeed: '속도',
         replayPlaying: '리플레이 중 (입력 비활성화)',
         criticalFlash: '치명타 화면 플래시',
-        // iter-19: haptic feedback + remap UI strings.
         vibration: '진동 (모바일)',
         customizeControls: '키 바인딩 변경',
         remapHint: '항목을 클릭한 뒤 원하는 키를 누르세요.',
@@ -375,43 +135,31 @@ const STRINGS = {
     }
 };
 
-let current = 'en';
+const CURRENT = 'ko';
 
-// Map BCP-47-ish identifiers to <html lang> values. Only what we actually ship.
-const HTML_LANG = { en: 'en', zh: 'zh-Hans', ko: 'ko' };
-
-export function setLocale(loc) {
-    if (STRINGS[loc]) current = loc;
-    // Keep <html lang> in sync so screen readers, browser translation prompts
-    // and CSS `:lang(...)` selectors all match the active UI language.
+export function setLocale(_loc) {
+    // Locked to Korean — accepted for API compatibility but ignored.
     if (typeof document !== 'undefined' && document.documentElement) {
-        document.documentElement.lang = HTML_LANG[current] || current;
+        document.documentElement.lang = 'ko';
     }
 }
+
 export function getLocale() {
-    return current;
+    return CURRENT;
 }
+
 export function availableLocales() {
-    return Object.keys(STRINGS);
+    return [CURRENT];
 }
+
 export function t(key) {
-    return (STRINGS[current] && STRINGS[current][key]) || STRINGS.en[key] || key;
+    return STRINGS[CURRENT][key] || key;
 }
 
 /**
- * Best-effort match against `navigator.languages` for a first-time visitor.
- * Falls back to English when nothing lines up. Only checks shipping locales,
- * so adding a new one to STRINGS is enough — no extra detection branch.
+ * Kept as a no-op detector for backwards compatibility with callers that
+ * still pass `setLocale(detectLocale())` during boot. Always returns ko now.
  */
 export function detectLocale() {
-    if (typeof navigator === 'undefined') return 'en';
-    const tags = [navigator.language, ...(navigator.languages || [])].filter(Boolean);
-    for (const tag of tags) {
-        const lower = String(tag).toLowerCase();
-        const primary = lower.split('-')[0];
-        if (STRINGS[primary]) return primary;
-        // Cover broad regional Chinese tags (zh-Hans, zh-CN, zh-TW…) explicitly.
-        if (lower.startsWith('zh')) return 'zh';
-    }
-    return 'en';
+    return CURRENT;
 }

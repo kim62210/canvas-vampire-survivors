@@ -322,19 +322,17 @@ test('iter16 spatial: clear() empties size and map both', () => {
 // ---------------------------------------------------------------------------
 // 8. i18n locale switching — keys must round-trip.
 // ---------------------------------------------------------------------------
-test('iter16 i18n: setLocale swaps the t() output, fallback to en for unknown key', () => {
-    const prev = getLocale();
-    try {
-        setLocale('en');
-        const en = t('start');
-        setLocale('zh');
-        const zh = t('start');
-        assert.notEqual(en, zh, 'translation should differ between en/zh');
-        // Unknown key → fallback to the key itself, not undefined.
-        assert.equal(t('definitelyNotARealKey'), 'definitelyNotARealKey');
-    } finally {
-        setLocale(prev);
-    }
+test('iter16 i18n: ko-locked build returns Korean strings, fallback to key for unknown', () => {
+    // The build is locked to Korean — setLocale ignores any argument and
+    // getLocale always returns 'ko'. This guards against regressions that
+    // would re-introduce English/Chinese fallbacks after the single-locale
+    // simplification.
+    setLocale('en');
+    assert.equal(getLocale(), 'ko');
+    assert.equal(t('start'), '게임 시작');
+    assert.equal(t('paused'), '일시정지');
+    // Unknown key → fallback to the raw key, not undefined.
+    assert.equal(t('definitelyNotARealKey'), 'definitelyNotARealKey');
 });
 
 test('iter16 i18n: every locale provides start + paused at minimum', () => {

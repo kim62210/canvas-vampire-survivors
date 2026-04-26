@@ -758,8 +758,11 @@ export class Game {
             overlay.style.display = 'none';
             this.startTutorialRun();
         };
+        // iter-27: outside-click + ✕ button so the offer never wedges on top
+        // of the menu when the user wants to ignore it.
         overlay.innerHTML = `
             <div class="overlay-card tutorial-offer-card">
+                <button id="tutorialOfferClose" class="overlay-close" aria-label="닫기" title="닫기">✕</button>
                 <h2>${_t('tutorialOffer')}</h2>
                 <div class="btn-row">
                     <button id="tutorialOfferYes" class="btn primary">${_t('tryTutorial')}</button>
@@ -769,6 +772,10 @@ export class Game {
         overlay.style.display = 'flex';
         overlay.querySelector('#tutorialOfferYes')?.addEventListener('click', accept);
         overlay.querySelector('#tutorialOfferNo')?.addEventListener('click', dismiss);
+        overlay.querySelector('#tutorialOfferClose')?.addEventListener('click', dismiss);
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) dismiss();
+        });
     }
 
     /**
@@ -830,11 +837,53 @@ export class Game {
             }
             return;
         }
+        // iter-27: explicit ✕ button so the banner can be dismissed without
+        // pressing Esc — discoverable on touch builds and matches the UX of
+        // every other overlay on the page.
         banner.innerHTML = `
+            <button class="tutorial-close" aria-label="닫기" title="닫기">✕</button>
             <strong>${prompt.title}</strong>
             <span class="tutorial-body">${prompt.body}</span>
             <span class="tutorial-skip-hint">${_t('tutorialSkipHint')}</span>`;
         banner.style.display = 'block';
+        banner.querySelector('.tutorial-close')?.addEventListener('click', () => {
+            this._dismissTutorial();
+        });
+    }
+
+    /**
+     * iter-27: cancel the active tutorial — used by the banner close button
+     * and any nav-away path that should not leave the banner stuck on screen.
+     * Idempotent: safe to call when no tutorial is running.
+     */
+    _dismissTutorial() {
+        if (this.tutorial?.active) {
+            this.tutorial.skip();
+        }
+        this.save.flags = this.save.flags || {};
+        this.save.flags.tutorialDone = true;
+        saveSave(this.save);
+        if (this._tutorialBanner) this._tutorialBanner.style.display = 'none';
+        if (typeof window !== 'undefined' && this._tutorialKeyHandler) {
+            window.removeEventListener('keydown', this._tutorialKeyHandler, true);
+            this._tutorialKeyHandler = null;
+        }
+    }
+
+    /**
+     * iter-27: keep the tutorial banner in sync with the current game state.
+     * Called from the render loop — when the player goes to the menu / pause
+     * screen / settings / etc., the banner hides automatically. Cheap (style
+     * mutation only, no innerHTML).
+     */
+    _syncTutorialVisibility() {
+        const banner = this._tutorialBanner;
+        if (!banner) return;
+        const promptVisible =
+            this.tutorial?.active &&
+            this.state === GameState.PLAYING &&
+            !!this.tutorial.currentPrompt();
+        banner.style.display = promptVisible ? 'block' : 'none';
     }
 
     /**
@@ -1680,6 +1729,9 @@ export class Game {
 
     // --- Rendering --------------------------------------------------------
     render(_dt) {
+        // iter-27: keep the tutorial banner in sync each frame so leaving
+        // PLAYING (pause / settings / menu) hides it without per-route hooks.
+        this._syncTutorialVisibility();
         const ctx = this.ctx;
         // 1) Background fill in screen space (no transform). This guarantees
         //    the viewport is always cleared even when the camera sits flush

@@ -1174,6 +1174,7 @@ body.cb-mode .exp-fill {
     z-index: 60;
 }
 .tutorial-offer-card {
+    position: relative;
     background: #1a1432;
     border: 1px solid #3a2f5a;
     border-radius: 14px;
@@ -1181,6 +1182,29 @@ body.cb-mode .exp-fill {
     text-align: center;
     max-width: 380px;
     box-shadow: 0 14px 40px rgba(0, 0, 0, 0.45);
+}
+/* iter-27: shared dismissable-overlay close button (used by the tutorial
+   offer modal and any other on-the-fly overlay we mount from script). */
+.overlay-close,
+.tutorial-close {
+    position: absolute;
+    top: 6px;
+    right: 8px;
+    appearance: none;
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 18px;
+    line-height: 1;
+    padding: 6px 8px;
+    cursor: pointer;
+    pointer-events: auto;
+}
+.overlay-close:hover,
+.tutorial-close:hover,
+.overlay-close:focus-visible,
+.tutorial-close:focus-visible {
+    color: #fff;
 }
 .tutorial-banner {
     position: absolute;
@@ -1190,13 +1214,17 @@ body.cb-mode .exp-fill {
     background: rgba(20, 12, 38, 0.92);
     border: 1px solid #4a3a8a;
     border-radius: 10px;
-    padding: 10px 16px;
+    padding: 10px 32px 10px 16px;
     color: #f3edff;
     font-size: 13px;
     line-height: 1.4;
     max-width: min(560px, 90vw);
     z-index: 50;
-    pointer-events: none;
+    /* iter-27: previously `pointer-events: none` so the banner couldn't
+       block underlying input. The new ✕ button needs to be clickable, so
+       pointer-events flip to `auto` here and the children selectively
+       opt in (text spans stay click-through via individual rules below). */
+    pointer-events: auto;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
 }
 .tutorial-banner strong {

@@ -26,34 +26,34 @@
 export const TUTORIAL_STEPS = [
     {
         id: 'move',
-        title: 'Step 1 / 5 — Move',
-        body: 'Use WASD or arrow keys to walk. On touch devices, drag the joystick on the lower-left.',
+        title: '1 / 5 단계 — 이동',
+        body: '왼쪽 아래 조이스틱을 드래그하거나 WASD/방향키로 영웅을 움직이세요.',
         // Counted as done once the player has held a non-zero move vector for
         // ~0.4 s of game time. Prevents a stuck-key from advancing instantly.
         thresholdSeconds: 0.4
     },
     {
         id: 'autoAttack',
-        title: 'Step 2 / 5 — Auto-Attack',
-        body: "You don't fire manually. Stand near an enemy and your starter weapon swings on its own.",
+        title: '2 / 5 단계 — 자동 공격',
+        body: '직접 공격하지 않아도 됩니다. 적 가까이로 이동하면 무기가 알아서 발사돼요.',
         thresholdSeconds: 1.5
     },
     {
         id: 'pickupExp',
-        title: 'Step 3 / 5 — Pick up XP',
-        body: 'Defeated enemies drop green orbs. Walk over one to gain experience.',
+        title: '3 / 5 단계 — 경험치 획득',
+        body: '적을 처치하면 초록색 경험치 구슬이 떨어져요. 그 위로 이동해 경험치를 얻으세요.',
         thresholdOrbs: 1
     },
     {
         id: 'levelUp',
-        title: 'Step 4 / 5 — Level Up',
-        body: 'Filling the XP bar opens the upgrade menu. Pick one — it sticks for the whole run.',
+        title: '4 / 5 단계 — 레벨업',
+        body: '경험치 바를 채우면 강화 메뉴가 열려요. 하나를 고르면 한 판 내내 유지됩니다.',
         thresholdLevelUps: 1
     },
     {
         id: 'pause',
-        title: 'Step 5 / 5 — Pause',
-        body: 'Press P or Esc to pause. Esc closes most overlays too. Press it now to finish.',
+        title: '5 / 5 단계 — 일시정지',
+        body: '우상단 ⏸ 버튼 또는 P/Esc 키로 일시정지할 수 있어요. 한 번 눌러 튜토리얼을 마칩니다.',
         thresholdPauses: 1
     }
 ];

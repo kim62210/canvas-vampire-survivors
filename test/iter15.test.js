@@ -46,7 +46,7 @@ test('iter15 tutorial: start() activates and points at step 0', () => {
     assert.equal(ts.active, true);
     assert.equal(ts.currentStep.id, 'move');
     const prompt = ts.currentPrompt();
-    assert.ok(prompt && /Step 1/.test(prompt.title));
+    assert.ok(prompt && /1 \/ 5/.test(prompt.title));
 });
 
 test('iter15 tutorial: move step advances after threshold of move-input time', () => {
